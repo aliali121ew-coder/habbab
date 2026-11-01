@@ -1,0 +1,79 @@
+import { Hono } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import type { AppEnv, Env } from './env';
+import { runMonthlyJobs } from './jobs';
+import { requireAuth } from './lib/auth';
+import { fail } from './lib/http';
+import { audit, dashboard, delegates, meta, users } from './routes/admin';
+import { auth } from './routes/auth';
+import { closings } from './routes/closings';
+import { files, prescriptions } from './routes/prescriptions';
+import { programs } from './routes/programs';
+import { subscribers } from './routes/subscribers';
+import { transactions } from './routes/transactions';
+
+const app = new Hono<AppEnv>();
+
+app.use('/api/*', async (c, next) => {
+  const mutating = !['GET', 'HEAD'].includes(c.req.method);
+  if (mutating) {
+    // SameSite=Strict is the main defence; this blocks cross-site forms on older browsers.
+    const origin = c.req.header('origin');
+    if (c.req.header('x-app') !== '1' || (origin && new URL(origin).host !== new URL(c.req.url).host)) {
+      fail(403, 'طلب غير مسموح');
+    }
+  }
+  await next();
+  c.header('cache-control', c.res.headers.get('cache-control') ?? 'no-store');
+  c.header('x-content-type-options', 'nosniff');
+  if (c.env.ENVIRONMENT !== 'production') {
+    c.header('x-d1-rows', `read=${c.get('d1Read') ?? 0};written=${c.get('d1Written') ?? 0}`);
+  }
+});
+
+app.route('/api/auth', auth);
+
+const api = new Hono<AppEnv>();
+api.use('*', requireAuth);
+api.use('*', async (c, next) => {
+  const limit = await c.env.API_LIMITER?.limit({ key: String(c.get('user').id) });
+  if (limit && !limit.success) fail(429, 'طلبات كثيرة، انتظر قليلاً');
+  await next();
+});
+api.route('/dashboard', dashboard);
+api.route('/meta', meta);
+api.route('/subscribers', subscribers);
+api.route('/programs', programs);
+api.route('/transactions', transactions);
+api.route('/prescriptions', prescriptions);
+api.route('/files', files);
+api.route('/closings', closings);
+api.route('/delegates', delegates);
+api.route('/users', users);
+api.route('/audit', audit);
+app.route('/api', api);
+
+app.notFound((c) => c.json({ error: 'غير موجود' }, 404));
+
+app.onError((error, c) => {
+  if (error instanceof HTTPException) return c.json({ error: error.message }, error.status);
+  const message = error instanceof Error ? error.message : '';
+  if (message.includes('MONTH_CLOSED')) return c.json({ error: 'هذا الشهر مقفل ولا يقبل التعديل' }, 409);
+  if (message.includes('UNIQUE constraint failed: subscribers.national_id_bidx')) {
+    return c.json({ error: 'رقم الهوية مسجل لمشترك آخر' }, 409);
+  }
+  if (message.includes('UNIQUE constraint failed: subscriber_programs')) {
+    return c.json({ error: 'المشترك مسجل في هذا البرنامج' }, 409);
+  }
+  if (message.includes('UNIQUE constraint failed')) return c.json({ error: 'هذه القيمة مستخدمة مسبقاً' }, 409);
+  // Route and error class only: messages from the database could carry bound values.
+  console.error(JSON.stringify({ route: c.req.routePath, method: c.req.method, error: error.name }));
+  return c.json({ error: 'حدث خطأ غير متوقع' }, 500);
+});
+
+export default {
+  fetch: app.fetch,
+  scheduled(event: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(runMonthlyJobs(env, new Date(event.scheduledTime)));
+  },
+};

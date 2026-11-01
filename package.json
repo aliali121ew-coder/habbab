@@ -1,0 +1,27 @@
+{
+  "name": "ahbab-charity-registry",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8787",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "db:migrate:local": "wrangler d1 migrations apply ahbab-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply ahbab-db --remote",
+    "admin:sql": "node scripts/create-admin.mjs",
+    "seed:dev": "node scripts/seed-dev.mjs",
+    "test:api": "node --test tests/api.test.mjs",
+    "test:mobile": "node tests/mobile.mjs"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261023.1",
+    "playwright-core": "^1.49.0",
+    "typescript": "^5.6.0",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,5 @@
+# انسخ هذا الملف إلى .dev.vars ثم ولّد قيماً عبر: openssl rand -base64 32
+ENVIRONMENT=development
+JWT_SECRET=
+DATA_KEY=
+BLIND_KEY=
