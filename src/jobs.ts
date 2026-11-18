@@ -4,8 +4,14 @@ import { encryptBytes } from './lib/crypto';
 const BACKUP_TABLES = [
   'users', 'subscribers', 'programs', 'subscriber_programs', 'transactions', 'transactions_archive',
   'prescriptions', 'prescriptions_archive', 'monthly_closings', 'audit_log', 'audit_log_archive',
-  'stats_totals', 'stats_daily', 'stats_monthly', 'delegate_totals',
+  'stats_totals', 'stats_daily', 'stats_monthly', 'delegate_totals', 'subscriber_year', 'delegate_period',
 ] as const;
+
+// WITHOUT ROWID tables have no rowid to page on.
+const COMPOSITE_KEYS: Record<string, string[]> = {
+  subscriber_year: ['subscriber_id', 'year'],
+  delegate_period: ['delegate_id', 'period'],
+};
 
 const BACKUP_PAGE = 2000;
 const ARCHIVE_PAGE = 500;
@@ -19,18 +25,23 @@ async function gzip(text: string) {
 // Exports are encrypted too: they hold names and phone numbers in clear columns.
 export async function exportBackup(env: Env, stamp: string) {
   for (const table of BACKUP_TABLES) {
-    let after = 0;
+    const keys = COMPOSITE_KEYS[table] ?? ['rowid'];
+    const columns = keys.join(', ');
+    const select = COMPOSITE_KEYS[table] ? '*' : 'rowid AS _rowid, *';
+    let after: unknown[] | null = null;
     let part = 1;
     for (;;) {
-      const { results } = await env.DB
-        .prepare(`SELECT rowid AS _rowid, * FROM ${table} WHERE rowid > ? ORDER BY rowid LIMIT ${BACKUP_PAGE}`)
-        .bind(after)
-        .all<{ _rowid: number }>();
+      const where: string = after ? `WHERE (${columns}) > (${keys.map(() => '?').join(', ')})` : '';
+      const { results }: D1Result<Record<string, unknown>> = await env.DB
+        .prepare(`SELECT ${select} FROM ${table} ${where} ORDER BY ${columns} LIMIT ${BACKUP_PAGE}`)
+        .bind(...(after ?? []))
+        .all();
       if (!results.length) break;
       const ndjson = results.map((row) => JSON.stringify(row)).join('\n');
       const key = `backups/${stamp}/${table}.${String(part).padStart(4, '0')}.ndjson.gz.enc`;
       await env.FILES.put(key, await encryptBytes(env.DATA_KEY, await gzip(ndjson)));
-      after = results[results.length - 1]._rowid;
+      const last: Record<string, unknown> = results[results.length - 1];
+      after = keys.map((key) => last[key === 'rowid' ? '_rowid' : key]);
       part += 1;
       if (results.length < BACKUP_PAGE) break;
     }
@@ -63,7 +74,7 @@ export async function archiveOldRecords(env: Env) {
   // Only closed months move, so an open period is never split across tables.
   await moveRows(
     env, 'transactions',
-    'id, type, amount, month, tx_date, subscriber_id, party_name, delegate_id, program_id, receipt_no, note, created_by, created_at, deleted_at, deleted_by',
+    'id, type, amount, month, tx_date, subscriber_id, party_name, delegate_id, program_id, receipt_no, note, created_by, created_at, deleted_at, deleted_by, period',
     `SELECT t.id FROM transactions t JOIN monthly_closings c ON c.month = t.month AND c.status = 'closed'
      WHERE t.month < ? ORDER BY t.id LIMIT ${ARCHIVE_PAGE}`,
     cutoffMonth,

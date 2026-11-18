@@ -1,0 +1,133 @@
+/* The yearly expenses ledger (pages/expenses/ExpensesLedgerPage.tsx), set like an accounting
+   sheet: equal columns, figures aligned on their last digit, no colour in the cells. The month
+   and the total stay pinned while the headings scroll; the row and column under the pointer
+   light up together. */
+.lg-year { display: flex; align-items: center; height: 40px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.page-actions .lg-year .icon-btn { width: 30px; height: 100%; border: 0; border-radius: 9px; background: transparent; color: var(--brand); }
+.lg-year .icon-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--brand) 12%, transparent); }
+.lg-year strong { min-width: 52px; text-align: center; font-size: 1rem; font-weight: 600; color: var(--ink); }
+
+.lg-board { display: flex; flex-direction: column; }
+.lg-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 18px; border-top: 3px solid var(--brand); border-bottom: 1px solid var(--line); }
+.lg-head h2 { margin: 0; font-size: 1.05rem; color: var(--ink); }
+.lg-head p { margin: 3px 0 0; font-size: .8rem; color: var(--ink-2); }
+.lg-head p b { font-weight: 600; color: var(--ink); }
+.lg-unit { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+.lg-unit button { min-height: 30px; padding-inline: 12px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: .8rem; font-weight: 600; }
+.lg-unit button[aria-checked="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
+
+.lg-wrap { overflow-x: auto; }
+.lg-table {
+  --lg-head: color-mix(in srgb, var(--ink) 4%, var(--surface));
+  --lg-pin: var(--surface);
+  --lg-hover: color-mix(in srgb, var(--brand) 6%, transparent);
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+.lg-c-month { width: 150px; }
+.lg-c-cat { width: 96px; }
+.lg-table.wide .lg-c-cat { width: 118px; }
+.lg-c-total { width: 168px; }
+
+.lg-table th, .lg-table td {
+  padding: 0 12px;
+  height: 42px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  text-align: end;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: .86rem;
+  color: var(--ink);
+}
+
+/* Headings: two lines at most, set on the same bottom line as each other. */
+.lg-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 54px;
+  padding-block: 8px;
+  vertical-align: bottom;
+  background: var(--lg-head);
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, var(--line));
+  color: var(--ink-2);
+  font-size: .76rem;
+  font-weight: 600;
+  white-space: normal;
+}
+.lg-label { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
+
+/* Month and total: pinned to either side, set apart by a firmer rule. */
+.lg-table .lg-month {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 1;
+  text-align: start;
+  background: var(--lg-pin);
+  border-inline-end: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 500;
+}
+.lg-num { display: inline-block; width: 24px; color: var(--ink-3); font-size: .76rem; font-weight: 500; }
+.lg-table .lg-total {
+  position: sticky;
+  inset-inline-end: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--ink) 3%, var(--lg-pin));
+  border-inline-start: 1px solid var(--line);
+}
+.lg-table thead .lg-month, .lg-table thead .lg-total { z-index: 3; background: var(--lg-head); color: var(--ink-2); }
+/* A soft edge where the scrolling headings pass under the pinned columns (RTL: the month sits on
+   the right, the total on the left). */
+.lg-table .lg-month { box-shadow: -8px 0 10px -10px rgb(0 0 0 / 45%); }
+.lg-table .lg-total { box-shadow: 8px 0 10px -10px rgb(0 0 0 / 45%); }
+.lg-tot { display: grid; grid-template-columns: minmax(0, 1fr) 54px; align-items: center; gap: 6px; }
+.lg-sum { text-align: end; font-weight: 600; color: var(--ink); }
+.lg-delta { justify-self: start; display: inline-flex; align-items: center; gap: 2px; font-size: .72rem; font-weight: 600; color: var(--ink-3); }
+.lg-delta span { font-size: .55rem; }
+.lg-delta.up { color: var(--danger); }
+.lg-delta.down { color: var(--brand); }
+
+.lg-zero { color: var(--ink-3); opacity: .45; }
+
+/* Light column rules, and every other month on a faint band, so a figure is easy to follow
+   along its row and down its column. The pinned cells take the band as a solid colour so the
+   scrolling figures never show through them. */
+.lg-table { --lg-band: color-mix(in srgb, var(--ink) 3.5%, var(--surface)); --lg-rule: color-mix(in srgb, var(--line) 55%, transparent); }
+.lg-table th + th, .lg-table th + td, .lg-table td + td { border-inline-start: 1px solid var(--lg-rule); }
+.lg-table tbody tr:nth-child(even) > * { background-color: var(--lg-band); }
+.lg-table tbody tr:nth-child(even) > .lg-total { background-color: color-mix(in srgb, var(--ink) 6%, var(--surface)); }
+
+/* Reading aid: the row and the column under the pointer, the crossing a shade deeper. */
+.lg-table tbody tr:hover > * { background-image: linear-gradient(var(--lg-hover), var(--lg-hover)); }
+.lg-table .col-on { background-image: linear-gradient(var(--lg-hover), var(--lg-hover)); }
+.lg-table tbody tr:hover > .col-on { background-image: linear-gradient(color-mix(in srgb, var(--brand) 13%, transparent), color-mix(in srgb, var(--brand) 13%, transparent)); }
+.lg-table thead .col-on { color: var(--brand); }
+
+.lg-table tbody tr.future > * { height: 34px; }
+.lg-table tbody tr.future .lg-month { color: var(--ink-3); font-weight: 400; }
+
+.lg-table tfoot th, .lg-table tfoot td { background-color: var(--lg-head); border-bottom: 0; font-weight: 600; }
+.lg-table tfoot tr:first-child > * { height: 46px; border-top: 1.5px solid color-mix(in srgb, var(--ink) 35%, var(--line)); }
+.lg-table tfoot .lg-total { background-color: color-mix(in srgb, var(--ink) 6%, var(--surface)); }
+.lg-table tfoot .lg-share > * { height: 32px; font-size: .74rem; font-weight: 500; color: var(--ink-3); }
+.lg-table tfoot .lg-share .lg-sum { font-weight: 500; color: var(--ink-3); }
+.lg-table tfoot .lg-month { font-weight: 600; }
+
+:root[data-theme="dark"] .lg-delta.down, :root[data-theme="dark"] .page-actions .lg-year .icon-btn, :root[data-theme="dark"] .lg-table thead .col-on { color: var(--bar-active); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lg-delta.down,
+  :root:not([data-theme="light"]) .page-actions .lg-year .icon-btn,
+  :root:not([data-theme="light"]) .lg-table thead .col-on { color: var(--bar-active); }
+}
+
+@media (max-width: 520px) {
+  .lg-c-month { width: 116px; }
+  .lg-c-total { width: 140px; }
+  .lg-tot { grid-template-columns: minmax(0, 1fr) 44px; }
+}

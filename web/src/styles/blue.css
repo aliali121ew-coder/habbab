@@ -1,0 +1,115 @@
+/* The blue palette's look across every page, after the patients page the user approved:
+   Noto Kufi Arabic with bold headings, hairline-bordered white panels, navy table heads.
+   Scoped to [data-palette="blue"] so the older palettes keep their own look. */
+/* The app font, in every palette (agreed with the user): Noto Kufi Arabic, bold headings.
+   Only the letterheads and titles keep Reem Kufi; the stamp, basmala and verse keep their faces. */
+:root body,
+:root :is(h1, h2, h3, button, input, select, textarea),
+:root .reg-sheet,
+:root .print-sheet {
+  font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+}
+:root h1 { font-weight: 700; }
+:root :is(h2, h3) { font-weight: 600; }
+:root :is(.dcard-initial, .sub-avatar, .profile-photo > span) { font-family: inherit; font-weight: 700; }
+:root :is(.reg-title h2, .reg-org strong, .reg-head.compact strong, .sheet-banner-name h1, .sheet-title h2) { font-family: "Reem Kufi", sans-serif; }
+:root .login-card h1 { font-family: "Reem Kufi", "Noto Kufi Arabic Variable", sans-serif; }
+
+:root[data-palette="blue"] body,
+:root[data-palette="blue"] :is(h1, h2, h3, button, input, select, textarea) {
+  font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+}
+:root[data-palette="blue"] body { background: var(--paper); }
+:root[data-palette="blue"] h1 { font-weight: 700; }
+:root[data-palette="blue"] :is(h2, h3) { font-weight: 600; }
+:root[data-palette="blue"] :focus-visible { outline-color: var(--brand); }
+
+/* Buttons: soft outlined by default, solid blue when primary. */
+:root[data-palette="blue"] .btn { border-radius: 12px; font-weight: 600; }
+:root[data-palette="blue"] .btn.primary { box-shadow: 0 6px 14px -8px rgb(37 99 235 / 70%); }
+:root[data-palette="blue"] .icon-btn { border-radius: 12px; }
+
+/* Table heads (design C): a white row of small muted labels, thin dividers, a hairline below. */
+:root[data-palette="blue"] .exp-flat thead th,
+:root[data-palette="blue"] .lg-table thead th {
+  background: var(--thead);
+  border-bottom: 1px solid var(--line);
+  color: var(--thead-ink);
+  font-size: .8rem;
+  font-weight: 600;
+}
+:root[data-palette="blue"] .lg-table thead .lg-month,
+:root[data-palette="blue"] .lg-table thead .lg-total { background: var(--thead); color: var(--thead-ink); }
+:root[data-palette="blue"] .lg-table thead .col-on { color: var(--brand); }
+:root[data-palette="blue"] .lg-table thead th + th { border-inline-start-color: var(--line); }
+:root[data-palette="blue"] .reg-table thead th + th { border-inline-start: 1px solid var(--line); }
+
+/* Page title as a white card: blue icon tile, bold title, actions on the far side.
+   The icon tile exists only for this palette. */
+.page-icon { display: none; }
+:root[data-palette="blue"] .page-head {
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-block-end: 16px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+:root[data-palette="blue"] .page-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: linear-gradient(140deg, #3b82f6, #1d4ed8);
+  color: #fff;
+  box-shadow: 0 8px 18px -8px rgb(37 99 235 / 70%);
+}
+:root[data-palette="blue"] .page-icon + div { flex: 1 1 200px; min-width: 0; }
+:root[data-palette="blue"] .page-head h1 { font-size: 1.45rem; font-weight: 700; }
+:root[data-palette="blue"] .page-actions { gap: 8px; }
+@media (max-width: 520px) {
+  :root[data-palette="blue"] .page-head { padding: 14px; }
+  :root[data-palette="blue"] .page-icon { width: 44px; height: 44px; border-radius: 13px; }
+}
+
+/* Cards, panels and figures: white, hairline border, bold numbers. */
+:root[data-palette="blue"] :is(.stat, .register, .panel, .people-side, .dcard) {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+:root[data-palette="blue"] .people-tile { background: var(--surface); }
+:root[data-palette="blue"] .stat-value { font-weight: 700; }
+:root[data-palette="blue"] .people-tile dd { font-weight: 700; }
+
+/* Subscribers register: navy head on tablet and up, soft rounded-square portraits. */
+:root[data-palette="blue"] .reg-table thead { background: var(--thead); }
+:root[data-palette="blue"] .reg-table thead tr { background: transparent; }
+:root[data-palette="blue"] .reg-table thead { border-bottom: 1px solid var(--line); }
+:root[data-palette="blue"] .reg-table thead th { color: var(--thead-ink); font-size: .8rem; font-weight: 600; padding-block: 13px; }
+:root[data-palette="blue"] .reg-table tbody tr:hover { background: var(--gold-soft); }
+:root[data-palette="blue"] .portrait { border: 0; background: var(--gold-soft); color: var(--brand); }
+:root[data-palette="blue"] .portrait-large { width: 60px; height: 60px; border-radius: 18px; }
+:root[data-palette="blue"] .portrait-small { width: 38px; height: 38px; border-radius: 12px; }
+:root[data-palette="blue"] .panel .portrait { border: 3px solid rgb(255 255 255 / 85%); box-shadow: none; }
+:root[data-palette="blue"] .panel-hero::after { display: none; }
+:root[data-palette="blue"] .sub-avatar { border-color: rgb(255 255 255 / 85%); border-radius: 16px; color: #fff; font-family: inherit; font-weight: 700; }
+:root[data-palette="blue"] .profile-photo { border-color: rgb(255 255 255 / 85%); }
+:root[data-palette="blue"] :is(.profile-photo > span, .profile-hero-top p) { color: #fff; }
+:root[data-palette="blue"] .dcard-initial { color: #fff; font-family: inherit; font-weight: 700; }
+
+/* Dark mode: glow.css gives cards and page their gradients (edges are plain hairlines);
+   only the register head stays navy here. */
+:root[data-palette="blue"]:not([data-theme="light"]) .reg-table thead th { background: transparent; }
+
+/* The printed register's body text follows the app font; its letterhead and titles keep
+   Reem Kufi, and the stamp, basmala and verse keep their own script faces. */
+:root[data-palette="blue"] .reg-sheet { font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, sans-serif; }
+:root[data-palette="blue"] .profile-photo > span { font-family: inherit; font-weight: 700; }
+/* Keep the letterhead and title faces the heading rule above would otherwise replace. */
+:root[data-palette="blue"] :is(.reg-title h2, .reg-org strong, .reg-head.compact strong, .sheet-banner-name h1, .sheet-title h2) { font-family: "Reem Kufi", sans-serif; }
+:root[data-palette="blue"] .login-card h1 { font-family: "Reem Kufi", "Noto Kufi Arabic Variable", sans-serif; }

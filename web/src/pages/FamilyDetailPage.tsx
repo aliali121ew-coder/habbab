@@ -1,0 +1,370 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { MotionConfig, motion } from 'framer-motion';
+import { ArrowRight, Check, HandCoins, HeartHandshake, X } from 'lucide-react';
+import { printWhenReady } from '../components/printWhenReady';
+import { OfficialFamiliesPrintSheet, PaymentModal, VisitModal } from '../components/families/FamilyModalsAndPrint';
+import { AidBoard } from '../components/family-profile/AidBoard';
+import { AidSourceSheet, FoundationSheet } from '../components/family-profile/AidSections';
+import { FamilyHero } from '../components/family-profile/FamilyHero';
+import { MembersTable, MemberSheet } from '../components/family-profile/MembersTable';
+import { PageHeader } from '../components/family-profile/PageHeader';
+import { ProfileSkeleton } from '../components/family-profile/ProfileSkeleton';
+import { Toast } from '../components/shared/Toast';
+import { DELEGATES, loadFamiliesStore, saveFamiliesStore } from '../data/families';
+import { CASE_OFFICERS, getFamilyDetailById } from '../mock/family';
+import { familyIdFromHash } from '../route';
+import type { AidSource, CaseOfficer, FamilyDetail, FamilyMember } from '../types/family';
+
+export function FamilyDetailPage() {
+  const familyId = familyIdFromHash();
+  const [family, setFamily] = useState<FamilyDetail | null>(() => getFamilyDetailById(familyId));
+  const [loading, setLoading] = useState(true);
+  const [foundationOpen, setFoundationOpen] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<AidSource | null>(null);
+  const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [payOpen, setPayOpen] = useState(false);
+  const [visitOpen, setVisitOpen] = useState(false);
+  const [addMemberOpen, setAddMemberOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
+
+  // Add Member form state
+  const [memName, setMemName] = useState('');
+  const [memRelation, setMemRelation] = useState('ابن');
+  const [memAge, setMemAge] = useState('10');
+  const [memStatus, setMemStatus] = useState('طالب ابتدائي');
+
+  useEffect(() => {
+    setLoading(true);
+    setFamily(getFamilyDetailById(familyId));
+    const timer = window.setTimeout(() => setLoading(false), 500);
+    return () => window.clearTimeout(timer);
+  }, [familyId]);
+
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = window.setTimeout(() => setToast(null), 2600);
+    return () => window.clearTimeout(t);
+  }, [toast]);
+
+  useEffect(() => {
+    if (!printing) return undefined;
+    const done = () => setPrinting(false);
+    window.addEventListener('afterprint', done);
+    const cancel = printWhenReady('.fam-v2-print');
+    return () => {
+      cancel();
+      window.removeEventListener('afterprint', done);
+    };
+  }, [printing]);
+
+  const showToast = (msg: string) => setToast(msg);
+
+  const handleCopy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard?.writeText(value);
+    } catch {
+      // Clipboard fallback ignored cleanly
+    }
+    showToast(`تم نسخ ${label}: ${value}`);
+  };
+
+  const rawStoreFamily = loadFamiliesStore().find((f) => f.id === familyId) ?? null;
+
+  const handleChangeOfficer = (officer: CaseOfficer) => {
+    const store = loadFamiliesStore();
+    const matchedDelegate = DELEGATES.find((d) => d.id === officer.id);
+    if (matchedDelegate) {
+      const updated = store.map((f) => (f.id === familyId ? { ...f, delegate: matchedDelegate } : f));
+      saveFamiliesStore(updated);
+    }
+    setFamily((prev) => (prev ? { ...prev, officer } : prev));
+    showToast(`تم إسناد الملف إلى ${officer.name}`);
+  };
+
+  const handleConfirmPayment = (_id: number, payment: { date: string; amount: number; type: string; receivedBy: string; by: string }) => {
+    const store = loadFamiliesStore();
+    const updated = store.map((f) => {
+      if (f.id !== familyId) return f;
+      const due = (f.entitlements?.salary ?? 0) + (f.entitlements?.aid ?? 0) + (f.entitlements?.medicine ?? 0) + (f.entitlements?.checkups ?? 0);
+      const nextPaid = f.paidThisMonth + payment.amount;
+      const nextArrears = Math.max(0, due - nextPaid);
+      return {
+        ...f,
+        paidThisMonth: nextPaid,
+        arrears: nextArrears,
+        arrearsMonths: nextArrears === 0 ? 0 : f.arrearsMonths,
+        payments: [payment, ...(f.payments ?? [])],
+      };
+    });
+    saveFamiliesStore(updated);
+    setFamily(getFamilyDetailById(familyId));
+    showToast('تم تسجيل الدفعة المالية بنجاح');
+  };
+
+  const handleConfirmVisit = (_id: number, visit: { date: string; delegateName: string; note: string }) => {
+    const store = loadFamiliesStore();
+    const updated = store.map((f) => (f.id === familyId
+      ? { ...f, lastVisit: visit.date, visits: [visit, ...(f.visits ?? [])] }
+      : f));
+    saveFamiliesStore(updated);
+    setFamily(getFamilyDetailById(familyId));
+    showToast('تم تسجيل زيارة المندوب بنجاح');
+  };
+
+  const handleAddMember = (e: FormEvent) => {
+    e.preventDefault();
+    if (!memName.trim()) return;
+    const store = loadFamiliesStore();
+    const updated = store.map((f) => (f.id === familyId
+      ? {
+        ...f,
+        members: [
+          ...(f.members ?? []),
+          {
+            name: memName.trim(),
+            relation: memRelation.trim(),
+            age: Math.max(1, Number(memAge) || 1),
+            status: memStatus.trim(),
+          },
+        ],
+      }
+      : f));
+    saveFamiliesStore(updated);
+    setFamily(getFamilyDetailById(familyId));
+    setMemName('');
+    setAddMemberOpen(false);
+    showToast(`تمت إضافة ${memName.trim()} إلى أفراد العائلة`);
+  };
+
+  if (!family) {
+    return (
+      <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 py-12 md:-mx-[18px]">
+        <div className="fp-card mx-auto max-w-md p-8 text-center">
+          <HeartHandshake className="mx-auto mb-3 h-10 w-10" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
+          <h1 className="text-lg font-bold" style={{ color: 'var(--fp-ink)' }}>ملف العائلة غير موجود</h1>
+          <p className="mt-1 text-xs" style={{ color: 'var(--fp-ink-3)' }}>تعذّر العثور على سجل العائلة المطلوبة.</p>
+          <a
+            href="#/families"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold text-white"
+            style={{ backgroundColor: 'var(--fp-primary)' }}
+          >
+            <ArrowRight className="h-4 w-4" aria-hidden /> العودة إلى العوائل المتعففة
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 pb-24 pt-6 md:-mx-[18px] md:px-7 md:pb-10">
+        <div className="mx-auto max-w-[1440px] space-y-6">
+          <PageHeader
+            onRecordPayment={() => setPayOpen(true)}
+            onAddVisit={() => setVisitOpen(true)}
+            onPrint={() => setPrinting(true)}
+            onEdit={() => showToast('وضع التعديل السريع جاهز')}
+            onArchive={() => showToast('تم وضع علامة للمراجعة قبل الأرشفة')}
+          />
+
+          {loading ? (
+            <ProfileSkeleton />
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22 }}
+              className="space-y-6"
+            >
+              {/* 1. Hero Section */}
+              <FamilyHero
+                family={family}
+                officers={CASE_OFFICERS}
+                onCopy={handleCopy}
+                onChangeOfficer={handleChangeOfficer}
+              />
+
+              {/* 2. Aid Board (Internal + External Sources) */}
+              <AidBoard
+                members={family.members}
+                internal={family.internalAid}
+                external={family.externalAid}
+                onOpenFoundation={() => setFoundationOpen(true)}
+                onOpenSource={setSelectedSource}
+                onOpenMember={setSelectedMember}
+              />
+
+              {/* 3. Family Members Table */}
+              <MembersTable
+                members={family.members}
+                onOpen={setSelectedMember}
+                onAdd={() => setAddMemberOpen(true)}
+              />
+            </motion.div>
+          )}
+        </div>
+
+        {/* Side Sheets */}
+        {foundationOpen && (
+          <FoundationSheet
+            programs={family.internalAid}
+            onOpenProgram={(program) => {
+              setFoundationOpen(false);
+              setSelectedSource(program);
+            }}
+            onClose={() => setFoundationOpen(false)}
+          />
+        )}
+
+        {selectedSource && (
+          <AidSourceSheet
+            source={selectedSource}
+            onClose={() => setSelectedSource(null)}
+          />
+        )}
+
+        {selectedMember && (
+          <MemberSheet
+            member={selectedMember}
+            patient={family.patients.find((p) => p.id === selectedMember.patientId)}
+            onClose={() => setSelectedMember(null)}
+          />
+        )}
+
+        {/* Mobile Sticky Bottom Bar */}
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 border-t p-3 backdrop-blur-md md:hidden"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--fp-card) 92%, transparent)',
+            borderColor: 'var(--fp-border)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setPayOpen(true)}
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white shadow-md"
+            style={{ backgroundImage: 'linear-gradient(270deg, var(--fp-primary), var(--fp-primary-2))' }}
+          >
+            <HandCoins className="h-4 w-4" aria-hidden />
+            <span>تسجيل دفعة</span>
+          </button>
+        </div>
+
+        {/* Modals */}
+        {payOpen && rawStoreFamily && (
+          <PaymentModal
+            family={rawStoreFamily}
+            onClose={() => setPayOpen(false)}
+            onConfirm={handleConfirmPayment}
+          />
+        )}
+
+        {visitOpen && rawStoreFamily && (
+          <VisitModal
+            family={rawStoreFamily}
+            onClose={() => setVisitOpen(false)}
+            onConfirm={handleConfirmVisit}
+          />
+        )}
+
+        {addMemberOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-xs">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="إضافة فرد جديد للعائلة"
+              className="fp-card w-full max-w-md overflow-hidden"
+            >
+              <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--fp-border)' }}>
+                <h2 className="text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>إضافة فرد جديد للعائلة</h2>
+                <button
+                  type="button"
+                  onClick={() => setAddMemberOpen(false)}
+                  aria-label="إغلاق"
+                  style={{ color: 'var(--fp-ink-3)' }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <form onSubmit={handleAddMember} className="space-y-3.5 p-5 text-xs">
+                <label className="block">
+                  <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>الاسم الكامل *</span>
+                  <input
+                    type="text"
+                    required
+                    value={memName}
+                    onChange={(e) => setMemName(e.target.value)}
+                    className="h-10 w-full rounded-xl border px-3"
+                    style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>الصلة</span>
+                    <input
+                      type="text"
+                      value={memRelation}
+                      onChange={(e) => setMemRelation(e.target.value)}
+                      className="h-10 w-full rounded-xl border px-3"
+                      style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>العمر</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      dir="ltr"
+                      value={memAge}
+                      onChange={(e) => setMemAge(e.target.value)}
+                      className="h-10 w-full rounded-xl border px-3"
+                      style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
+                    />
+                  </label>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>الوضع (دراسة / عمل / صحة)</span>
+                  <input
+                    type="text"
+                    value={memStatus}
+                    onChange={(e) => setMemStatus(e.target.value)}
+                    className="h-10 w-full rounded-xl border px-3"
+                    style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
+                  />
+                </label>
+                <div className="flex justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setAddMemberOpen(false)}
+                    className="h-9 rounded-xl border px-4 font-semibold"
+                    style={{ borderColor: 'var(--fp-border)', color: 'var(--fp-ink-2)' }}
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex h-9 items-center gap-1 rounded-xl px-4 font-semibold text-white"
+                    style={{ backgroundColor: 'var(--fp-primary)' }}
+                  >
+                    <Check className="h-3.5 w-3.5" aria-hidden /> حفظ
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {printing && rawStoreFamily && createPortal(
+          <OfficialFamiliesPrintSheet families={[rawStoreFamily]} monthLabel={family.monthLabel} />,
+          document.body,
+        )}
+
+        <Toast message={toast} />
+      </div>
+    </MotionConfig>
+  );
+}

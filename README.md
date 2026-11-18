@@ -2,6 +2,8 @@
 
 تطبيق ويب عربي RTL على Cloudflare (Workers + D1 + R2 + KV) لإدارة المشتركين والمساعدات والحسابات الشهرية ووصفات المرضى.
 
+الواجهة قيد الانتقال إلى React: صفحة المشتركين مكتملة، وبقية الصفحات تعمل مؤقتاً من `/legacy/`.
+
 | الوثيقة | المحتوى |
 |---|---|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | مخطط المعمارية، ERD، القرارات والافتراضات |
@@ -17,7 +19,8 @@ npm install
 cp .dev.vars.example .dev.vars        # ثم ضع ثلاث قيم من: openssl rand -base64 32
 npm run db:migrate:local
 npm run seed:dev                      # 25,000 مشترك تجريبي وحساب لكل دور
-npm run dev                           # http://localhost:8787
+npm run seed:payments                 # تسديدات تجريبية للسجل والرسم البياني
+npm run dev                           # يبني الواجهة ويشغّلها على http://localhost:8787
 ```
 
 الحسابات التجريبية: `admin` و`accountant` و`delegate1` و`delegate2` و`health`، وكلمة المرور `Test-Pass-123`. هذه الحسابات محلية فقط، ولا تشغّل `seed:dev` على قاعدة الإنتاج.
@@ -25,7 +28,8 @@ npm run dev                           # http://localhost:8787
 ```bash
 npm run typecheck
 npm run test:api       # يتطلب خادماً يعمل وقاعدة مزروعة
-npm run test:mobile    # يستخدم Microsoft Edge المثبت، أو BROWSER_CHANNEL=chrome
+npm run test:mobile    # الصفحات السابقة، بمتصفح Edge المثبت أو BROWSER_CHANNEL=chrome
+npm run test:register  # صفحة المشتركين بكل المقاسات والوضعين الليلي والنهاري
 ```
 
 ## النشر على الإنتاج

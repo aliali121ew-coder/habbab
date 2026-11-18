@@ -32,9 +32,10 @@ auth.post('/login', async (c) => {
   const limiter = await c.env.LOGIN_LIMITER?.limit({ key: ip });
   if (limiter && !limiter.success) fail(429, 'محاولات كثيرة، حاول بعد دقيقة');
 
-  const { username, password } = await readJson(c, z.object({
+  const { username, password, remember } = await readJson(c, z.object({
     username: z.string().trim().min(1, 'اسم المستخدم مطلوب').max(64),
     password: z.string().min(1, 'كلمة المرور مطلوبة').max(128),
+    remember: z.boolean().optional(),
   }));
 
   const user = await first<UserRow>(
@@ -62,7 +63,7 @@ auth.post('/login', async (c) => {
     stmt(c, 'UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', user.id),
     stmt(c, "INSERT INTO audit_log (user_id, action, entity, entity_id) VALUES (?, 'login', 'user', ?)", user.id, user.id),
   ]);
-  await startSession(c, user);
+  await startSession(c, user, { remember });
   return c.json({ id: user.id, full_name: user.full_name, role: user.role, must_change_password: user.must_change_password === 1 });
 });
 

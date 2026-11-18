@@ -1,0 +1,94 @@
+/* Element defaults, buttons, form fields and loading / empty states. */
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, p, dl, dd, ol, figure { margin: 0; padding: 0; }
+h1, h2, h3 { font-weight: 600; line-height: 1.3; font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, system-ui, sans-serif; }
+.login-card h1 { font-family: "Reem Kufi", "Noto Kufi Arabic Variable", sans-serif; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.05rem; }
+h3 { font-size: .95rem; }
+ol { list-style: none; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .55; }
+img { display: block; max-width: 100%; }
+bdi { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.hint { color: var(--ink-3); font-size: .9rem; }
+
+.btn {
+  min-height: var(--tap);
+  padding-inline: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  font-weight: 600;
+  white-space: nowrap;
+}
+a.btn { color: inherit; text-decoration: none; }
+.btn:hover:not(:disabled) { background: var(--surface-2); }
+.btn.primary { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+.btn.primary:hover:not(:disabled) { background: var(--brand-2); }
+.btn.danger { color: var(--danger); border-color: var(--danger); }
+.btn.block { width: 100%; white-space: normal; }
+
+.icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+}
+.icon-btn:hover:not(:disabled) { background: var(--surface-2); }
+
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { color: var(--ink-2); font-size: .92rem; font-weight: 500; }
+
+input, select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--tap);
+  /* 16px minimum stops iOS Safari zooming the page on focus. */
+  font-size: max(16px, 1rem);
+  padding-inline: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+input[dir="ltr"] { text-align: right; }
+
+
+.form { display: grid; gap: 14px; }
+.form-error { padding: 8px 12px; border-radius: 10px; background: var(--danger-soft); color: var(--danger); font-size: .95rem; }
+
+.skeleton { background: var(--surface-2); border-radius: var(--radius); animation: pulse 1.3s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .skeleton, .boot-star { animation: none; } .rail { transition: none; } }
+
+.state { display: grid; gap: 8px; justify-items: center; padding: 36px 16px; text-align: center; color: var(--ink-2); }
+.state strong { color: var(--ink); }
+.state-error strong, .state-error svg { color: var(--danger); }
+
+.boot { min-height: 100dvh; display: grid; place-items: center; }
+.boot-star { width: 34px; height: 34px; background: var(--gold); animation: pulse 1s ease-in-out infinite; transform: rotate(45deg); }

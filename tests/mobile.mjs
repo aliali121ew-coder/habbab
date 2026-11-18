@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright-core';
 
 const BASE = process.env.BASE_URL ?? 'http://localhost:8787';
+const LEGACY = `${BASE}/legacy/`;
 const WIDTHS = [[360, 740], [390, 844], [412, 915], [768, 1024]];
 const PAGES = {
   admin: ['dashboard', 'subscribers', 'programs', 'general-aid', 'receipts', 'monthly-aid', 'closings', 'prescriptions', 'delegates', 'delegates/3', 'users', 'audit'],
@@ -46,7 +47,7 @@ const waitLoaded = (page) => page.waitForFunction(() => !document.querySelector(
 async function signIn(role) {
   const context = await browser.newContext();
   const page = await context.newPage();
-  await page.goto(BASE);
+  await page.goto(LEGACY);
   await page.fill('input[autocomplete="username"]', role);
   await page.fill('input[type="password"]', 'Test-Pass-123');
   await page.click('button[type="submit"]');
@@ -59,7 +60,7 @@ async function signIn(role) {
 for (const [width, height] of WIDTHS) {
   const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, isMobile: width < 768 });
   const page = await context.newPage();
-  await page.goto(BASE);
+  await page.goto(LEGACY);
   await page.waitForSelector('input[autocomplete="username"]');
   for (const problem of await page.evaluate(inspect)) report(`login@${width}`, problem);
   await page.screenshot({ path: `tests/screens/login-${width}.png` });
@@ -75,11 +76,11 @@ for (const [role, paths] of Object.entries(PAGES)) {
     page.on('console', (message) => { if (message.type() === 'error') report(scope, `console: ${message.text()}`); });
     page.on('pageerror', (error) => report(scope, `exception: ${error.message}`));
 
-    await page.goto(BASE);
+    await page.goto(LEGACY);
     await page.waitForSelector('.topbar');
 
     for (const path of paths) {
-      await page.goto(`${BASE}/#/${path}`);
+      await page.goto(`${LEGACY}#/${path}`);
       await page.waitForTimeout(150);
       await waitLoaded(page);
       for (const problem of await page.evaluate(inspect)) report(`${scope} ${path}`, problem);
@@ -99,7 +100,7 @@ for (const [role, paths] of Object.entries(PAGES)) {
     }
 
     if (role === 'admin') {
-      await page.goto(`${BASE}/#/subscribers`);
+      await page.goto(`${LEGACY}#/subscribers`);
       await page.waitForSelector('.records tbody tr');
       const cardMode = await page.locator('.records thead').evaluate((node) => getComputedStyle(node).display === 'none');
       if ((width < 768) !== cardMode) report(scope, `expected ${width < 768 ? 'cards' : 'table'}`);
@@ -133,7 +134,7 @@ for (const [role, paths] of Object.entries(PAGES)) {
   const uploads = [];
   page.on('request', (request) => { if (request.url().endsWith('/api/prescriptions') && request.method() === 'POST') uploads.push(request.postDataBuffer()?.length ?? 0); });
   page.on('pageerror', (error) => report('upload', `exception: ${error.message}`));
-  await page.goto(`${BASE}/#/prescriptions`);
+  await page.goto(`${LEGACY}#/prescriptions`);
   await page.waitForSelector('.topbar');
   await page.click('text=إضافة وصفة');
   await page.waitForSelector('dialog[open]');

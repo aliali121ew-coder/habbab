@@ -1,0 +1,158 @@
+/* Printed register: A4 landscape sheets, letterhead on the first, approval on the last. */
+@page register-sheet { size: A4 landscape; margin: 0; }
+.reg-print { max-width: 900px; }
+.reg-sheets { flex-direction: column; align-items: center; gap: 16px; }
+.reg-sheet {
+  --rs-green: #0f4c3a;
+  --rs-gold: #b8862d;
+  --rs-ink: #1b2a26;
+  --rs-muted: #5c6b65;
+  --rs-rule: #d9d2bd;
+  position: relative;
+  flex: none;
+  width: 297mm;
+  height: 210mm;
+  overflow: hidden;
+  background: #fffefc;
+  color: var(--rs-ink);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  font-family: "Noto Naskh Arabic", "Traditional Arabic", serif;
+  font-variant-numeric: tabular-nums;
+  direction: rtl;
+  zoom: .74;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+  page: register-sheet;
+}
+.reg-sheet h2, .reg-sheet h4, .reg-sheet p, .reg-sheet dl, .reg-sheet dd { margin: 0; }
+.reg-sheet .sheet-rule { background: var(--rs-gold); }
+.reg-sheet .sheet-rule.top, .reg-sheet .sheet-rule.bottom { inset-inline: 92px; height: 2px; }
+.reg-sheet .sheet-rule.left, .reg-sheet .sheet-rule.right { inset-block: 92px; width: 2px; }
+.reg-sheet .sheet-rule.top { top: 18px; }
+.reg-sheet .sheet-rule.bottom { bottom: 18px; }
+.reg-sheet .sheet-rule.right { right: 18px; }
+.reg-sheet .sheet-rule.left { left: 18px; }
+.reg-sheet .sheet-corner { width: 74px; height: 74px; }
+.reg-sheet .sheet-corner.top-left { top: 12px; left: 12px; }
+.reg-sheet .sheet-corner.top-right { top: 12px; right: 12px; }
+.reg-sheet .sheet-corner.bottom-left { bottom: 12px; left: 12px; }
+.reg-sheet .sheet-corner.bottom-right { bottom: 12px; right: 12px; }
+
+.reg-page { position: absolute; inset: 34px 50px 32px; display: flex; flex-direction: column; gap: 9px; }
+.reg-head { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding-bottom: 6px; }
+.reg-org { display: flex; align-items: center; gap: 12px; }
+.reg-org img { width: 66px; height: 66px; flex: none; border: 2px solid var(--rs-gold); border-radius: 50%; object-fit: contain; background: #fff; }
+.reg-org div { display: flex; flex-direction: column; line-height: 1.45; font-size: 12px; color: var(--rs-muted); }
+.reg-org strong { font-family: "Reem Kufi", sans-serif; font-size: 18px; font-weight: 600; line-height: 1.3; color: var(--rs-green); }
+.reg-org bdi { align-self: flex-start; font-weight: 700; color: var(--rs-ink); }
+.reg-title { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.reg-title h2 { font-family: "Reem Kufi", sans-serif; font-size: 25px; font-weight: 600; line-height: 1.25; color: var(--rs-green); }
+.reg-title p, .reg-head.compact p { font-size: 12px; color: var(--rs-muted); }
+.reg-title b, .reg-head.compact b, .reg-meta dd { color: var(--rs-ink); font-weight: 700; }
+.reg-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 12px; color: var(--rs-muted); }
+.reg-meta div { display: flex; gap: 4px; }
+.reg-head.compact { display: flex; justify-content: space-between; }
+.reg-head.compact img { width: 40px; height: 40px; border-width: 1.5px; }
+.reg-head.compact strong { font-family: "Reem Kufi", sans-serif; font-size: 17px; font-weight: 600; color: var(--rs-green); }
+
+.reg-divider { display: flex; align-items: center; gap: 6px; margin-top: -4px; color: var(--rs-gold); }
+.reg-divider span { flex: 1; height: 3px; border-top: 1.5px solid var(--rs-gold); border-bottom: .75px solid var(--rs-gold); }
+.reg-divider svg { flex: none; display: block; }
+
+.reg-figures { display: grid; border: 1px solid var(--rs-rule); }
+.reg-figures.six { grid-template-columns: repeat(6, minmax(0, 1fr)); border-top: 2px solid var(--rs-green); }
+.reg-figures.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.reg-figures div { display: flex; flex-direction: column; align-items: center; padding: 6px 8px; border-inline-start: 1px solid var(--rs-rule); }
+.reg-figures div:first-child { border-inline-start: 0; }
+.reg-figures dt { font-size: 12px; color: var(--rs-muted); }
+.reg-figures dd { font-size: 17px; font-weight: 700; line-height: 1.3; }
+.reg-figures .strong { background: var(--rs-green); color: #fff; }
+.reg-figures .strong dt { color: #e3c678; }
+
+.reg-print-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.reg-print-table thead th { height: 34px; background: var(--rs-green); border-bottom: 2px solid var(--rs-gold); color: #fff; font-weight: 600; }
+.reg-print-table thead th.now { background: color-mix(in srgb, var(--rs-green) 80%, #fff); }
+.reg-print-table tbody tr { height: 30px; border-bottom: 1px solid #e3dcc8; }
+.reg-print-table tbody tr:nth-child(even) { background: rgb(201 162 75 / 7%); }
+.reg-print-table td { text-align: center; }
+.reg-print-table .col-no { width: 40px; color: var(--rs-muted); white-space: nowrap; }
+.reg-print-table thead .col-no { color: #fff; }
+.reg-print-table .col-name { width: 200px; padding-inline-start: 10px; overflow: hidden; text-align: start; text-overflow: ellipsis; white-space: nowrap; }
+.reg-print-table tbody .col-name { font-size: 16px; font-weight: 600; }
+.reg-print-table .col-date { width: 78px; font-weight: 600; }
+.reg-print-table .col-amount { width: 72px; font-weight: 600; }
+.reg-print-table td.m { border-inline-start: 1px solid #ece6d6; }
+.reg-print-table td.now { background: rgb(201 162 75 / 12%); }
+.reg-print-table .mark { display: block; margin: auto; border-radius: 50%; }
+/* Paid: a green ring with a green tick; late: a red ring; not due yet: a grey dot. */
+.reg-print-table .paid .mark { position: relative; width: 15px; height: 15px; box-sizing: border-box; border: 1.5px solid var(--rs-green); }
+.reg-print-table .paid .mark::after { content: ""; position: absolute; top: 2px; left: 4.3px; width: 3px; height: 6px; border: solid var(--rs-green); border-width: 0 1.8px 1.8px 0; transform: rotate(45deg); }
+.reg-print-table .late .mark { width: 9px; height: 9px; border: 2px solid #a3302a; }
+.reg-print-table .future .mark { width: 5px; height: 5px; background: #9aa69f; }
+
+.reg-approval { margin-top: auto; display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); align-items: start; gap: 28px; padding: 0 72px; }
+.reg-approval section { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.reg-approval h4 { font-size: 14px; color: var(--rs-green); }
+.reg-approval p { font-size: 12px; font-weight: 600; color: #86661f; }
+.reg-approval .line { align-self: stretch; margin-top: 26px; border-top: 1px solid var(--rs-ink); }
+.reg-approval small { font-size: 12px; color: var(--rs-muted); }
+.reg-foot { margin-top: auto; display: flex; justify-content: space-between; padding: 5px 46px 0; border-top: 1px solid var(--rs-gold); font-size: 12px; color: var(--rs-muted); }
+.reg-approval + .reg-foot { margin-top: 0; }
+
+@media (max-width: 860px) { .reg-sheet { zoom: .55; } }
+@media (max-width: 560px) { .reg-sheet { zoom: .32; } }
+@media print {
+  .reg-sheets { display: block !important; }
+  .reg-sheet { zoom: 1; box-shadow: none; break-after: page; }
+  .reg-sheet:last-child { break-after: auto; }
+}
+.pdf-host .reg-sheet { zoom: 1 !important; box-shadow: none; }
+
+/* The printed expenses: one A4 portrait page like the paper sheet, on the register's letterhead. */
+@page expense-sheet { size: A4 portrait; margin: 0; }
+.exp-print { max-width: 720px; }
+.reg-sheet.exp-sheet-print { width: 210mm; height: 297mm; page: expense-sheet; }
+.exp-sheet-print .reg-page { inset: 40px 46px 34px; gap: 12px; }
+.exp-sheet-print .reg-head { gap: 10px; }
+.exp-sheet-print .reg-org img { width: 58px; height: 58px; }
+.exp-sheet-print .reg-org strong { font-size: 14.5px; white-space: nowrap; }
+.exp-sheet-print .reg-org div { font-size: 11px; }
+.exp-sheet-print .reg-title h2 { font-size: 26px; }
+.exp-sheet-print .reg-figures dd { font-size: 15px; }
+
+.exp-sheet-table { width: 100%; border-collapse: collapse; table-layout: fixed; border: 1px solid var(--rs-rule); }
+.exp-sheet-table thead th { height: 32px; background: var(--rs-green); border-bottom: 2px solid var(--rs-gold); color: #fff; font-size: 13px; font-weight: 600; text-align: center; }
+.exp-sheet-table th, .exp-sheet-table td { padding: 0 10px; border-inline-start: 1px solid var(--rs-rule); vertical-align: middle; }
+.exp-sheet-table tbody tr { height: 25px; }
+/* A heading's lines read as one merged block: a rule above its first line only. */
+.exp-sheet-table tbody tr.group-start { border-top: 1px solid #d8ccab; }
+.exp-sheet-table tbody tr.group-cont td.col-details, .exp-sheet-table tbody tr.group-cont td.col-amount { border-top: 1px dotted #e3dcc8; }
+.exp-sheet-table .col-no { width: 32px; padding: 0; text-align: center; color: var(--rs-muted); font-size: 12px; }
+.exp-sheet-table thead .col-no { color: #fff; }
+.exp-sheet-table .col-cat { width: 158px; text-align: start; font-size: 14px; font-weight: 700; color: var(--rs-green); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-sheet-table .col-cat small { font-size: 10px; font-weight: 500; color: var(--rs-muted); }
+.exp-sheet-table tbody .col-cat, .exp-sheet-table tbody .col-no, .exp-sheet-table tbody .col-total { background: rgb(201 162 75 / 7%); }
+.exp-sheet-table tr.empty .col-cat { color: var(--rs-ink); font-weight: 600; }
+.exp-sheet-table .col-details { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-sheet-table .col-amount { width: 96px; text-align: center; font-size: 13px; }
+.exp-sheet-table .col-total { width: 108px; text-align: center; font-size: 14px; font-weight: 700; }
+.exp-sheet-table thead .col-cat, .exp-sheet-table thead .col-total { background: var(--rs-green); color: #fff; font-size: 13px; }
+.exp-sheet-table tfoot th, .exp-sheet-table tfoot td { height: 36px; background: var(--rs-green); color: #fff; font-size: 15px; font-weight: 700; text-align: center; }
+.exp-sheet-table tfoot small { color: #e3c678; font-size: 12px; }
+.exp-sheet-print .reg-approval { padding: 0 24px; gap: 18px; }
+
+/* Expenses sheet on one page: full details that wrap instead of «…», and type and row heights
+   that scale with --fit (set by the sheet until it fits). */
+.exp-sheet-print .reg-page { --fit: 1; }
+.exp-sheet-table thead th { height: calc(30px * var(--fit)); font-size: calc(13px * var(--fit)); }
+.exp-sheet-table tbody tr { height: auto; }
+.exp-sheet-table tbody :is(th, td) { padding-block: calc(4px * var(--fit)); line-height: 1.35; }
+.exp-sheet-table .col-details { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; font-size: calc(12.5px * var(--fit)); }
+.exp-sheet-table .col-cat { white-space: normal; overflow: visible; text-overflow: clip; font-size: calc(13.5px * var(--fit)); }
+.exp-sheet-table .col-amount { font-size: calc(13px * var(--fit)); }
+.exp-sheet-table .col-total { font-size: calc(13.5px * var(--fit)); }
+.exp-sheet-table .col-no { font-size: calc(12px * var(--fit)); }
+.exp-sheet-table tfoot :is(th, td) { height: calc(34px * var(--fit)); font-size: calc(14.5px * var(--fit)); }
+.exp-filter-note { margin-top: 2px; font-size: 12px; color: var(--rs-muted); }
+/* Dense sheets: row padding and line spacing shrink faster than the type. */
+.exp-sheet-table tbody :is(th, td) { padding-block: max(0px, calc((var(--fit) - .5) * 9px)); line-height: calc(1.05 + .3 * var(--fit)); }

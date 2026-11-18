@@ -1,0 +1,99 @@
+/* The date field and its month calendar (components/DatePicker.tsx). */
+.datepicker { position: relative; }
+.dp-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding-inline: 14px;
+  border: 1.5px solid color-mix(in srgb, var(--brand) 45%, var(--line));
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dp-trigger:hover, .dp-trigger[aria-expanded="true"] { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+.dp-trigger bdi { font-variant-numeric: tabular-nums; }
+.dp-icon { flex: none; color: var(--brand); }
+
+.dp-pop {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 10px);
+  inset-inline-end: 0;
+  width: 340px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 18px 46px -14px rgb(20 12 40 / 32%), 0 2px 6px rgb(20 12 40 / 8%);
+  animation: dp-in .16s ease-out;
+}
+@keyframes dp-in { from { opacity: 0; transform: translateY(-6px); } }
+
+.dp-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-block-end: 14px; }
+.dp-presets button { min-height: 36px; padding-inline: 6px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: .8rem; font-weight: 600; white-space: nowrap; }
+.dp-presets button:hover { border-color: var(--brand); color: var(--brand); }
+
+.dp-head { display: flex; align-items: center; justify-content: space-between; margin-block-end: 8px; }
+.dp-head strong { font-size: 1.05rem; font-weight: 600; color: var(--ink); }
+.dp-head button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-3); }
+.dp-head button:hover { background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--brand); }
+
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 2px; }
+.dp-weekday { padding-block: 4px 8px; text-align: center; font-size: .72rem; font-weight: 600; color: var(--ink-3); }
+.dp-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: .9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.dp-day > span { display: grid; place-items: center; width: 36px; height: 36px; border: 1.5px solid transparent; border-radius: 50%; transition: background-color .12s ease; }
+.dp-day:hover > span { background: color-mix(in srgb, var(--brand) 10%, transparent); }
+.dp-day.outside { color: color-mix(in srgb, var(--ink-3) 55%, transparent); }
+.dp-day.today > span { border-color: color-mix(in srgb, var(--brand) 55%, transparent); }
+/* The span between the two ends: a band that runs under the circles. */
+.dp-day.in-range { background: color-mix(in srgb, var(--brand) 12%, transparent); }
+.dp-day.first { background: linear-gradient(to left, transparent 50%, color-mix(in srgb, var(--brand) 12%, transparent) 50%); }
+.dp-day.last { background: linear-gradient(to right, transparent 50%, color-mix(in srgb, var(--brand) 12%, transparent) 50%); }
+.dp-day.edge > span { background: var(--brand); color: #fff; box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--brand) 80%, transparent); }
+.dp-day.edge.today > span { border-color: var(--ink); }
+.dp-dot { position: absolute; bottom: 3px; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: #1fa67a; transform: translateX(-50%); }
+.dp-day.edge .dp-dot { background: #fff; bottom: 6px; z-index: 1; }
+
+.dp-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-block-start: 10px; padding-block-start: 10px; border-top: 1px solid var(--line); }
+.dp-foot p { margin: 0; font-size: .76rem; color: var(--ink-3); }
+.dp-now { flex: none; min-height: 34px; padding-inline: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: .84rem; font-weight: 600; }
+.dp-now:hover { border-color: var(--brand); color: var(--brand); }
+
+:root[data-theme="dark"] .dp-icon { color: var(--bar-active); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .dp-icon { color: var(--bar-active); } }
+
+/* On a phone the field takes its own row and the calendar opens as a sheet along the bottom
+   edge, as wide as the screen, so the seven columns never squeeze. */
+@media (max-width: 520px) {
+  .page-actions:has(.datepicker) { flex-wrap: wrap; }
+  .page-actions .datepicker { flex: 1 1 100%; }
+  .dp-trigger { width: 100%; justify-content: center; }
+  .dp-pop {
+    position: fixed;
+    z-index: 60;
+    top: auto;
+    bottom: 8px;
+    inset-inline: 8px;
+    width: auto;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    animation-name: dp-up;
+  }
+  .page-actions:has(.datepicker) .btn { flex: 1; }
+}
+@keyframes dp-up { from { opacity: 0; transform: translateY(14px); } }

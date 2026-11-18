@@ -1,0 +1,188 @@
+/* The printed patient record (pages/patients/PatientRecordSheet.tsx): A4 portrait, after the
+   invoice reference with a richer finish: an angled dark header with a faint Islamic star pattern,
+   gold rules and accents on warm ivory paper, the app font throughout. Dark and accent colours
+   follow the chosen palette; gold stays. Hidden on screen, printed on its own. */
+@page record-sheet { size: A4 portrait; margin: 0; }
+
+.rec { display: none; }
+@media print {
+  body:has(.rec) > *:not(.rec) { display: none !important; }
+  .rec { display: flex; }
+}
+
+.rec {
+  --rec-dark: #0b1730;
+  --rec-accent: #1e3a6e;
+  --rec-gold: #c9a24a;
+  --rec-gold-soft: #f3e3b5;
+  --rec-paper: #fffdf8;
+  --rec-row: #faf6ec;
+  --rec-rule: #ece6d6;
+  --rec-ink: #111827;
+  --rec-muted: #6b7280;
+  --rec-khatam: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72' fill='none' stroke='%23000' stroke-width='1.8'%3E%3Cg transform='translate(36 36)'%3E%3Crect x='-17' y='-17' width='34' height='34'/%3E%3Crect x='-17' y='-17' width='34' height='34' transform='rotate(45)'/%3E%3Ccircle r='7'/%3E%3C/g%3E%3Cpath d='M0 0l12 12M72 0L60 12M0 72l12-12M72 72L60 60M36 0v12M36 60v12M0 36h12M60 36h12'/%3E%3C/svg%3E");
+  page: record-sheet;
+  position: relative;
+  flex-direction: column;
+  width: 210mm;
+  min-height: 297mm;
+  overflow: hidden;
+  background: var(--rec-paper);
+  color: var(--rec-ink);
+  font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.5;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+:root[data-palette="emerald"] .rec { --rec-dark: #082e23; --rec-accent: #0f4c3a; }
+:root[data-palette="violet"] .rec { --rec-dark: #1d1b3f; --rec-accent: #3d2d73; }
+.rec :is(h1, h2, h4, p, dl, dd) { margin: 0; padding: 0; }
+.rec :is(h1, h2, h4) { font-family: inherit; }
+
+.rec-frame { position: absolute; inset: 4mm; z-index: 3; border: 1px solid color-mix(in srgb, var(--rec-gold) 60%, transparent); pointer-events: none; }
+.rec-watermark { position: absolute; top: 50%; left: 50%; z-index: 0; width: 90mm; height: 90mm; border-radius: 50%; object-fit: cover; opacity: .045; transform: translate(-50%, -50%); filter: grayscale(1); pointer-events: none; }
+.rec > :not(.rec-frame, .rec-watermark) { position: relative; z-index: 1; }
+
+/* Header: the dark block with the foundation on the right, the accent block with the title on the left. */
+.rec-head { height: 44mm; }
+.rec-org {
+  position: absolute;
+  inset: 0 0 auto auto;
+  width: 64%;
+  height: 34mm;
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+  padding-inline-start: 12mm;
+  overflow: hidden;
+  background: var(--rec-dark);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 13% 100%);
+  color: #fff;
+}
+.rec-org::before { content: ""; position: absolute; inset: 0; background: var(--rec-gold); opacity: .12; -webkit-mask: var(--rec-khatam) 0 0 / 14mm 14mm repeat; mask: var(--rec-khatam) 0 0 / 14mm 14mm repeat; }
+.rec-org::after { content: ""; position: absolute; inset: auto 0 0 0; height: 1.2mm; background: linear-gradient(to left, var(--rec-gold), var(--rec-gold-soft), var(--rec-gold)); }
+.rec-org img { position: relative; width: 16mm; height: 16mm; flex: none; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid var(--rec-gold); }
+.rec-org strong { position: relative; max-width: 62mm; font-size: 12.5pt; font-weight: 700; line-height: 1.4; color: var(--rec-gold-soft); }
+.rec-gold-tab { position: absolute; top: 0; left: 0; width: 50%; height: 7mm; background: var(--rec-gold); clip-path: polygon(0 0, 100% 0, 95% 100%, 0 100%); }
+.rec-title {
+  position: absolute;
+  top: 10mm;
+  left: 0;
+  width: 47%;
+  height: 33mm;
+  padding: 4mm 12mm 0 14mm;
+  background: var(--rec-accent);
+  clip-path: polygon(0 0, 100% 0, 89% 100%, 0 100%);
+  color: #fff;
+}
+.rec-title h1 { font-size: 20pt; font-weight: 700; line-height: 1.25; color: var(--rec-gold-soft); }
+.rec-title h1::after { content: ""; display: block; width: 26mm; height: .5mm; margin: 1.5mm 0 2mm; background: var(--rec-gold); }
+.rec-title dl { display: grid; grid-template-columns: auto 1fr; gap: .5mm 4mm; font-size: 8.5pt; }
+.rec-title dl > div { display: contents; }
+.rec-title dt { color: rgb(255 255 255 / 70%); }
+.rec-title dd { font-weight: 600; text-align: start; }
+
+/* Patient and summary. */
+.rec-intro { display: grid; grid-template-columns: 1.25fr 1fr; gap: 10mm; padding: 6mm 12mm 5mm; }
+.rec h2 { display: flex; align-items: center; gap: 2mm; margin-bottom: 2mm; font-size: 9.5pt; font-weight: 700; color: var(--rec-gold); }
+.rec h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(to left, var(--rec-gold), transparent); }
+.rec-name { font-size: 16pt; font-weight: 700; line-height: 1.3; color: var(--rec-dark); }
+.rec-chip { display: inline-block; margin: 1.5mm 0 2.5mm; padding: .3mm 3mm; border: 1px solid var(--rec-gold); border-radius: 99px; color: #8a6a24; font-size: 8pt; }
+.rec-pairs { display: grid; grid-template-columns: auto 1fr; gap: 1.2mm 5mm; font-size: 9pt; }
+.rec-pairs > div { display: contents; }
+.rec-pairs dt { color: var(--rec-muted); }
+.rec-pairs dd { font-weight: 600; color: var(--rec-ink); }
+
+/* The aids. */
+.rec-table { width: calc(100% - 24mm); margin: 0 12mm; border-collapse: collapse; font-size: 9pt; }
+.rec-table th { padding: 2.6mm 2.5mm; border-bottom: .7mm solid var(--rec-gold); background: var(--rec-dark); color: var(--rec-gold-soft); font-weight: 600; text-align: start; }
+.rec-table td { padding: 2.2mm 2.5mm; border-bottom: 1px solid var(--rec-rule); }
+.rec-table tbody tr:nth-child(even) td { background: var(--rec-row); }
+.rec-table .n { width: 9mm; color: var(--rec-gold); font-weight: 700; }
+.rec-table th.n { color: var(--rec-gold-soft); }
+.rec-table .date { text-align: end; }
+.rec-table .amount { text-align: left; font-weight: 700; }
+
+/* Notes and totals. */
+.rec-bottom { display: flex; justify-content: space-between; gap: 10mm; padding: 6mm 12mm 0; }
+.rec-notes { flex: 1; }
+.rec-notes p { font-size: 8.5pt; line-height: 1.7; color: var(--rec-muted); }
+.rec-totals { flex: none; width: 62mm; border: 1px solid #d6cdb4; font-size: 9pt; }
+.rec-totals > div { display: flex; justify-content: space-between; gap: 4mm; padding: 1.8mm 3mm; border-bottom: 1px solid var(--rec-rule); }
+.rec-totals dt { color: var(--rec-muted); }
+.rec-totals dd { font-weight: 700; }
+.rec-totals .grand { border-bottom: 0; border-top: .7mm solid var(--rec-gold); background: var(--rec-dark); }
+.rec-totals .grand :is(dt, dd) { color: var(--rec-gold-soft); font-size: 10pt; }
+
+/* Footer: signature and stamp, then the angled contact band; gold and dark rules at the foot. */
+.rec-foot { display: flex; align-items: flex-end; justify-content: space-between; margin-top: auto; padding-top: 8mm; }
+.rec-sign { display: flex; align-items: flex-end; gap: 6mm; padding: 0 12mm 4mm; order: 2; }
+.rec-sign > section:not(.seal-slot) { display: grid; gap: 9mm; text-align: center; }
+.rec-sign h4 { font-size: 9pt; font-weight: 600; }
+.rec-line { width: 38mm; border-top: 1px solid var(--rec-gold); }
+.rec-sign .seal-slot { display: grid; justify-items: center; gap: 1mm; }
+.rec-sign .seal-slot h4 { font-size: 8pt; }
+.rec-sign .seal-stamp { width: 17mm; height: 17mm; border-width: 2px; }
+.rec-sign .seal-stamp img { width: 8.5mm; height: 8.5mm; }
+.rec-sign .seal-stamp bdi { font-size: 6.5pt; }
+.rec-sign .seal-stamp small { font-size: 5pt; }
+.rec-contact {
+  position: relative;
+  order: 1;
+  width: 58%;
+  height: 17mm;
+  display: flex;
+  align-items: center;
+  gap: 6mm;
+  padding-inline: 12mm 8mm;
+  overflow: hidden;
+  background: var(--rec-dark);
+  clip-path: polygon(0 0, 91% 0, 100% 100%, 0 100%);
+  color: var(--rec-gold-soft);
+  font-size: 8pt;
+}
+.rec-contact::before { content: ""; position: absolute; inset: 0; background: var(--rec-gold); opacity: .1; -webkit-mask: var(--rec-khatam) 0 0 / 12mm 12mm repeat; mask: var(--rec-khatam) 0 0 / 12mm 12mm repeat; }
+.rec-contact span { position: relative; display: inline-flex; align-items: center; gap: 1.5mm; }
+.rec-base { height: 4.5mm; background: linear-gradient(var(--rec-gold), var(--rec-gold)) top / 100% 1.2mm no-repeat, var(--rec-dark); }
+/* Left-to-right values (dates, file number) still sit on the right, beside their labels. */
+.rec dd[dir="ltr"] { text-align: right; }
+
+/* The patients report (PatientsReportSheet.tsx) uses the record's styles; its table has a name
+   with the condition under it, and seven columns, so it sits a touch tighter. */
+.rec-report .rec-table { font-size: 8.6pt; }
+.rec-report .rec-table th, .rec-report .rec-table td { padding-inline: 2mm; }
+.rec-report .rec-table .who small { display: block; font-size: 7pt; color: var(--rec-muted); }
+.rec-report .rec-name { font-size: 13pt; }
+.rec-report .rec-table td { padding-block: 1.3mm; }
+.rec-report .rec-table th { padding-block: 2.2mm; }
+.rec-report .rec-intro { padding-block: 4mm 3.5mm; }
+.rec-report .rec-bottom { padding-top: 4mm; }
+.rec-report .rec-foot { padding-top: 4mm; }
+
+/* Report summary: four joined cards in one gold-ruled strip (replaces the two info blocks). */
+.rec-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 6mm 12mm 5mm; border: 1px solid #d6cdb4; border-top: .7mm solid var(--rec-gold); background: #fff; }
+.rec-strip > div { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 1mm 3mm; padding: 3mm 3.5mm; }
+.rec-strip > div + div { border-inline-start: 1px solid var(--rec-rule); }
+.rec-strip-icon { display: grid; place-items: center; width: 9mm; height: 9mm; border-radius: 2mm; background: var(--rec-dark); color: var(--rec-gold-soft); }
+.rec-strip dl { margin: 0; }
+.rec-strip dt { font-size: 7.8pt; color: var(--rec-muted); }
+.rec-strip dd { margin: 0; font-size: 12.5pt; font-weight: 700; line-height: 1.25; color: var(--rec-dark); }
+.rec-strip small { grid-column: 1 / -1; padding-top: 1.5mm; border-top: 1px solid var(--rec-rule); font-size: 7.3pt; color: var(--rec-muted); }
+.rec-title dl { font-size: 8pt; }
+
+/* The accountant's signature (public/signature.png, ink only) sits on the signing line. */
+.sig-slot { position: relative; }
+.rec .sig-slot { gap: 14mm !important; }
+.rec .sig-img { position: absolute; bottom: .6mm; left: 50%; width: 30mm; transform: translateX(-50%); pointer-events: none; }
+
+
+/* Accountant, manager and stamp share the space beside the contact band. */
+.rec-sign { gap: 5mm; }
+.rec-line { width: 30mm; }
+.rec .sig-img { width: 28mm; }
+/* With three signatures the contact band takes the remaining width and keeps each item on one line. */
+.rec-contact { flex: 1; width: auto; min-width: 0; gap: 4mm; padding-inline: 10mm 7mm; font-size: 7.6pt; }
+.rec-contact span { white-space: nowrap; }
+.rec-sign { flex: none; padding-inline: 6mm 10mm; }
+

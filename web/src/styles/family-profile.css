@@ -1,0 +1,195 @@
+/* Design tokens for the home page and family profile (.fp-root). Surfaces, text and the
+   accent come from the active palette in tokens.css, so every palette and both modes
+   restyle these pages. Only the meaning colors (success, warning, danger) are fixed here. */
+:root {
+  --fp-bg: var(--paper);
+  --fp-card: var(--surface);
+  --fp-muted: var(--surface-2);
+  --fp-muted-2: color-mix(in srgb, var(--surface-2) 75%, var(--line));
+  --fp-border: color-mix(in srgb, var(--line) 75%, transparent);
+  --fp-ink: var(--ink);
+  --fp-ink-2: var(--ink-2);
+  --fp-ink-3: var(--ink-3);
+  --fp-primary: var(--bar-active);
+  --fp-primary-2: color-mix(in srgb, var(--bar-active) 78%, #fff);
+  --fp-primary-soft: color-mix(in srgb, var(--bar-active) 11%, transparent);
+  --fp-emerald: #059669;
+  --fp-emerald-soft: rgb(5 150 105 / 12%);
+  --fp-rose: #E11D48;
+  --fp-rose-soft: rgb(225 29 72 / 11%);
+  --fp-amber: #B45309;
+  --fp-amber-soft: rgb(245 158 11 / 15%);
+  --fp-shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 6px 20px -4px color-mix(in srgb, var(--bar-active) 10%, rgb(16 24 40 / 6%));
+  --fp-shadow-hover: 0 12px 28px -10px color-mix(in srgb, var(--bar-active) 22%, rgb(15 23 42 / 12%));
+}
+
+:root[data-theme="dark"] {
+  --fp-border: var(--line);
+  --fp-primary-2: color-mix(in srgb, var(--bar-active) 80%, #fff);
+  --fp-primary-soft: color-mix(in srgb, var(--bar-active) 18%, transparent);
+  --fp-emerald: #34D399;
+  --fp-emerald-soft: rgb(16 185 129 / 16%);
+  --fp-rose: #FB7185;
+  --fp-rose-soft: rgb(244 63 94 / 16%);
+  --fp-amber: #FBBF24;
+  --fp-amber-soft: rgb(245 158 11 / 16%);
+  --fp-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 6px 20px rgb(0 0 0 / 22%);
+  --fp-shadow-hover: 0 12px 28px -8px rgb(0 0 0 / 40%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fp-border: var(--line);
+    --fp-primary-2: color-mix(in srgb, var(--bar-active) 80%, #fff);
+    --fp-primary-soft: color-mix(in srgb, var(--bar-active) 18%, transparent);
+    --fp-emerald: #34D399;
+    --fp-emerald-soft: rgb(16 185 129 / 16%);
+    --fp-rose: #FB7185;
+    --fp-rose-soft: rgb(244 63 94 / 16%);
+    --fp-amber: #FBBF24;
+    --fp-amber-soft: rgb(245 158 11 / 16%);
+    --fp-shadow: 0 1px 2px rgb(0 0 0 / 28%), 0 6px 20px rgb(0 0 0 / 22%);
+    --fp-shadow-hover: 0 12px 28px -8px rgb(0 0 0 / 40%);
+  }
+}
+
+.fp-root,
+.fp-root :is(h1, h2, h3, h4, button, input, select, textarea) {
+  font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+
+.fp-root {
+  background-color: var(--fp-bg);
+  color: var(--fp-ink);
+}
+
+.fp-root button {
+  border: 0;
+  background-color: transparent;
+}
+
+.fp-root ul,
+.fp-root ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fp-root input,
+.fp-root select {
+  min-height: 0;
+}
+
+.fp-card {
+  border: 1px solid var(--fp-border);
+  border-radius: 20px;
+  background-color: var(--fp-card);
+  box-shadow: var(--fp-shadow);
+  transition: box-shadow .18s ease, transform .18s ease;
+}
+
+.fp-card-interactive:hover {
+  box-shadow: var(--fp-shadow-hover);
+}
+
+.fp-kpi-aura {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--fp-primary) 7%, var(--fp-card)) 0%, var(--fp-card) 56%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fp-card,
+  .fp-root * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* File panel: slides in from the left edge (the end side in RTL). */
+@keyframes fp-sheet-in {
+  from { transform: translateX(-24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.fp-sheet {
+  animation: fp-sheet-in .2s cubic-bezier(.22, 1, .36, 1);
+}
+
+.fp-aid-card {
+  cursor: pointer;
+  text-align: start;
+}
+
+.fp-aid-card:hover {
+  box-shadow: var(--fp-shadow-hover);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--fp-primary) 35%, var(--fp-border));
+}
+
+.fp-aid-card:focus-visible,
+.fp-row-button:focus-visible {
+  outline: 2px solid var(--fp-primary);
+  outline-offset: 2px;
+}
+
+.fp-member-row {
+  cursor: pointer;
+  transition: background-color .12s ease;
+}
+
+.fp-member-row:hover {
+  background-color: var(--fp-muted);
+}
+
+/* Home: section shortcuts */
+.fp-home-tile { transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease; }
+.fp-home-tile:hover { border-color: var(--fp-primary) !important; box-shadow: var(--fp-shadow-hover); }
+.fp-home-tile:active { transform: scale(.98); }
+.fp-home-tile:focus-visible { outline: 2px solid var(--fp-primary); outline-offset: 2px; }
+
+.fp-home-row { transition: background-color .12s ease; }
+.fp-home-row:hover { background-color: var(--fp-muted); }
+
+/* Phones, light mode: less glare. The page gets a soft tint of the palette and cards are
+   off-white with a clearer edge, so sections separate without bright white everywhere. */
+@media (max-width: 767.98px) {
+  :root:not([data-theme="dark"]) .fp-root {
+    --fp-bg: color-mix(in srgb, var(--paper) 90%, var(--bar-active) 5%);
+    --fp-card: color-mix(in srgb, color-mix(in srgb, var(--surface) 90%, var(--paper)) 96%, var(--bar-active));
+    --fp-muted: color-mix(in srgb, var(--paper) 80%, var(--bar-active) 5%);
+    --fp-muted-2: color-mix(in srgb, var(--paper) 70%, var(--line));
+    --fp-border: color-mix(in srgb, var(--line) 85%, var(--bar-active) 10%);
+    --fp-ink: color-mix(in srgb, var(--ink) 92%, var(--paper));
+  }
+  :root:not([data-theme="dark"]) .fp-root .fp-card {
+    box-shadow: 0 1px 2px rgb(16 24 40 / 5%), 0 8px 22px -12px color-mix(in srgb, var(--bar-active) 30%, rgb(16 24 40 / 20%));
+  }
+}
+
+/* Home, phones: one parent card holding the four headline figures. */
+.fp-kpi-parent-title { display: none; }
+@media (max-width: 767.98px) {
+  .fp-kpi-parent {
+    padding: 10px;
+    border: 1px solid var(--fp-border);
+    border-radius: 24px;
+    background: var(--fp-muted);
+    box-shadow: var(--fp-shadow);
+  }
+  .fp-kpi-parent-title { display: flex; }
+  .fp-kpi-parent .fp-card { box-shadow: none; }
+}
+
+/* Home figures on phones: a bold title first, the icon at the far side, a stripe in the card's colour. */
+.fp-kpi-go { display: none; }
+a.fp-kpi { cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+a.fp-kpi:hover { box-shadow: var(--fp-shadow-hover); }
+a.fp-kpi:active { transform: scale(.98); }
+a.fp-kpi:focus-visible { outline: 2px solid var(--fp-primary); outline-offset: 2px; }
+@media (max-width: 767.98px) {
+  .fp-kpi { position: relative; overflow: hidden; padding-top: 15px; }
+  .fp-kpi::before { content: ""; position: absolute; inset-inline: 0; top: 0; height: 4px; background: var(--kpi-tone); }
+  .fp-kpi-head { justify-content: space-between; }
+  .fp-kpi-icon { order: 2; width: 30px; height: 30px; border-radius: 10px; }
+  .fp-kpi-title { order: 1; flex: 1; font-size: 14px !important; font-weight: 800 !important; color: var(--fp-ink) !important; line-height: 1.35; }
+  .fp-kpi-go { display: block; order: 3; }
+}

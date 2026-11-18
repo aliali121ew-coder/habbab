@@ -1,0 +1,298 @@
+/* The expenses page: three figures, then every entry of the month in one flat table. */
+.exp-stats { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important; }
+.exp-top-name { font-size: 1.15rem; white-space: normal; }
+
+/* The register card: a quiet head with the period and its tools, a filter bar, the table. */
+.exp-board { display: flex; flex-direction: column; }
+.exp-board-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; padding: 14px 16px; border-block-end: 1px solid var(--line); border-top: 3px solid var(--brand); }
+.exp-board-head h2 { margin: 0; color: var(--ink); font-size: 1.1rem; }
+.exp-board-head p { margin: 2px 0 0; color: var(--ink-2); font-size: .82rem; }
+.exp-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.exp-tool { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: .84rem; font-weight: 500; }
+.exp-tool:hover:not(:disabled) { border-color: var(--brand); }
+.exp-tool.on { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, var(--surface)); color: var(--brand); }
+
+.exp-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; border-block-end: 1px solid var(--line); background: color-mix(in srgb, var(--ink) 2%, var(--surface)); }
+.exp-search { flex: 1 1 240px; display: flex; align-items: center; gap: 8px; min-height: 38px; padding-inline: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink-2); }
+.exp-search:focus-within { border-color: var(--brand); }
+.exp-search input { min-height: 0; height: 36px; padding: 0; border: 0; background: transparent; font-size: .9rem; }
+.exp-search input:focus { outline: none; }
+.exp-filters > select { width: auto; min-width: 170px; min-height: 38px; font-size: .88rem; }
+.exp-clear { min-height: 38px; padding: 0 10px; border: 0; background: none; color: var(--brand); font-size: .84rem; font-weight: 600; text-decoration: underline; }
+.exp-empty { margin: 0; padding: 36px 16px; color: var(--ink-2); text-align: center; font-size: .95rem; }
+
+.exp-table-wrap { overflow: auto; max-inline-size: 100%; container-type: inline-size; }
+.exp-table-wrap:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.exp-flat { width: 100%; min-width: 900px; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+.exp-flat th, .exp-flat td { padding: 11px 14px; text-align: start; vertical-align: middle; border-bottom: 1px solid var(--line); }
+.exp-flat thead th { position: sticky; inset-block-start: 0; z-index: 1; padding-block: 10px; background: color-mix(in srgb, var(--brand) 9%, var(--surface)); border-bottom: 2px solid color-mix(in srgb, var(--brand) 35%, var(--line)); color: var(--ink); font-size: .82rem; font-weight: 600; white-space: nowrap; }
+.exp-flat thead th:has(> .exp-sort) { padding: 0; }
+.exp-sort { width: 100%; min-height: 38px; display: inline-flex; align-items: center; gap: 4px; padding: 10px 14px; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.exp-sort:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
+.exp-sort:hover, .exp-sort.active { color: var(--brand); }
+/* Fixed shares so no single column swallows the spare width; together they make 100%. */
+.exp-flat .col-date { width: 11%; color: var(--ink-2); white-space: nowrap; }
+.exp-flat .col-cat { width: 20%; }
+.exp-flat .col-person { width: 15%; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.exp-flat .col-details { width: 20%; color: var(--ink); overflow-wrap: anywhere; }
+.exp-flat .col-amount { width: 12%; text-align: start; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.exp-flat .col-act { width: 8%; white-space: nowrap; text-align: center; }
+.exp-flat .col-change { width: 14%; white-space: nowrap; }
+.exp-flat thead th.col-change { white-space: normal; line-height: 1.35; }
+.exp-flat { min-width: 900px; }
+.exp-delta { display: inline-flex; align-items: center; gap: 3px; font-size: .86rem; font-weight: 700; white-space: nowrap; }
+.exp-delta.up { color: var(--danger); }
+.exp-delta.down { color: var(--paid); }
+.exp-delta.new { color: var(--brand); font-weight: 600; font-size: .8rem; }
+.exp-delta.flat, .exp-delta.muted { color: var(--ink-3); font-weight: 600; }
+
+/* Design A: the type as a coloured icon tile beside its name; the amount stands out. */
+.exp-type { display: inline-flex; align-items: center; gap: 9px; max-width: 100%; color: var(--ink); font-size: .86rem; font-weight: 500; }
+.exp-type-icon { --tone: #64748b; flex: none; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 10px; background: color-mix(in srgb, var(--tone) 13%, var(--surface)); color: var(--tone); }
+.exp-type[data-tone="care"] .exp-type-icon { --tone: #0f8a7e; }
+.exp-type[data-tone="money"] .exp-type-icon { --tone: #6d5bd0; }
+.exp-type[data-tone="home"] .exp-type-icon { --tone: #c26a12; }
+.exp-type[data-tone="food"] .exp-type-icon { --tone: #3f8a1f; }
+.exp-type[data-tone="org"] .exp-type-icon { --tone: #2563eb; }
+.exp-type[data-tone="faith"] .exp-type-icon { --tone: #c0396b; }
+:root[data-theme="dark"] .exp-type-icon { background: color-mix(in srgb, var(--tone) 22%, var(--surface)); filter: brightness(1.35); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .exp-type-icon { background: color-mix(in srgb, var(--tone) 22%, var(--surface)); filter: brightness(1.35); } }
+.exp-row td.col-amount { font-size: 1rem; font-weight: 700; }
+.exp-row td.col-details, .exp-row td.col-date { color: var(--ink-2); }
+.exp-flat .exp-cat-chip { max-width: 100%; white-space: normal; }
+.exp-row { cursor: pointer; }
+.exp-row:nth-child(even) td { background: color-mix(in srgb, var(--ink) 2%, transparent); }
+.exp-row:hover td { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+.exp-cat-chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 99px; background: color-mix(in srgb, var(--brand) 10%, transparent); color: var(--ink); font-size: .82rem; font-weight: 500; white-space: nowrap; }
+.exp-cat-chip svg { color: var(--brand); }
+.exp-linked { margin-inline-start: 6px; padding: 0 6px; border-radius: 6px; background: var(--surface-2); color: var(--ink-2); font-size: .72rem; font-weight: 500; }
+.exp-missing { color: var(--danger); font-size: .82rem; font-weight: 500; }
+.exp-clip { display: inline-flex; align-items: center; gap: 2px; margin-inline-end: 6px; color: var(--ink-2); font-size: .78rem; font-weight: 500; vertical-align: middle; }
+.exp-row-edit { width: 30px; height: 30px; display: inline-grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink-2); vertical-align: middle; }
+.exp-row-edit:hover { border-color: var(--brand); color: var(--brand); }
+
+.exp-group-row th, .exp-group-row td { padding-block: 8px; background: color-mix(in srgb, var(--brand) 6%, var(--surface)); border-bottom: 1px solid color-mix(in srgb, var(--brand) 25%, var(--line)); }
+.exp-group-row th { color: var(--ink); font-size: .9rem; font-weight: 600; }
+.exp-group-row th svg { vertical-align: -2px; color: var(--brand); }
+.exp-group-row th span { margin-inline-start: 8px; color: var(--ink-2); font-size: .76rem; font-weight: 600; }
+.exp-group-row td.col-amount { color: var(--brand); }
+
+.exp-flat tfoot th, .exp-flat tfoot td { padding-block: 14px; border-top: 2px solid color-mix(in srgb, var(--brand) 35%, var(--line)); border-bottom: 0; background: color-mix(in srgb, var(--brand) 9%, var(--surface)); color: var(--ink); font-weight: 600; }
+.exp-flat tfoot .col-amount { font-size: 1.1rem; }
+.exp-flat tfoot small { color: var(--ink-2); font-size: .8rem; font-weight: 600; }
+
+.exp-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: .86rem; }
+
+/* Entry dialog. */
+.exp-dialog { width: min(640px, calc(100vw - 24px)); }
+.exp-dialog .add-field > select { min-height: 40px; border: 0; padding-inline: 0; background-color: transparent; font-weight: 500; color: var(--ink); }
+.exp-amount-words { color: var(--ink-2); font-size: .78rem; }
+.add-actions.with-delete { grid-template-columns: auto auto 1fr; }
+.exp-delete { color: var(--danger); }
+.exp-person { position: relative; }
+.exp-matches { position: absolute; inset-inline: 10px; top: calc(100% - 6px); z-index: 5; margin: 0; padding: 4px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 14px 30px -12px rgb(0 0 0 / 30%); list-style: none; }
+.exp-matches button { width: 100%; display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font-weight: 600; text-align: start; }
+.exp-matches button:hover { background: color-mix(in srgb, var(--brand) 9%, transparent); }
+.exp-matches small { color: var(--ink-2); }
+.exp-files { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.exp-files li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); font-size: .86rem; }
+.exp-files li a, .exp-files li span { flex: 1; min-width: 0; overflow: hidden; color: var(--ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.exp-files li a:hover { color: var(--brand); }
+.exp-files li small { color: var(--ink-2); }
+.exp-files li.queued { border-style: dashed; }
+.exp-files button { width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--danger); }
+.exp-file-pick { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px dashed color-mix(in srgb, var(--brand) 55%, var(--line)); border-radius: 10px; color: var(--brand); font-size: .86rem; font-weight: 500; cursor: pointer; }
+.exp-history { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.exp-history summary { display: flex; align-items: center; gap: 6px; padding: 12px 14px; color: var(--ink); font-weight: 500; cursor: pointer; }
+.exp-history ol { display: grid; gap: 0; margin: 0; padding: 0 14px 10px; list-style: none; }
+.exp-history li { padding: 8px 0; border-top: 1px solid var(--line); }
+.exp-history li header { display: flex; justify-content: space-between; gap: 8px; color: var(--ink); font-size: .84rem; }
+.exp-history time { color: var(--ink-2); font-size: .78rem; }
+.exp-history p { margin: 2px 0 0; color: var(--ink-2); font-size: .84rem; }
+
+:root[data-theme="dark"] .exp-cat-chip svg, :root[data-theme="dark"] .exp-group-row th svg, :root[data-theme="dark"] .exp-tool.on, :root[data-theme="dark"] .exp-file-pick, :root[data-theme="dark"] .exp-clear { color: var(--bar-active); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .exp-cat-chip svg, :root:not([data-theme="light"]) .exp-group-row th svg, :root:not([data-theme="light"]) .exp-tool.on, :root:not([data-theme="light"]) .exp-file-pick, :root:not([data-theme="light"]) .exp-clear { color: var(--bar-active); }
+}
+
+/* Phones: each entry becomes a small card — beneficiary and amount, then heading, details and date. */
+@media (max-width: 720px) { .exp-filters > select { flex: 1 1 100%; } }
+@container (width < 720px) {
+  .exp-filters > select { flex: 1 1 100%; }
+  .exp-flat thead { display: none; }
+  .exp-flat, .exp-flat tbody, .exp-flat tfoot { display: block; }
+  .exp-flat { min-width: 0; }
+  .exp-flat tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .exp-flat tr > * { width: auto; min-width: 0; padding: 0; border: 0; background: none !important; }
+  .exp-row .col-person { grid-column: 1; grid-row: 1; }
+  .exp-row .col-amount { grid-column: 2; grid-row: 1; }
+  .exp-row .col-cat { grid-column: 1; grid-row: 2; }
+  .exp-row .col-date { grid-column: 2; grid-row: 2; text-align: end; font-size: .78rem; }
+  .exp-row .col-details { grid-column: 1 / -1; grid-row: 3; color: var(--ink-2); font-size: .88rem; }
+  .exp-row .col-act { grid-column: 2; grid-row: 4; justify-self: end; }
+  .exp-row .col-change { grid-column: 1; grid-row: 4; align-self: center; }
+  .exp-group-row .exp-group-gap { display: none; }
+  .exp-group-row { background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+  .exp-group-row td:last-child { display: none; }
+  .exp-flat tfoot tr { background: color-mix(in srgb, var(--brand) 9%, var(--surface)); }
+  .exp-flat tfoot td:last-child:empty { display: none; }
+}
+@media (max-width: 520px) {
+  .exp-dialog .add-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Design A head on every palette: muted labels on the table's own surface, a hairline below. */
+.exp-flat thead th { background: var(--thead, var(--surface)); color: var(--thead-ink, var(--ink-2)); border-bottom: 1px solid var(--line); font-size: .8rem; }
+
+/* The month's money as five quiet cards (top of the page): opening balance, in, out, the change
+   from the month before, and the closing balance, which alone is filled with colour. */
+.bal { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.3fr); gap: 14px; margin-bottom: 20px; }
+.bal-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 20px 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: none; }
+.bal-card h2 { margin: 0; color: var(--ink-2); font-size: .82rem; font-weight: 500; }
+.bal-value { margin: 4px 0 0; color: var(--ink); font-size: 1.3rem; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bal-value small { color: var(--ink-3); font-size: .74rem; font-weight: 500; }
+.bal-value.neg { color: var(--danger); }
+.bal-note { margin-top: auto; color: var(--ink-3); font-size: .74rem; }
+.bal-deltas { display: grid; gap: 10px; margin-top: 8px; }
+.bal-delta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--ink-2); font-size: .82rem; font-weight: 500; }
+.bal-delta b { display: inline-flex; align-items: center; gap: 3px; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.bal-delta b.good { color: var(--paid); }
+.bal-delta b.bad { color: var(--danger); }
+.bal-delta b.flat { color: var(--ink-3); }
+.bal-delta + .bal-delta { padding-top: 10px; border-top: 1px solid var(--line); }
+.bal-now { border-color: transparent; background: linear-gradient(150deg, var(--brand) 0%, color-mix(in srgb, var(--brand) 70%, var(--structure, #0b1730)) 100%); box-shadow: none; }
+.bal-now h2, .bal-now .bal-note { color: rgb(255 255 255 / 80%); }
+.bal-now .bal-value, .bal-now .bal-value small { color: #fff; }
+@media (max-width: 1280px) { .bal { grid-template-columns: repeat(3, minmax(0, 1fr)); } .bal-now { grid-column: span 2; } }
+@media (max-width: 720px) { .bal { grid-template-columns: repeat(2, minmax(0, 1fr)); } .bal-now { grid-column: 1 / -1; } }
+.bal-now .bal-value { margin-block: auto; font-size: 1.8rem; text-align: center; }
+.bal-now .bal-value small { font-size: .82rem; }
+/* The current balance: its figure larger and centred in the card. */
+.bal-now .bal-value { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0; font-size: 1.75rem; text-align: center; }
+/* A hairline above each card's date, separating it from the figure. */
+.bal-note { padding-top: 10px; border-top: 1px solid var(--line); }
+
+/* Visually hidden utility for screen-reader-only captions and live regions. */
+.visually-hidden:where(:not(:focus-within, :active)) {
+  position: absolute !important;
+  clip-path: inset(50%) !important;
+  overflow: hidden !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Progressive enhancement: branded <select> via appearance: base-select. */
+@supports (appearance: base-select) {
+  .exp-select,
+  .exp-select::picker(select) {
+    appearance: base-select;
+  }
+  .exp-select {
+    align-items: center;
+    gap: 8px;
+    padding-inline: 12px;
+    border-radius: 10px;
+    cursor: pointer;
+  }
+  .exp-select::picker(select) {
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 14px 30px -12px rgb(0 0 0 / 28%);
+  }
+  .exp-select::picker-icon {
+    color: var(--ink-2);
+  }
+  .exp-select option {
+    padding: 8px 10px;
+    border-radius: 8px;
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .exp-select option:hover {
+    background: color-mix(in srgb, var(--brand) 10%, transparent);
+  }
+  .exp-select option::checkmark {
+    color: var(--brand);
+  }
+}
+
+/* Top-layer dialog animations (@starting-style + allow-discrete + data-closing fallback)
+   and scroll containment on both dialog and ::backdrop. */
+dialog.exp-dialog:modal {
+  overscroll-behavior: contain;
+}
+dialog.exp-dialog {
+  animation: none;
+  opacity: 0;
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 0.24s;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-behavior: allow-discrete;
+}
+@media (prefers-reduced-motion: no-preference) {
+  dialog.exp-dialog {
+    transform: scale(0.96) translateY(8px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.exp-dialog {
+    transition-duration: 0.1s;
+  }
+}
+dialog.exp-dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgb(8 12 20 / 0);
+  backdrop-filter: blur(0px);
+  transition-property: background-color, backdrop-filter, display, overlay;
+  transition-duration: 0.24s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+:is(dialog.exp-dialog[open]):where(:not([data-closing])) {
+  animation: none;
+  opacity: 1;
+
+  @starting-style {
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    transform: scale(1) translateY(0);
+
+    @starting-style {
+      transform: scale(0.96) translateY(8px);
+    }
+  }
+
+  &::backdrop {
+    background-color: rgb(8 12 20 / 55%);
+    backdrop-filter: blur(3px);
+
+    @starting-style {
+      background-color: rgb(8 12 20 / 0);
+      backdrop-filter: blur(0px);
+    }
+  }
+}
+
+/* Post-interaction form validation (:user-invalid with WeakMap fallback). */
+.exp-field-error {
+  display: none;
+  color: var(--danger);
+  font-size: .78rem;
+  font-weight: 500;
+}
+.exp-dialog .add-field:has(:is(:user-invalid, .user-invalid-fallback)) {
+  border-color: var(--danger);
+}
+.exp-dialog .add-field :is(input, select):is(:user-invalid, .user-invalid-fallback) ~ .exp-field-error {
+  display: block;
+}

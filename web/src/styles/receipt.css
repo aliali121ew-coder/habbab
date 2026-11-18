@@ -1,0 +1,159 @@
+/* The patient aid receipt (pages/patients/AidReceipt.tsx), design B: landscape A5, a navy side
+   band with the foundation and the patient, the aid on the other side. Hidden on screen; printed
+   on its own, with the app hidden. Fixed print colours, independent of the app theme. */
+@page receipt-sheet { size: A5 landscape; margin: 0; }
+
+.rcp { display: none; }
+
+@media print {
+  body:has(.rcp) > *:not(.rcp) { display: none !important; }
+  .rcp { display: flex; }
+}
+
+.rcp {
+  --rcp-navy: #1e3a6e;
+  --rcp-navy-2: #132a52;
+  --rcp-blue: #2563eb;
+  --rcp-soft: #eff5ff;
+  --rcp-orn: #93c5fd;
+  --rcp-band-muted: #bfdbfe;
+  --rcp-khatam: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72' fill='none' stroke='%23000' stroke-width='1.6'%3E%3Cg transform='translate(36 36)'%3E%3Crect x='-17' y='-17' width='34' height='34'/%3E%3Crect x='-17' y='-17' width='34' height='34' transform='rotate(45)'/%3E%3Ccircle r='7'/%3E%3C/g%3E%3Cpath d='M0 0l12 12M72 0L60 12M0 72l12-12M72 72L60 60M36 0v12M36 60v12M0 36h12M60 36h12'/%3E%3C/svg%3E");
+  --rcp-ink: #0f172a;
+  --rcp-muted: #64748b;
+  --rcp-line: #dbe3ee;
+  page: receipt-sheet;
+  width: 210mm;
+  height: 148mm;
+  overflow: hidden;
+  background: #fff;
+  color: var(--rcp-ink);
+  font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, sans-serif;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.rcp :is(h1, h4, p, dl, dd, ul) { margin: 0; padding: 0; }
+
+/* Side band. */
+.rcp-band {
+  position: relative;
+  flex: none;
+  width: 66mm;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5mm;
+  padding: 6mm 6mm 5mm;
+  overflow: hidden;
+  background: linear-gradient(170deg, var(--rcp-navy) 0%, var(--rcp-navy-2) 100%);
+  color: #fff;
+}
+.rcp-band > :not(.rcp-mark) { position: relative; z-index: 1; }
+
+/* Islamic geometric ornament behind the band's text: interlaced eight-point stars (khatam) in the
+   palette's ornament colour, light and fading out towards the foot; a double rule frames the band. */
+.rcp-band::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--rcp-orn);
+  opacity: .1;
+  /* The tiles, faded by a gradient: faint at the foot of the band, fuller towards the top. */
+  -webkit-mask: var(--rcp-khatam) 0 0 / 15mm 15mm repeat, linear-gradient(to top, rgb(0 0 0 / 12%), #000);
+  -webkit-mask-composite: source-in;
+  mask: var(--rcp-khatam) 0 0 / 15mm 15mm repeat, linear-gradient(to top, rgb(0 0 0 / 12%), #000);
+  mask-composite: intersect;
+}
+.rcp-band::after {
+  content: "";
+  position: absolute;
+  inset: 2.5mm;
+  z-index: 0;
+  border: 1px solid color-mix(in srgb, var(--rcp-orn) 45%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--rcp-orn) 25%, transparent);
+  outline-offset: 1mm;
+  border-radius: 2mm;
+  pointer-events: none;
+}
+/* Logo with the foundation's name beside it, both lines centred; the motto image under them. */
+.rcp-org { display: flex; align-items: center; gap: 3mm; padding-bottom: 3.5mm; border-bottom: 1px solid color-mix(in srgb, var(--rcp-orn) 40%, transparent); }
+.rcp-org img { width: 13mm; height: 13mm; flex: none; border-radius: 50%; object-fit: cover; background: #fff; border: 2px solid rgb(255 255 255 / 85%); }
+.rcp-org strong { flex: 1; font-family: "Reem Kufi", sans-serif; font-size: 11pt; font-weight: 600; line-height: 1.35; text-align: center; }
+
+/* Patient details as an ordered list: icon and label on one side, the value on the other. */
+.rcp-patient h2, .rcp-org-card h2 { margin: 0 0 2mm; font-size: 8pt; font-weight: 600; color: var(--rcp-orn); }
+.rcp-patient dl { display: grid; margin: 0; }
+.rcp-patient dl > div { display: grid; grid-template-columns: 17mm 1fr; align-items: baseline; gap: 2mm; padding: 1.6mm 0; border-bottom: 1px solid rgb(255 255 255 / 10%); }
+.rcp-patient dl > div:last-child { border-bottom: 0; }
+.rcp-patient dt { display: flex; align-items: center; gap: 1.5mm; font-size: 7.5pt; color: var(--rcp-band-muted); }
+.rcp-patient dt svg { flex: none; color: var(--rcp-orn); }
+.rcp-patient dd { margin: 0; font-size: 8.8pt; font-weight: 600; line-height: 1.35; }
+.rcp-patient dl > div:first-child dd { font-size: 10.5pt; font-weight: 700; }
+
+/* The foundation's card at the foot of the band: address, phones, email. */
+.rcp-org-card { margin-top: auto; padding: 3mm; border: 1px solid rgb(255 255 255 / 16%); border-radius: 3mm; background: rgb(255 255 255 / 6%); }
+.rcp-org-card h2 { color: #fff; font-size: 8.5pt; font-weight: 700; }
+.rcp-org-card ul { display: grid; gap: 1.5mm; margin: 0; padding: 0; list-style: none; }
+.rcp-org-card li { display: flex; align-items: flex-start; gap: 2mm; font-size: 7.8pt; color: rgb(255 255 255 / 90%); }
+.rcp-org-card svg { flex: none; margin-top: .5mm; color: var(--rcp-orn); }
+.rcp-mark { position: absolute; inset-block-end: -10mm; inset-inline-start: -12mm; color: rgb(255 255 255 / 5%); }
+
+/* The aid. */
+.rcp-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4mm; padding: 7mm 8mm 5mm; }
+.rcp-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 4mm; padding-bottom: 3mm; border-bottom: 2px solid var(--rcp-navy); }
+.rcp-head h1 { font-size: 16pt; font-weight: 700; line-height: 1.2; color: var(--rcp-navy); }
+.rcp-head p { margin-top: 1mm; font-size: 8pt; color: var(--rcp-muted); }
+.rcp-head dl { display: flex; gap: 5mm; }
+.rcp-head dt { font-size: 7.5pt; color: var(--rcp-muted); }
+.rcp-head dd { font-size: 9.5pt; font-weight: 700; text-align: end; }
+
+.rcp-amount { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 1mm 4mm; padding: 3.5mm 4mm; border: 1px solid color-mix(in srgb, var(--rcp-blue) 25%, #fff); border-inline-start: 4px solid var(--rcp-blue); border-radius: 0 3mm 3mm 0; background: var(--rcp-soft); }
+.rcp-kind { grid-row: span 2; display: grid; place-items: center; width: 12mm; height: 12mm; border-radius: 3mm; background: var(--rcp-navy); color: #fff; }
+.rcp-amount-figure small { display: block; font-size: 8pt; color: var(--rcp-muted); }
+.rcp-amount-figure b { font-size: 19pt; font-weight: 700; line-height: 1.15; color: var(--rcp-navy); }
+.rcp-amount-figure b span { font-size: 9pt; font-weight: 600; color: var(--rcp-muted); }
+.rcp-words { font-size: 8.5pt; font-weight: 600; color: var(--rcp-ink); }
+
+.rcp-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2mm; }
+.rcp-facts > div { padding: 1.8mm 3mm; border: 1px solid var(--rcp-line); border-radius: 2mm; }
+.rcp-facts .wide { grid-column: 1 / -1; }
+.rcp-facts dt { display: flex; align-items: center; gap: 1.5mm; font-size: 7.5pt; color: var(--rcp-muted); }
+.rcp-facts dt svg { color: var(--rcp-blue); }
+.rcp-facts dd { font-size: 9.5pt; font-weight: 600; text-align: start; }
+
+.rcp-notes { height: 7mm; border-bottom: 1px dotted #94a3b8; font-size: 8pt; color: var(--rcp-muted); }
+
+/* Receiver, accountant and stamp side by side on one line, the stamp kept small. */
+.rcp-sign { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; gap: 6mm; margin-top: auto; }
+.rcp-sign > section { display: grid; grid-template-rows: auto 17mm; justify-items: center; gap: 1.5mm; text-align: center; }
+.rcp-sign h4 { margin: 0; font-size: 8.5pt; font-weight: 600; color: var(--rcp-ink); }
+.rcp-line { align-self: end; width: 100%; border-top: 1px solid #94a3b8; }
+.rcp-sign .seal-stamp { width: 17mm; height: 17mm; border-width: 2px; transform: translateY(3mm); }
+.rcp-sign .seal-stamp img { width: 8.5mm; height: 8.5mm; }
+.rcp-sign .seal-stamp bdi { font-size: 6.5pt; }
+.rcp-sign .seal-stamp small { font-size: 5pt; }
+
+/* The receipt follows the chosen palette. */
+:root[data-palette="emerald"] .rcp {
+  --rcp-navy: #0f4c3a;
+  --rcp-navy-2: #0a3529;
+  --rcp-blue: #17694f;
+  --rcp-soft: #eef6f1;
+  --rcp-orn: #d9b86a;
+  --rcp-band-muted: #e9dcb6;
+}
+:root[data-palette="violet"] .rcp {
+  --rcp-navy: #3d2d73;
+  --rcp-navy-2: #2b2d5c;
+  --rcp-blue: #6339a6;
+  --rcp-soft: #f3effc;
+  --rcp-orn: #c8b2ff;
+  --rcp-band-muted: #ddd2ff;
+}
+
+/* The accountant's signature on its line (public/signature.png). */
+.rcp .sig-img { position: absolute; bottom: .4mm; left: 50%; width: 27mm; transform: translateX(-50%); pointer-events: none; }
+
+/* Room under the signature row for the print dates. */
+.rcp-sign { margin-bottom: 4mm; }

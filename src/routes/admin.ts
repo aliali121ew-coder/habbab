@@ -64,6 +64,38 @@ dashboard.get('/', async (c) => {
   return c.json(data);
 });
 
+// Income and spending per day for a short range (at most 62 days), for the home chart's week
+// and month views. Income comes from stats_daily, which the transaction triggers keep up to date;
+// spending from the expenses table. Days with nothing recorded come back as zeros.
+dashboard.get('/daily', requireRole('admin', 'accountant'), async (c) => {
+  const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+  const from = day.safeParse(c.req.query('from'));
+  const to = day.safeParse(c.req.query('to'));
+  if (!from.success || !to.success || from.data > to.data) fail(422, 'نطاق التاريخ غير صحيح');
+  const span = (Date.parse(to.data) - Date.parse(from.data)) / 86_400_000;
+  if (span > 62) fail(422, 'النطاق أطول من المسموح');
+
+  const months = [...new Set([from.data.slice(0, 7), to.data.slice(0, 7)])];
+  const [incoming, outgoing] = await Promise.all([
+    all<{ day: string; total: number }>(c,
+      'SELECT day, total_in AS total FROM stats_daily WHERE day BETWEEN ? AND ?', from.data, to.data),
+    all<{ day: string; total: number }>(c,
+      `SELECT spent_on AS day, SUM(amount) AS total FROM expenses
+       WHERE deleted_at IS NULL AND month IN (${months.map(() => '?').join(', ')}) AND spent_on BETWEEN ? AND ?
+       GROUP BY spent_on`,
+      ...months, from.data, to.data),
+  ]);
+
+  const inBy = new Map(incoming.map((r) => [r.day, r.total]));
+  const outBy = new Map(outgoing.map((r) => [r.day, r.total]));
+  const days: { day: string; in: number; out: number }[] = [];
+  for (let t = Date.parse(from.data); t <= Date.parse(to.data); t += 86_400_000) {
+    const d = new Date(t).toISOString().slice(0, 10);
+    days.push({ day: d, in: inBy.get(d) ?? 0, out: outBy.get(d) ?? 0 });
+  }
+  return c.json({ days });
+});
+
 export const meta = new Hono<AppEnv>();
 
 meta.get('/', async (c) => {

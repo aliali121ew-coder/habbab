@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 700" fill="none">
+  <defs>
+    <linearGradient id="bgFam" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E1B4B" />
+      <stop offset="50%" stop-color="#312E81" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <radialGradient id="glowAmber" cx="25%" cy="42%" r="48%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.32" />
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glowRose" cx="42%" cy="76%" r="40%">
+      <stop offset="0%" stop-color="#FB7185" stop-opacity="0.22" />
+      <stop offset="100%" stop-color="#FB7185" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="parcel1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FEF3C7" />
+      <stop offset="100%" stop-color="#FDE68A" />
+    </linearGradient>
+    <linearGradient id="parcel2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#E0E7FF" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="700" fill="url(#bgFam)" />
+  <rect width="1600" height="700" fill="url(#glowAmber)" />
+  <rect width="1600" height="700" fill="url(#glowRose)" />
+
+  <!-- Subtle diagonal light rays -->
+  <g opacity="0.06" fill="#FFFFFF">
+    <polygon points="80,0 240,0 520,700 360,700" />
+    <polygon points="320,0 440,0 720,700 600,700" />
+  </g>
+
+  <circle cx="210" cy="210" r="105" fill="#FBBF24" opacity="0.12" />
+  <circle cx="490" cy="480" r="130" fill="#60A5FA" opacity="0.14" />
+
+  <!-- Left-side Editorial Aid Parcels & Family Care Emblem -->
+  <g transform="translate(110, 125)">
+    <!-- Back parcel -->
+    <rect x="190" y="45" width="270" height="330" rx="30" fill="#3730A3" fill-opacity="0.6" stroke="#A5B4FC" stroke-opacity="0.28" stroke-width="2" />
+
+    <!-- Primary Warm Relief Box -->
+    <rect x="45" y="135" width="285" height="260" rx="28" fill="url(#parcel1)" />
+    <rect x="45" y="135" width="285" height="58" rx="28" fill="#F59E0B" fill-opacity="0.28" />
+    <!-- Ribbon -->
+    <rect x="171" y="135" width="34" height="260" fill="#D97706" fill-opacity="0.28" />
+    <rect x="45" y="246" width="285" height="28" fill="#D97706" fill-opacity="0.22" />
+
+    <!-- Care Heart Badge -->
+    <circle cx="188" cy="260" r="52" fill="#FFFFFF" />
+    <path d="M188 286C188 286 158 266 158 245C158 235.6 165.6 228 175 228C180.6 228 185.6 230.7 188 235C190.4 230.7 195.4 228 201 228C210.4 228 218 235.6 218 245C218 266 188 286 188 286Z" fill="#E11D48" />
+
+    <!-- Secondary School / Blanket Kit Box -->
+    <rect x="280" y="215" width="205" height="205" rx="26" fill="url(#parcel2)" />
+    <rect x="312" y="252" width="140" height="22" rx="11" fill="#4F46E5" fill-opacity="0.2" />
+    <rect x="312" y="288" width="96" height="12" rx="6" fill="#4F46E5" fill-opacity="0.16" />
+    <rect x="312" y="312" width="118" height="12" rx="6" fill="#4F46E5" fill-opacity="0.12" />
+    <circle cx="434" cy="368" r="24" fill="#F59E0B" fill-opacity="0.22" />
+    <path d="M425 368L431 374L444 361" stroke="#D97706" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Floating Star / Ribbon Tag -->
+    <g transform="translate(380, 90)">
+      <circle cx="38" cy="38" r="38" fill="#FBBF24" fill-opacity="0.22" stroke="#FDE68A" stroke-opacity="0.5" stroke-width="2" />
+      <path d="M38 18L43.5 29.2L56 31L47 39.8L49.1 52.2L38 46.3L26.9 52.2L29 39.8L20 31L32.5 29.2L38 18Z" fill="#FDE68A" />
+    </g>
+  </g>
+</svg>

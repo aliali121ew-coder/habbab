@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="bgM1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#DBEAFE" />
+      <stop offset="100%" stop-color="#BFDBFE" />
+    </linearGradient>
+    <linearGradient id="shirtM1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1E40AF" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#bgM1)" />
+  <circle cx="96" cy="24" r="18" fill="#FFFFFF" opacity="0.35" />
+  <!-- Shoulders & Shirt -->
+  <path d="M18 120C18 96 36 82 60 82C84 82 102 96 102 120H18Z" fill="url(#shirtM1)" />
+  <path d="M46 83L60 98L74 83" fill="#FFFFFF" opacity="0.9" />
+  <!-- Neck -->
+  <rect x="51" y="69" width="18" height="18" rx="8" fill="#E6B89C" />
+  <!-- Ears -->
+  <circle cx="35" cy="51" r="6" fill="#E6B89C" />
+  <circle cx="85" cy="51" r="6" fill="#E6B89C" />
+  <!-- Head -->
+  <rect x="37" y="25" width="46" height="52" rx="22" fill="#F1C6A8" />
+  <!-- Hair -->
+  <path d="M37 45C37 29 47 21 60 21C73 21 83 29 83 45C83 39 78 33 70 33C64 33 61 36 55 36C45 36 39 39 37 45Z" fill="#1E293B" />
+  <!-- Beard & Mustache -->
+  <path d="M38 56C38 69 47 78 60 78C73 78 82 69 82 56C82 56 79 62 72 64C67 65 65 62 60 62C55 62 53 65 48 64C41 62 38 56 38 56Z" fill="#1E293B" opacity="0.9" />
+  <!-- Eyes & Brows -->
+  <path d="M44 45C46 43.5 50 43.5 52 45" stroke="#1E293B" stroke-width="2.4" stroke-linecap="round" />
+  <path d="M68 45C70 43.5 74 43.5 76 45" stroke="#1E293B" stroke-width="2.4" stroke-linecap="round" />
+  <circle cx="48" cy="50" r="2.6" fill="#0F172A" />
+  <circle cx="72" cy="50" r="2.6" fill="#0F172A" />
+  <!-- Gentle Smile -->
+  <path d="M54 66C57 68.5 63 68.5 66 66" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" />
+</svg>

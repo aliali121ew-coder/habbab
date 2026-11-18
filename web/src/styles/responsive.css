@@ -1,0 +1,190 @@
+/* Modal: full screen on a phone. */
+.modal { width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh; margin: 0; padding: 0; border: 0; background: var(--surface); color: var(--ink); }
+.modal::backdrop { background: rgb(0 0 0 / 50%); }
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: calc(8px + var(--safe-top)) 16px 8px; border-block-end: 1px solid var(--line); }
+.modal-body { display: grid; gap: 14px; padding: 16px 16px calc(20px + var(--safe-bottom)); }
+
+.facts { display: grid; gap: 2px; }
+.facts div { display: flex; justify-content: space-between; gap: 16px; padding-block: 8px; border-block-end: 1px solid var(--line); }
+.facts dt { color: var(--ink-2); flex: none; }
+.facts dd { font-weight: 600; text-align: end; min-width: 0; }
+
+@media (min-width: 520px) {
+  /* 2x2 balanced grid on medium viewports (never 3+1) */
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .search { flex: 1 1 200px; }
+}
+
+@media (min-width: 768px) {
+  .modal { width: min(480px, 92vw); height: auto; max-height: 88dvh; margin: auto; border-radius: var(--radius); }
+  .page { padding-inline: 18px; }
+
+  /* Tablet and up: clean 5-column table (Subscriber | Tier | Unpaid Months | Last Paid Date | Print) */
+  .reg-table { display: table; table-layout: fixed; }
+  .reg-table thead { display: table-header-group; background: var(--surface-2); }
+  .reg-table thead tr { display: table-row; }
+  .reg-table thead th {
+    display: table-cell;
+    padding: 12px 14px;
+    font-size: .84rem;
+    font-weight: 600;
+    color: var(--ink-2);
+    text-align: start;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .reg-table thead th.reg-name { width: 26%; padding-inline-start: 16px; }
+  .reg-table thead th.reg-col-tier { width: 15%; }
+  .reg-table thead th.reg-col-unpaid { width: 18%; }
+  .reg-table thead th.reg-col-date { width: 15%; }
+  .reg-table thead th.reg-col-action { width: 26%; text-align: center; }
+
+  .reg-table tbody { display: table-row-group; padding: 0; }
+  .reg-table tbody tr { display: table-row; border: 0; border-radius: 0; padding: 0; background: none; }
+  .reg-table tbody tr:hover { background: var(--surface-2); }
+  .reg-table tbody th,
+  .reg-table tbody td {
+    display: table-cell;
+    padding: 10px 14px;
+    border-block-start: 1px solid var(--line);
+    vertical-align: middle;
+  }
+  .reg-table tbody th.reg-name { padding-inline-start: 16px; }
+  .reg-table tbody td.reg-col-action { text-align: center; white-space: nowrap; }
+  .reg-col-action .print-row-btn, .reg-col-action .whatsapp-row-btn, .reg-col-action .no-phone-tag { flex: none; }
+  .reg-col-action > * + * { margin-inline-start: 6px; }
+  .reg-table tbody td::before { display: none; }
+  .tier-badge { margin-inline-end: 8px; }
+}
+
+@media (min-width: 900px) {
+  /* Full-width 4-tile row below hero when screen is 900px–1279px */
+  .people-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1024px) {
+  .month { min-height: 40px; }
+  .rail {
+    width: var(--rail);
+    padding-inline: 10px;
+    visibility: visible;
+    transform: none;
+    overflow-x: hidden;
+  }
+  /* Always show labels in the sidebar on desktop for instant recognition */
+  .rail-name, .rail-nav span, .rail-signout span { white-space: nowrap; opacity: 1; }
+  .rail-brand { min-width: 0; }
+  .rail-close, .menu-btn, .scrim { display: none; }
+  .rail-nav a, .rail-signout { padding-inline: 10px; }
+  .stage { padding-inline-start: var(--rail); }
+  .topbar { padding-inline: 18px; }
+}
+
+@media (min-width: 1200px) {
+  /* 4x1 single row for the 4 stat cards on wide screens */
+  .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1280px) {
+  /* Side by side, the panel stretches to the register's height so both cards end on one line;
+     the donut card fills what is left, its caption on top and the chart centred below. */
+  .workspace { grid-template-columns: minmax(0, 1fr) 300px; align-items: stretch; }
+  .panel { display: flex; flex-direction: column; }
+  .panel-donut { flex: 1; display: flex; flex-direction: column; }
+  .panel-donut-body { flex: 1; align-content: center; }
+  .people-side { grid-template-columns: 300px minmax(0, 1fr); gap: 16px 20px; }
+  .people-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (min-width: 1600px) {
+  .workspace { grid-template-columns: minmax(0, 1fr) 330px; }
+}
+
+/* Desktop: the sidebar rests as a thin icon strip and opens over the page on hover or keyboard focus. */
+@media (min-width: 1024px) and (hover: hover) {
+  :root { --rail-mini: 72px; }
+  .rail {
+    width: var(--rail-mini);
+    transition: width .22s ease, box-shadow .22s ease;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .rail:hover, .rail:focus-within {
+    width: var(--rail);
+    box-shadow: -12px 0 32px -12px rgb(0 0 0 / 45%);
+  }
+  .stage { padding-inline-start: var(--rail-mini); }
+  .rail-name, .rail-nav a > span:not(.rail-nav-icon), .rail-section, .rail-user-info,
+  .rail-theme span, .rail-signout span {
+    opacity: 0;
+    transition: opacity .15s ease;
+  }
+  .rail-section { height: 10px; overflow: hidden; padding-block: 0; }
+  .rail:hover :is(.rail-name, .rail-nav a > span:not(.rail-nav-icon), .rail-section, .rail-user-info, .rail-theme span, .rail-signout span),
+  .rail:focus-within :is(.rail-name, .rail-nav a > span:not(.rail-nav-icon), .rail-section, .rail-user-info, .rail-theme span, .rail-signout span) {
+    opacity: 1;
+    transition-delay: .08s;
+  }
+  .rail:hover .rail-section, .rail:focus-within .rail-section { height: auto; padding-block: 4px; }
+}
+@media (min-width: 1024px) and (hover: hover) and (prefers-reduced-motion: reduce) {
+  .rail, .rail * { transition: none !important; }
+}
+
+/* Folded sidebar in every palette: the official theme forces section titles and the subtitle to
+   full opacity, so hide them again while folded. The open sidebar is wider so long names fit. */
+@media (min-width: 1024px) and (hover: hover) {
+  :root[data-palette] .rail:not(:hover):not(:focus-within) :is(.rail-section, .rail-name, .rail-name small, .rail-user-info, .rail-nav a > span:not(.rail-nav-icon), .rail-theme span, .rail-signout span) { opacity: 0; }
+  .rail:hover, .rail:focus-within { width: 250px; }
+  .rail :is(.rail-name, .rail-name small, .rail-user-info, .rail-nav a > span:not(.rail-nav-icon)) { white-space: nowrap; }
+}
+
+/* Desktop: the side menu is hidden. A small tab rests at the screen edge; pointing at it (or
+   tabbing into the menu) slides the menu in as a floating rounded panel over the page. */
+.rail-handle { display: none; }
+@media (min-width: 1024px) and (hover: hover) {
+  .stage { padding-inline-start: 0 !important; }
+  .rail-handle {
+    display: grid; place-items: center;
+    position: fixed; z-index: 41; inset-inline-start: 0; top: 50%; transform: translateY(-50%);
+    width: 22px; height: 64px; border-radius: 12px 0 0 12px;
+    background: var(--accent-grad, var(--bar-active)); color: #fff;
+    box-shadow: -4px 6px 16px -6px rgb(0 0 0 / 35%);
+    transition: opacity .2s ease;
+  }
+  .rail {
+    width: 250px !important;
+    inset-block: 12px !important; inset-inline-start: 12px !important;
+    height: auto; border-radius: 22px;
+    box-shadow: -12px 18px 40px -16px rgb(0 0 0 / 50%);
+    transform: translateX(calc(100% + 24px)) !important;
+    visibility: hidden;
+    transition: transform .28s cubic-bezier(.2, .8, .2, 1), visibility .28s;
+  }
+  .shell:has(.rail-handle:hover) .rail, .rail:hover, .rail:focus-within {
+    transform: none !important; visibility: visible; width: 250px !important;
+  }
+  .shell:has(.rail:hover, .rail:focus-within) .rail-handle { opacity: 0; }
+  .rail :is(.rail-section, .rail-name, .rail-name small, .rail-user-info, .rail-nav a > span:not(.rail-nav-icon), .rail-theme span, .rail-signout span) { opacity: 1 !important; }
+  .rail-section { height: auto !important; padding-block: 4px !important; }
+}
+@media (min-width: 1024px) and (hover: hover) and (prefers-reduced-motion: reduce) {
+  .rail { transition: none !important; }
+}
+
+/* Desktop menu header: the organisation's logo in a gold ring, centred above its name, then an
+   Islamic ornament divider. */
+.rail-ornament { display: none; }
+@media (min-width: 1024px) {
+  .rail-brand { flex-direction: column; align-items: center; text-align: center; gap: 8px !important; padding: 10px 4px 6px !important; margin-block-end: 0 !important; border-block-end: 0 !important; position: relative; }
+  .rail-brand .rail-close { position: absolute; top: 4px; inset-inline-end: 4px; }
+  .rail-logo { width: 64px !important; height: 64px !important; padding: 3px; border-radius: 50% !important; overflow: hidden;
+    background: linear-gradient(140deg, #e8c77a, #b8892f) !important; box-shadow: 0 0 0 4px rgb(232 199 122 / 18%), 0 10px 22px -10px rgb(0 0 0 / 60%); }
+  .rail-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+  .rail-brand .rail-name { align-items: center; }
+  .rail-brand .rail-name strong { font-size: 1.05rem; }
+  .rail-ornament { display: flex; align-items: center; gap: 8px; margin: 6px 6px 12px; color: #e8c77a; }
+  .rail-ornament span { flex: 1; height: 1px; }
+  .rail-ornament span:first-child { background: linear-gradient(90deg, transparent, rgb(232 199 122 / 70%)); }
+  .rail-ornament span:last-child { background: linear-gradient(90deg, rgb(232 199 122 / 70%), transparent); }
+}

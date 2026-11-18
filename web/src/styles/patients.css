@@ -1,0 +1,1859 @@
+/* The shared patients section (pages/patients/PatientsPage.tsx). Its own look, after the
+   reference the user sent: Noto Kufi Arabic with bold headings, white panels with a hairline
+   border on a pale ground, a blue accent, a navy table header and tall, airy rows. */
+.pt {
+  /* Taken from the app theme, so the page follows the chosen palette and dark mode. */
+  --pt-ground: var(--paper);
+  --pt-panel: var(--surface);
+  --pt-ink: var(--ink);
+  --pt-ink-2: var(--ink-2);
+  --pt-ink-3: var(--ink-3);
+  --pt-line: var(--line);
+  --pt-row: color-mix(in srgb, var(--line) 70%, var(--surface));
+  --pt-accent: var(--brand);
+  --pt-accent-2: var(--brand-2);
+  --pt-accent-soft: color-mix(in srgb, var(--brand) 10%, var(--surface));
+  --pt-head: var(--structure, color-mix(in srgb, var(--brand) 70%, #0b1730));
+  --pt-green: var(--paid);
+  --pt-shadow: var(--shadow);
+  --pt-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: var(--pt-ink);
+}
+
+.pt .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Colour system: navy for structure, one blue for actions, green only for money, and one calm
+   grey for every avatar and small icon (the tone-* names stay, all drawn alike). */
+.pt :is(.tone-violet, .tone-teal, .tone-amber, .tone-rose, .tone-0, .tone-1, .tone-2, .tone-3, .tone-4, .tone-5) {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--pt-line);
+}
+
+.pt :is(.ink-violet, .ink-teal, .ink-amber) {
+  color: var(--pt-ink-3);
+}
+
+.pt .ink-green {
+  color: var(--pt-green);
+}
+
+/* Title card: blue icon tile, bold title, muted line, outlined action on the far side. */
+.pt-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid var(--pt-line);
+  border-radius: var(--pt-radius);
+  background: var(--pt-panel);
+  box-shadow: var(--pt-shadow);
+}
+
+.pt-top-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: linear-gradient(140deg, var(--pt-accent-2), var(--pt-accent));
+  color: #fff;
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--pt-accent) 70%, transparent);
+}
+
+.pt-top-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.pt-top h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--pt-ink);
+}
+
+.pt-top p {
+  margin: 4px 0 0;
+  font-size: .86rem;
+  color: var(--pt-ink-2);
+}
+
+.pt-report {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding-inline: 18px;
+  border: 1px solid color-mix(in srgb, var(--pt-accent) 28%, transparent);
+  border-radius: 12px;
+  background: var(--pt-accent-soft);
+  color: var(--pt-accent);
+  font-size: .92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pt-report:hover {
+  background: var(--pt-accent);
+  color: #fff;
+}
+
+@media (max-width: 560px) {
+  .pt-top {
+    flex-wrap: wrap;
+  }
+
+  .pt-report {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Section one: four headline cards: solid brand gradient with layered depth and high-contrast white type. */
+.pt {
+  --in-oklab: ;
+}
+
+@supports (linear-gradient(in oklab, white, black)) {
+  .pt {
+    --in-oklab: in oklab;
+  }
+}
+
+.pt-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.pt-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 22px;
+  border: 1px solid color-mix(in srgb, var(--pt-accent) 16%, var(--pt-line));
+  border-radius: 18px;
+  background:
+    radial-gradient(95% 85% at 15% 0%, color-mix(in srgb, #60a5fa 22%, transparent) 0%, transparent 62%),
+    linear-gradient(155deg, color-mix(in srgb, var(--pt-accent) 9%, var(--pt-panel)) 0%, var(--pt-panel) 48%),
+    var(--pt-panel);
+  color: var(--pt-ink);
+  box-shadow:
+    0 1px 2px rgb(15 23 42 / 4%),
+    0 10px 26px -14px color-mix(in srgb, var(--pt-accent) 26%, rgb(15 23 42 / 12%));
+  overflow: hidden;
+  transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+
+.pt-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--pt-accent) 30%, var(--pt-line));
+  box-shadow:
+    0 4px 10px rgb(15 23 42 / 5%),
+    0 14px 30px -14px color-mix(in srgb, var(--pt-accent) 32%, rgb(15 23 42 / 14%));
+}
+
+.pt-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pt-card h2 {
+  margin: 0;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--pt-ink-2);
+}
+
+.pt .pt-card header svg {
+  width: 34px;
+  height: 34px;
+  padding: 7px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--pt-head) 10%, var(--pt-panel));
+  color: var(--pt-head);
+  box-sizing: border-box;
+}
+
+.pt-card-value {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--pt-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pt .pt-card-value.ink-green {
+  color: var(--pt-green);
+}
+
+.pt .pt-card-value span {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--pt-ink-3);
+}
+
+.pt-card small {
+  text-align: center;
+  font-size: .76rem;
+  color: var(--pt-ink-3);
+}
+
+@media (forced-colors: active) {
+  .pt-card {
+    background: Canvas;
+    color: CanvasText;
+    border-color: CanvasText;
+    box-shadow: none;
+  }
+
+  .pt-card h2,
+  .pt-card header svg,
+  .pt-card-value,
+  .pt-card-value.ink-green,
+  .pt-card-value span,
+  .pt-card small {
+    color: CanvasText;
+  }
+}
+
+/* Section two: the register (3/4) and the patient card (1/4, on the left in RTL). */
+.pt-main {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(290px, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.pt-panel {
+  border: 1px solid var(--pt-line);
+  border-radius: var(--pt-radius);
+  background: var(--pt-panel);
+  box-shadow: var(--pt-shadow);
+  overflow: hidden;
+}
+
+.pt-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.pt-search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding-inline: 16px;
+  border: 1px solid var(--pt-line);
+  border-radius: 12px;
+  background: var(--pt-panel);
+  color: var(--pt-ink-3);
+}
+
+.pt-search:focus-within {
+  border-color: var(--pt-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pt-accent) 14%, transparent);
+}
+
+.pt-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pt-ink);
+  font-size: .92rem;
+}
+
+.pt-search input::placeholder {
+  color: var(--pt-ink-3);
+}
+
+.pt-search input:focus {
+  outline: none;
+}
+
+.pt-table-wrap {
+  overflow-x: auto;
+}
+
+.pt-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Heads: light grey band, small muted labels, hairline below. */
+.pt-table thead th {
+  padding: 14px 8px;
+  border-bottom: 1px solid var(--pt-line);
+  background: var(--thead, var(--surface-2));
+  text-align: start;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--thead-ink, var(--pt-ink-3));
+  white-space: nowrap;
+}
+
+.pt-table td {
+  padding: 18px 8px;
+  border-bottom: 1px solid var(--pt-row);
+  text-align: start;
+  font-size: .9rem;
+  font-weight: 500;
+  color: var(--pt-ink);
+  white-space: nowrap;
+}
+
+.pt-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.pt-table .num {
+  text-align: end;
+}
+
+.pt-table td.num {
+  font-weight: 600;
+}
+
+.pt-table td.pt-cash {
+  color: var(--pt-green);
+}
+
+.pt-table .pt-idx {
+  width: 1%;
+  padding-inline-start: 18px;
+  color: var(--pt-ink-3);
+  font-weight: 500;
+}
+
+.pt-table thead .pt-idx {
+  color: var(--thead-ink, var(--pt-ink-3));
+}
+
+.pt-table .act {
+  width: 1%;
+  text-align: end;
+}
+
+.pt-table tbody tr {
+  cursor: pointer;
+  transition: background-color .12s ease;
+}
+
+.pt-table tbody tr:hover {
+  background: var(--pt-accent-soft);
+}
+
+.pt-print:focus {
+  outline: none;
+}
+
+.pt-print:focus-visible {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: 2px;
+}
+
+.pt-who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pt-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  font-size: .74rem;
+  font-weight: 600;
+}
+
+.pt-who b {
+  display: block;
+  font-size: .92rem;
+  font-weight: 600;
+  color: var(--pt-ink);
+}
+
+.pt-date,
+.pt-doctor {
+  color: var(--pt-ink-2) !important;
+  font-size: .82rem !important;
+}
+
+.pt-date>span,
+.pt-doctor>span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pt-date svg,
+.pt-doctor svg {
+  flex: none;
+  color: var(--pt-ink-3);
+}
+
+.pt-nil {
+  color: var(--pt-ink-3);
+  font-weight: 400;
+}
+
+/* Print buttons: the action blue, soft at rest and solid on hover, so the column stays light. */
+.pt-print {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 36px;
+  padding-inline: 9px;
+  border: 1px solid color-mix(in srgb, var(--pt-accent) 30%, transparent);
+  border-radius: 10px;
+  background: var(--pt-accent-soft);
+  color: var(--pt-accent);
+  font-size: .82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pt-print:hover {
+  border-color: var(--pt-accent);
+  background: var(--pt-accent);
+  color: #fff;
+}
+
+.pt-empty {
+  margin: 0;
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--pt-ink-3);
+}
+
+/* The patient card: full-bleed photo card, name link card, then four summary tiles and the history. */
+.pt-profile {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.pt-lower {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid #dbe2ec;
+  border-radius: var(--pt-radius);
+  background: var(--pt-sunk, #eef2f7);
+  box-shadow: var(--pt-shadow);
+}
+
+.pt-band {
+  position: relative;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--pt-accent) 28%, var(--pt-line));
+  border-radius: var(--pt-radius);
+  background: var(--pt-panel);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--pt-accent) 6%, transparent),
+    0 12px 24px -12px color-mix(in srgb, var(--pt-accent) 36%, rgb(15 23 42 / 16%));
+}
+
+.pt-band .pt-photo {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  font-size: 2.4rem;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--pt-accent) 14%, var(--pt-panel)), var(--pt-accent-soft));
+  color: var(--pt-accent);
+}
+
+.pt-name-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--pt-accent) 24%, var(--pt-line));
+  border-radius: 14px;
+  background: var(--pt-panel);
+  color: var(--pt-ink);
+  text-decoration: none;
+  box-shadow: 0 6px 16px -10px rgb(15 23 42 / 12%), var(--pt-shadow);
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+}
+
+.pt-name-link:hover {
+  border-color: var(--pt-accent);
+  background: var(--pt-accent-soft);
+  color: var(--pt-accent);
+}
+
+.pt-name-link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pt-accent) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.pt-name-link h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.pt-name-link svg {
+  flex: none;
+  color: var(--pt-accent);
+}
+
+.pt-photo-pick {
+  position: relative;
+  cursor: pointer;
+}
+
+.pt-photo-pick img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+  display: block;
+}
+
+.pt-photo-silhouette {
+  width: 62%;
+  height: 62%;
+  opacity: .88;
+}
+
+.pt-photo-cam {
+  position: absolute;
+  bottom: 12px;
+  inset-inline-end: 12px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--pt-accent);
+  color: #fff;
+  border: 2px solid var(--pt-panel);
+  box-shadow: 0 3px 10px rgb(15 23 42 / 28%);
+  transition: transform .15s ease;
+}
+
+.pt-photo-pick:hover .pt-photo-cam {
+  transform: scale(1.06);
+}
+
+.pt-photo-pick:focus-within {
+  outline: 3px solid color-mix(in srgb, var(--pt-accent) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.pt-band h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+}
+
+.pt-band-sub {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 10px;
+  font-size: .88rem;
+  color: var(--pt-ink-2);
+}
+
+.pt-condition-pill {
+  padding: 4px 14px;
+  border-radius: 99px;
+  background: var(--pt-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--pt-accent) 20%, transparent);
+  color: var(--pt-accent);
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.pt-contact {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--pt-line);
+  list-style: none;
+  text-align: start;
+}
+
+.pt-contact li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: .84rem;
+  color: var(--pt-ink-2);
+}
+
+.pt-contact svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--pt-ink-3);
+}
+
+.pt-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--pt-line);
+  border-radius: 14px;
+  background: var(--pt-panel);
+  overflow: hidden;
+}
+
+.pt-fact {
+  padding: 16px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.pt-fact:nth-child(even) {
+  border-inline-start: 1px solid var(--pt-line);
+}
+
+.pt-fact:nth-child(-n+2) {
+  border-bottom: 1px solid var(--pt-line);
+}
+
+.pt-fact-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-block-end: 10px;
+  border-radius: 10px;
+}
+
+.pt-fact h3 {
+  margin: 0;
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--pt-ink-2);
+  white-space: nowrap;
+}
+
+.pt-fact p {
+  margin: 3px 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pt-fact p span {
+  font-size: .74rem;
+  font-weight: 500;
+  color: var(--pt-ink-3);
+}
+
+/* The clear way into the patient's full page, under the contact lines. */
+.pt-details {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  margin-top: 16px;
+  border-radius: 12px;
+  background: var(--pt-accent);
+  color: #fff;
+  font-size: .92rem;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--pt-accent) 60%, transparent);
+  transition: transform .12s ease, opacity .12s ease;
+}
+
+.pt-details:hover {
+  transform: translateY(-1px);
+  opacity: .94;
+}
+
+.pt-details:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pt-accent) 35%, transparent);
+  outline-offset: 2px;
+}
+
+/* Aid by foundation: paired soft columns on dashed guides, the top foundation marked. */
+.pt-chart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: var(--pt-panel);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+.pt-chart header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 10px;
+  margin-bottom: 0;
+}
+
+.pt-chart h3 {
+  margin: 0;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+}
+
+.pt-legend {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: .72rem;
+  color: var(--pt-ink-2);
+}
+
+.pt-legend li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.pt-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.pt-legend .cash {
+  background: var(--pt-head);
+}
+
+.pt-legend .care {
+  background: color-mix(in srgb, var(--pt-accent) 45%, var(--pt-panel));
+}
+
+.pt-bars {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  min-height: 140px;
+  padding-top: 14px;
+  background: repeating-linear-gradient(to top, transparent 0 calc(25% - 1px), var(--pt-line) calc(25% - 1px) 25%) top / 100% calc(100% - 24px) no-repeat;
+}
+
+.pt-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.pt-pair {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 110px;
+}
+
+.pt-found-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 10px;
+  margin: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--pt-line);
+  list-style: none;
+}
+
+.pt-found-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: .76rem;
+  color: var(--pt-ink-2);
+}
+
+.pt-found-list li b {
+  color: var(--pt-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.pt-found-list li.is-zero {
+  opacity: .55;
+}
+
+.pt-bar {
+  position: relative;
+  width: 18px;
+  border-radius: 7px;
+  transition: height .3s ease;
+}
+
+.pt-bar.cash {
+  background: color-mix(in srgb, var(--pt-head) 28%, var(--pt-panel));
+}
+
+.pt-bar.care {
+  background: color-mix(in srgb, var(--pt-accent) 18%, var(--pt-panel));
+}
+
+.pt-group.top .pt-bar.cash {
+  background: var(--pt-head);
+}
+
+.pt-group.top .pt-bar.care {
+  background: color-mix(in srgb, var(--pt-accent) 55%, var(--pt-panel));
+}
+
+.pt-group.top .pt-bar.cash::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--pt-head);
+  border-radius: 50%;
+  background: var(--pt-panel);
+  transform: translateX(-50%);
+}
+
+.pt-group small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .74rem;
+  font-weight: 600;
+  color: var(--pt-ink-2);
+}
+
+.pt-group.top small {
+  color: var(--pt-ink);
+}
+
+:root[data-theme="dark"] .pt-bar.cash {
+  background: color-mix(in srgb, var(--pt-accent) 30%, var(--pt-panel));
+}
+
+:root[data-theme="dark"] .pt-group.top .pt-bar.cash {
+  background: var(--pt-accent);
+}
+
+:root[data-theme="dark"] .pt-group.top .pt-bar.cash::before {
+  border-color: var(--pt-accent);
+}
+
+:root[data-theme="dark"] .pt-bar.care {
+  background: color-mix(in srgb, var(--pt-accent) 14%, var(--pt-panel));
+}
+
+:root[data-theme="dark"] .pt-legend .cash {
+  background: var(--pt-accent);
+}
+
+@media (max-width: 1180px) {
+  .pt-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pt-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pt-profile {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .pt {
+    margin: 0;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .pt-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The printed patient sheet: plain, black on white. */
+.pt-print-sheet {
+  display: none;
+}
+
+@media print {
+  body:has(.pt-print-sheet)>*:not(.pt-print-sheet) {
+    display: none !important;
+  }
+
+  .pt-print-sheet {
+    display: block;
+    padding: 12mm;
+    color: #000;
+    font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, sans-serif;
+    font-size: 11pt;
+  }
+
+  .pt-print-sheet h1 {
+    margin: 0 0 8mm;
+    font-size: 18pt;
+    font-weight: 700;
+  }
+
+  .pt-print-sheet dl {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3mm 8mm;
+    margin: 0 0 8mm;
+  }
+
+  .pt-print-sheet dt {
+    font-size: 9pt;
+    color: #555;
+  }
+
+  .pt-print-sheet dd {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .pt-print-sheet table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .pt-print-sheet th,
+  .pt-print-sheet td {
+    padding: 2mm 3mm;
+    border: 1px solid #999;
+    text-align: start;
+  }
+
+  .pt-print-sheet thead th,
+  .pt-print-sheet tfoot>tr>* {
+    background: #eee;
+  }
+}
+
+/* Dark mode: the coloured band and its button are toned down to sit with the dark panels. */
+:root[data-theme="dark"] .pt-band {
+  background: linear-gradient(185deg, rgb(255 255 255 / 16%) 0%, rgb(255 255 255 / 0) 42%), radial-gradient(130% 80% at 100% 0%, color-mix(in srgb, var(--pt-accent) 45%, transparent), transparent 60%), radial-gradient(110% 70% at 0% 100%, color-mix(in srgb, var(--pt-accent) 35%, transparent), transparent 65%), linear-gradient(160deg, var(--pt-head) 0%, color-mix(in srgb, var(--pt-head) 70%, var(--pt-accent)) 100%);
+}
+
+:root[data-theme="dark"] .pt-details {
+  background: var(--surface-2);
+  color: var(--ink);
+  box-shadow: none;
+  border: 1px solid var(--line);
+}
+
+:root[data-theme="dark"] .pt-photo {
+  border-color: var(--line);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pt-band {
+    background: linear-gradient(185deg, rgb(255 255 255 / 16%) 0%, rgb(255 255 255 / 0) 42%), radial-gradient(130% 80% at 100% 0%, color-mix(in srgb, var(--pt-accent) 45%, transparent), transparent 60%), radial-gradient(110% 70% at 0% 100%, color-mix(in srgb, var(--pt-accent) 35%, transparent), transparent 65%), linear-gradient(160deg, var(--pt-head) 0%, color-mix(in srgb, var(--pt-head) 70%, var(--pt-accent)) 100%);
+  }
+
+  :root:not([data-theme="light"]) .pt-details {
+    background: var(--surface-2);
+    color: var(--ink);
+    box-shadow: none;
+    border: 1px solid var(--line);
+  }
+
+  :root:not([data-theme="light"]) .pt-photo {
+    border-color: var(--line);
+  }
+}
+
+/* Dark mode: formal and quiet. Flat panels with a hairline edge, white figures, and the
+   colour kept to the small icons; units and captions in muted grey. */
+:root[data-theme="dark"] :is(.pt-top, .pt-card, .pt-panel) {
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .pt-card-value,
+:root[data-theme="dark"] .pt-card-value.ink-green {
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .pt-card-value span {
+  color: var(--ink-3) !important;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) :is(.pt-top, .pt-card, .pt-panel) {
+    background: var(--surface);
+    border-color: var(--line);
+    box-shadow: none;
+  }
+
+  :root:not([data-theme="light"]) .pt-card-value,
+  :root:not([data-theme="light"]) .pt-card-value.ink-green {
+    color: var(--ink);
+  }
+
+  :root:not([data-theme="light"]) .pt-card-value span {
+    color: var(--ink-3) !important;
+    font-weight: 500;
+  }
+}
+
+/* ---------- One patient's page (PatientDetailPage.tsx), after the supplier-profile reference. */
+.ptd-missing {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.ptd-missing h1 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* Header: big round photo, name with a tag, three facts in a row, and the small file box. */
+.ptd-hero {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 26px 28px;
+  overflow: visible;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pt-accent) 5%, var(--pt-panel)) 0%, var(--pt-panel) 100%);
+}
+
+.ptd-photo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 116px;
+  height: 116px;
+  border-radius: 50%;
+  border: 5px solid var(--pt-panel);
+  box-shadow: 0 0 0 1px var(--pt-line), 0 8px 20px -12px rgb(15 23 42 / 20%);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.ptd-who {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.ptd-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.ptd-name h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--pt-ink);
+}
+
+.ptd-tag {
+  padding: 4px 12px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--pt-line);
+  color: var(--pt-ink-2);
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.ptd-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  gap: 8px 64px;
+  margin: 0;
+}
+
+.ptd-facts dt {
+  font-size: .86rem;
+  color: var(--pt-ink-2);
+}
+
+.ptd-facts dd {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--pt-ink);
+}
+
+.ptd-file {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(340px, 100%);
+  padding: 16px 18px;
+  border: 1px solid var(--pt-line);
+  border-radius: 18px;
+  background: var(--pt-ground);
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .15s ease;
+}
+
+.ptd-file:hover {
+  border-color: var(--pt-accent);
+}
+
+.ptd-file-photo {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  font-size: .9rem;
+  font-weight: 700;
+}
+
+.ptd-file-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.ptd-file-text small {
+  font-size: .76rem;
+  color: var(--pt-ink-3);
+}
+
+.ptd-file-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+}
+
+.ptd-file-go {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--pt-accent);
+  color: #fff;
+}
+
+/* Four totals as one strip (design A): sections joined in a single panel, split by thin
+   vertical rules. Each: icon tile beside title and figure, two details on one line below. */
+.ptd-cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ptd-card {
+  min-width: 0;
+  padding: 20px 22px 14px;
+}
+
+.ptd-card+.ptd-card {
+  border-inline-start: 1px solid var(--pt-line);
+}
+
+.ptd-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ptd-card-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.ptd-card-text {
+  min-width: 0;
+}
+
+.ptd-card h2 {
+  margin: 0;
+  font-size: .84rem;
+  font-weight: 500;
+  color: var(--pt-ink-2);
+}
+
+.ptd-card-value {
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--pt-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ptd-unit {
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--pt-ink-3);
+}
+
+.ptd-card dl {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--pt-row);
+}
+
+.ptd-card dl>div {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ptd-card dt {
+  flex: none;
+  font-size: .76rem;
+  color: var(--pt-ink-3);
+}
+
+.ptd-card dd {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .8rem;
+  font-weight: 600;
+  color: var(--pt-ink);
+}
+
+/* The aid register: an underlined tab title, search and type filter, table, pager. */
+.ptd-tabs {
+  display: flex;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--pt-line);
+}
+
+.ptd-tabs h2 {
+  margin: 0;
+  padding: 20px 0 14px;
+  border-bottom: 3px solid var(--pt-accent);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+}
+
+.ptd-tabs h2 span {
+  font-weight: 600;
+  color: var(--pt-ink-2);
+}
+
+.ptd-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.ptd-tools .pt-search {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.ptd-kind {
+  flex: none;
+  width: auto;
+  height: 46px;
+  min-width: 160px;
+  padding-inline: 14px;
+  border: 1px solid var(--pt-line);
+  border-radius: 12px;
+  background: var(--pt-panel);
+  color: var(--pt-ink);
+  font-size: .9rem;
+}
+
+/* Fixed column widths so every column sits where it belongs; light column rules and zebra rows. */
+.ptd-table {
+  min-width: 940px;
+  table-layout: fixed;
+}
+
+.ptd-table .c-kind {
+  width: 15%;
+}
+
+.ptd-table .c-amount {
+  width: 13%;
+}
+
+.ptd-table .c-doctor {
+  width: 16%;
+}
+
+.ptd-table .c-date {
+  width: 13%;
+}
+
+.ptd-table .c-delegate {
+  width: 15%;
+}
+
+.ptd-table .c-details {
+  width: 18%;
+}
+
+.ptd-table .c-act {
+  width: 10%;
+}
+
+.ptd-table :is(th, td) {
+  padding-inline: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ptd-table :is(th, td)+ :is(th, td) {
+  border-inline-start: 1px solid var(--pt-row);
+}
+
+.ptd-table thead th+th {
+  border-inline-start-color: var(--pt-line);
+}
+
+.ptd-table .mid {
+  text-align: center;
+}
+
+/* Stripes and hover paint the cells, not the row, with no colour transition: a transitioning row
+   background repainted late when switching light/dark. */
+.ptd-table tbody tr {
+  cursor: default;
+  transition: none;
+}
+
+.ptd-table tbody tr:nth-child(even)>td {
+  background: var(--surface-2);
+}
+
+.ptd-table tbody tr:hover>td {
+  background: var(--pt-accent-soft);
+}
+
+.ptd-table td.num b {
+  font-size: .95rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+}
+
+/* Aid type: a small coloured icon tile, the label in plain ink. */
+.ptd-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .88rem;
+  font-weight: 600;
+  color: var(--pt-ink);
+}
+
+.ptd-type-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 18%, transparent);
+}
+
+/* Column headings centred. */
+.ptd-table thead th,
+.ptd-table thead th.num {
+  text-align: center;
+}
+
+.ptd-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: .86rem;
+  color: var(--pt-ink);
+}
+
+.ptd-person-icon,
+.ptd-person-initials {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--pt-ground);
+  border: 1px solid var(--pt-line);
+  color: var(--pt-ink-3);
+}
+
+.ptd-person-initials {
+  background: var(--pt-accent-soft);
+  border-color: transparent;
+  color: var(--pt-accent);
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.ptd-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--pt-ground);
+  color: var(--pt-ink-2);
+  font-size: .82rem;
+}
+
+.ptd-date svg {
+  color: var(--pt-ink-3);
+}
+
+.ptd-details {
+  white-space: normal !important;
+}
+
+.ptd-details b {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: .86rem;
+  font-weight: 600;
+  color: var(--pt-ink);
+}
+
+.ptd-details small {
+  display: block;
+  margin-top: 2px;
+  font-size: .74rem;
+  color: var(--pt-ink-3);
+}
+
+.ptd-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.ptd-act {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--pt-accent-soft);
+  color: var(--pt-accent);
+  cursor: pointer;
+}
+
+.ptd-act:hover {
+  background: var(--pt-accent);
+  color: #fff;
+}
+
+.ptd-table tfoot :is(th, td) {
+  padding-block: 14px;
+  border-top: 2px solid var(--pt-line);
+  background: color-mix(in srgb, var(--pt-accent) 6%, var(--pt-panel));
+  text-align: start;
+  font-size: .9rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+}
+
+.ptd-table tfoot td.num {
+  text-align: end;
+}
+
+.ptd-table tfoot small {
+  font-weight: 500;
+  color: var(--pt-ink-2);
+}
+
+.pt-print-sign {
+  display: none;
+}
+
+@media print {
+  .pt-print-sign {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 24mm;
+    font-size: 11pt;
+  }
+
+  .pt-print-sign span {
+    width: 60mm;
+    padding-top: 3mm;
+    border-top: 1px solid #000;
+    text-align: center;
+  }
+}
+
+.ptd-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--pt-line);
+  font-size: .84rem;
+  color: var(--pt-ink-2);
+}
+
+.ptd-pager nav {
+  display: flex;
+  gap: 6px;
+}
+
+.ptd-page {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--pt-line);
+  border-radius: 10px;
+  background: var(--pt-panel);
+  color: var(--pt-ink);
+  font-size: .86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ptd-page:hover:not(:disabled) {
+  border-color: var(--pt-accent);
+  color: var(--pt-accent);
+}
+
+.ptd-page.on {
+  border-color: var(--pt-accent);
+  background: var(--pt-accent);
+  color: #fff;
+}
+
+.ptd-page:disabled {
+  opacity: .4;
+  cursor: default;
+}
+
+@media (max-width: 1180px) {
+  .ptd-hero {
+    flex-wrap: wrap;
+  }
+
+  .ptd-file {
+    width: 100%;
+  }
+
+  .ptd-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ptd-card:nth-child(3) {
+    border-inline-start: 0;
+  }
+
+  .ptd-card:nth-child(n+3) {
+    border-top: 1px solid var(--pt-line);
+  }
+
+  .ptd-facts {
+    gap: 8px 32px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ptd-hero {
+    padding: 18px;
+    gap: 16px;
+  }
+
+  .ptd-photo {
+    width: 84px;
+    height: 84px;
+    font-size: 1.4rem;
+  }
+
+  .ptd-name h1 {
+    font-size: 1.4rem;
+  }
+
+  .ptd-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ptd-cards {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ptd-card+.ptd-card {
+    border-inline-start: 0;
+    border-top: 1px solid var(--pt-line);
+  }
+}
+
+/* ---------- Table headings, design C: a title line with the count and the current order, then a
+   white row of muted labels with thin dividers; sortable labels carry an up-down mark and the
+   sorted one turns blue with its direction. */
+.pt-table thead th+th {
+  border-inline-start: 1px solid var(--pt-row);
+}
+
+.pt-table .mid {
+  text-align: center;
+}
+
+.sort-th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sort-th button svg {
+  flex: none;
+  color: color-mix(in srgb, var(--pt-ink-3) 70%, transparent);
+}
+
+.sort-th button:hover {
+  color: var(--pt-ink);
+}
+
+.sort-th.on,
+.sort-th.on button svg {
+  color: var(--pt-accent);
+}
+
+.sort-th button:focus-visible {
+  outline: 2px solid var(--pt-accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.pt-register .pt-panel-head {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--pt-line);
+  background: var(--surface-2);
+}
+
+.pt-register .pt-search {
+  flex: 0 1 340px;
+  background: var(--pt-panel);
+}
+
+.tbl-title {
+  display: grid;
+  gap: 2px;
+}
+
+.tbl-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--pt-ink);
+}
+
+.tbl-count {
+  padding: 1px 9px;
+  border-radius: 99px;
+  background: var(--pt-line);
+  color: var(--pt-ink-2);
+  font-size: .74rem;
+  font-weight: 600;
+}
+
+.tbl-title small,
+.ptd-sorted {
+  font-size: .76rem;
+  color: var(--pt-ink-3);
+}
+
+.ptd-tabs {
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Sort marks and «الإجراءات» widen the heads: a little less side padding keeps the table in its panel. */
+.pt-register .pt-table :is(th, td) {
+  padding-inline: 6px;
+}
+
+.pt-table tbody tr.on>td {
+  background: color-mix(in srgb, var(--pt-accent) 10%, var(--pt-panel)) !important;
+}
+
+.pt-table tbody tr.on>td:first-child {
+  box-shadow: inset -3px 0 0 var(--pt-accent);
+  color: var(--pt-accent);
+  font-weight: 700;
+}
+
+.pt-quick-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--pt-line);
+  border-radius: 11px;
+  background: var(--surface-2);
+}
+
+.pt-quick-pills button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--pt-ink-2);
+  font-size: .78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .14s ease, color .14s ease;
+}
+
+.pt-quick-pills button:hover {
+  color: var(--pt-ink);
+}
+
+.pt-quick-pills button.is-on {
+  background: var(--pt-panel);
+  color: var(--pt-accent);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 8%);
+}
+
+.pt-register .sort-th button {
+  gap: 3px;
+}
+
+/* Profile card (option 1): its lower half on a light lead-grey base, the four tiles white on top,
+   so the card reads as its own block beside the white table. Dark mode: a sunken base, raised tiles. */
+.pt .pt-profile {
+  --pt-sunk: #eef2f7;
+}
+
+.pt-profile .pt-facts {
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 4%);
+}
+
+:root[data-theme="dark"] .pt .pt-profile {
+  --pt-sunk: var(--paper);
+}
+
+:root[data-theme="dark"] .pt-lower,
+:root[data-theme="dark"] .pt-profile .pt-facts,
+:root[data-theme="dark"] .pt-profile .pt-chart {
+  border-color: var(--line);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .pt .pt-profile {
+    --pt-sunk: var(--paper);
+  }
+
+  :root:not([data-theme="light"]) .pt-lower,
+  :root:not([data-theme="light"]) .pt-profile .pt-facts,
+  :root:not([data-theme="light"]) .pt-profile .pt-chart {
+    border-color: var(--line);
+  }
+}

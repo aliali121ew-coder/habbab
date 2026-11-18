@@ -7,6 +7,8 @@ import { fail } from './lib/http';
 import { audit, dashboard, delegates, meta, users } from './routes/admin';
 import { auth } from './routes/auth';
 import { closings } from './routes/closings';
+import { collections } from './routes/collections';
+import { expenses } from './routes/expenses';
 import { files, prescriptions } from './routes/prescriptions';
 import { programs } from './routes/programs';
 import { subscribers } from './routes/subscribers';
@@ -48,6 +50,8 @@ api.route('/transactions', transactions);
 api.route('/prescriptions', prescriptions);
 api.route('/files', files);
 api.route('/closings', closings);
+api.route('/collections', collections);
+api.route('/expenses', expenses);
 api.route('/delegates', delegates);
 api.route('/users', users);
 api.route('/audit', audit);
@@ -61,6 +65,9 @@ app.onError((error, c) => {
   if (message.includes('MONTH_CLOSED')) return c.json({ error: 'هذا الشهر مقفل ولا يقبل التعديل' }, 409);
   if (message.includes('UNIQUE constraint failed: subscribers.national_id_bidx')) {
     return c.json({ error: 'رقم الهوية مسجل لمشترك آخر' }, 409);
+  }
+  if (message.includes('UNIQUE constraint failed: transactions.subscriber_id')) {
+    return c.json({ error: 'هذا الشهر مسدد مسبقاً' }, 409);
   }
   if (message.includes('UNIQUE constraint failed: subscriber_programs')) {
     return c.json({ error: 'المشترك مسجل في هذا البرنامج' }, 409);

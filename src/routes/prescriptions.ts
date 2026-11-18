@@ -28,7 +28,7 @@ function imageType(bytes: Uint8Array): string | null {
   return null;
 }
 
-async function readImage(file: FormDataEntryValue | null, maxSize: number) {
+export async function readImage(file: FormDataEntryValue | null, maxSize: number) {
   if (file === null) return null;
   if (typeof file === 'string') fail(422, 'ملف غير صالح');
   if (file.size > maxSize) fail(413, 'حجم الصورة أكبر من المسموح');
@@ -38,7 +38,7 @@ async function readImage(file: FormDataEntryValue | null, maxSize: number) {
   return { bytes, contentType };
 }
 
-async function putEncrypted(c: Context<AppEnv>, key: string, image: { bytes: Uint8Array<ArrayBuffer>; contentType: string }) {
+export async function putEncrypted(c: Context<AppEnv>, key: string, image: { bytes: Uint8Array<ArrayBuffer>; contentType: string }) {
   await c.env.FILES.put(key, await encryptBytes(c.env.DATA_KEY, image.bytes), {
     customMetadata: { type: image.contentType },
   });
@@ -46,7 +46,7 @@ async function putEncrypted(c: Context<AppEnv>, key: string, image: { bytes: Uin
 
 // Links expire on fixed 5-minute boundaries, so repeat views inside a window
 // reuse the same URL and hit the browser cache rather than an R2 read.
-async function signFileLink(c: Context<AppEnv>, key: string): Promise<string> {
+export async function signFileLink(c: Context<AppEnv>, key: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const exp = (Math.floor(now / LINK_WINDOW) + 2) * LINK_WINDOW;
   const body = toB64Url(new TextEncoder().encode(JSON.stringify({ k: key, e: exp, u: c.get('user').id })));
@@ -173,7 +173,8 @@ prescriptions.delete('/:id', requireRole('admin'), async (c) => {
 
 export const files = new Hono<AppEnv>();
 
-files.get('/:token', requireRole('admin', 'health'), async (c) => {
+// Open to every role: a link only works for the user it was signed for.
+files.get('/:token', async (c) => {
   const [body, signature] = c.req.param('token').split('.');
   if (!body || !signature) fail(404, 'الملف غير موجود');
   if (!(await hmacVerify(c.env.JWT_SECRET, `file:${body}`, signature).catch(() => false))) fail(404, 'الملف غير موجود');

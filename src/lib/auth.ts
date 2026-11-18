@@ -7,6 +7,9 @@ import { fail } from './http';
 
 const TOKEN_TTL = 15 * 60;
 const SESSION_MAX = 8 * 60 * 60;
+// "Remember me": the cookie outlives the browser for this long. The token inside still
+// expires every 15 minutes, so the account is re-checked as often as in any session.
+const REMEMBER_MAX = 30 * 24 * 60 * 60;
 
 interface Claims {
   sub: number;
@@ -15,7 +18,10 @@ interface Claims {
   st: number; // session start, for the absolute lifetime
   exp: number;
   mc?: 1; // must change password
+  rm?: 1; // remember me: the cookie persists and the session may last REMEMBER_MAX
 }
+
+const sessionLimit = (claims: Claims) => (claims.rm ? REMEMBER_MAX : SESSION_MAX);
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -32,7 +38,11 @@ async function readToken(secret: string, token: string): Promise<Claims | null> 
   try {
     if (!(await hmacVerify(secret, `session:${body}`, signature))) return null;
     const claims = JSON.parse(decoder.decode(fromB64Url(body))) as Claims;
-    return claims.exp > Date.now() / 1000 ? claims : null;
+    const now = Date.now() / 1000;
+    // A remembered session may come back after its token lapsed; it is then re-checked
+    // against the user row before anything is served.
+    if (claims.exp > now) return claims;
+    return claims.rm && now - claims.st < REMEMBER_MAX ? claims : null;
   } catch {
     return null;
   }
@@ -41,17 +51,20 @@ async function readToken(secret: string, token: string): Promise<Claims | null> 
 export async function startSession(
   c: Context<AppEnv>,
   user: { id: number; role: Role; token_version: number; must_change_password: number },
-  sessionStart?: number,
+  options: { start?: number; remember?: boolean } = {},
 ) {
   const now = Math.floor(Date.now() / 1000);
-  const claims: Claims = { sub: user.id, role: user.role, tv: user.token_version, st: sessionStart ?? now, exp: now + TOKEN_TTL };
+  const start = options.start ?? now;
+  const claims: Claims = { sub: user.id, role: user.role, tv: user.token_version, st: start, exp: now + TOKEN_TTL };
   if (user.must_change_password) claims.mc = 1;
+  if (options.remember) claims.rm = 1;
   setCookie(c, cookieName(c), await signToken(c.env.JWT_SECRET, claims), {
     httpOnly: true,
     secure: cookieName(c) === '__Host-sid',
     sameSite: 'Strict',
     path: '/',
-    maxAge: TOKEN_TTL,
+    // Without "remember me" this is a browser-session cookie: closing the browser signs out.
+    ...(options.remember ? { maxAge: Math.max(start + REMEMBER_MAX - now, 0) } : {}),
   });
 }
 
@@ -70,7 +83,10 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   let role = claims.role;
   let mustChange = claims.mc === 1;
   if (claims.exp - now < TOKEN_TTL / 2) {
-    if (now - claims.st >= SESSION_MAX) fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
+    if (now - claims.st >= sessionLimit(claims)) {
+      endSession(c);
+      fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
+    }
     const row = await first<{ id: number; role: Role; token_version: number; active: number; must_change_password: number }>(
       c,
       'SELECT id, role, token_version, active, must_change_password FROM users WHERE id = ?',
@@ -80,7 +96,7 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
       endSession(c);
       fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
     }
-    await startSession(c, row, claims.st);
+    await startSession(c, row, { start: claims.st, remember: claims.rm === 1 });
     role = row.role;
     mustChange = row.must_change_password === 1;
   }

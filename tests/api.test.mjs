@@ -60,6 +60,15 @@ describe('session and request guards', () => {
     assert.match(cookie, /SameSite=Strict/i);
   });
 
+  it('keeps the cookie past the browser only when asked to remember', async () => {
+    const plain = await client()('/auth/login', { method: 'POST', body: { username: 'admin', password: PASSWORD }, raw: true });
+    assert.doesNotMatch(plain.headers.get('set-cookie'), /Max-Age/i);
+    const remembered = await client()('/auth/login', { method: 'POST', body: { username: 'admin', password: PASSWORD, remember: true }, raw: true });
+    assert.match(remembered.headers.get('set-cookie'), /Max-Age=2592000/i);
+    const session = client(remembered.headers.get('set-cookie').split(';')[0]);
+    assert.equal((await session('/auth/me')).status, 200);
+  });
+
   it('blocks writes without the app header or from another origin', async () => {
     const noHeader = await fetch(`${BASE}/api/auth/login`, { method: 'POST', body: '{}' });
     assert.equal(noHeader.status, 403);
@@ -328,8 +337,95 @@ describe('D1 row budget at 25,000 subscribers', () => {
   });
 
   it('name search stays on the index', () => budget(sessions.admin, '/subscribers/search', 35, { method: 'POST', body: { q: 'زينب' } }));
+  it('name search with a status filter stays on the index', () => budget(sessions.admin, '/subscribers/search', 45, { method: 'POST', body: { q: 'زينب', status: 'alive' } }));
+  it('phone search with a status filter stays on the index', () => budget(sessions.admin, '/subscribers/search', 35, { method: 'POST', body: { q: '07701', status: 'alive' } }));
+  it('delegate search with a status filter stays on the index', () => budget(sessions.delegate1, '/subscribers/search', 35, { method: 'POST', body: { q: 'حسين', status: 'alive' } }));
   it('phone search stays on the index', () => budget(sessions.admin, '/subscribers/search', 35, { method: 'POST', body: { q: '07701' } }));
   it('delegate name search stays on the index', () => budget(sessions.delegate1, '/subscribers/search', 35, { method: 'POST', body: { q: 'زينب' } }));
   it('dashboard reads summaries only', () => budget(sessions.admin, '/dashboard', 30));
   it('a money page reads about one page', () => budget(sessions.accountant, '/transactions?type=monthly_aid', 35));
+});
+
+describe('monthly payments', () => {
+  const year = new Date().getUTCFullYear();
+  const period = `${year}-03`;
+  const today = new Date().toISOString().slice(0, 10);
+  let own;
+  let foreign;
+
+  const pay = (session, subscriber, target = period) => session('/collections/pay', {
+    method: 'POST', body: { subscriber_id: subscriber, period: target, amount: 5000, tx_date: today },
+  });
+  const row = async (session, id) => (await session(`/collections/grid?year=${year}&delegate=3`)).data.items.find((item) => item.id === id);
+
+  before(async () => {
+    own = (await sessions.delegate1('/subscribers', { method: 'POST', body: { full_name: 'مشترك التسديد', monthly_fee: 5000 } })).data.id;
+    foreign = (await sessions.delegate2('/subscribers', { method: 'POST', body: { full_name: 'مشترك آخر للتسديد' } })).data.id;
+  });
+
+  it('only admin and delegates reach the register', async () => {
+    assert.equal((await sessions.accountant(`/collections/grid?year=${year}`)).status, 403);
+    assert.equal((await sessions.health(`/collections/overview?year=${year}`)).status, 403);
+  });
+
+  it('a delegate cannot pay for, or see, another delegate\'s subscriber', async () => {
+    assert.equal((await pay(sessions.delegate1, foreign)).status, 404);
+    const { data } = await sessions.delegate1(`/collections/grid?year=${year}&delegate=4`);
+    assert.ok(data.items.every((item) => item.delegate_id === 3));
+    const overview = await sessions.delegate1(`/collections/overview?year=${year}&delegate=4`);
+    assert.equal(overview.data.delegate.id, 3);
+    assert.deepEqual(overview.data.delegates, []);
+  });
+
+  it('a payment sets the month, cannot repeat, and enters the money totals', async () => {
+    const month = new Date().toISOString().slice(0, 7);
+    const before = (await sessions.admin(`/closings/preview?month=${month}`)).data.total_in;
+    const overviewBefore = (await sessions.admin(`/collections/overview?year=${year}`)).data.months[2].paid_amount;
+
+    assert.equal((await pay(sessions.delegate1, own)).status, 201);
+    assert.equal((await pay(sessions.delegate1, own)).status, 409);
+
+    assert.equal((await row(sessions.delegate1, own)).paid_mask, 4);
+    assert.equal((await sessions.admin(`/closings/preview?month=${month}`)).data.total_in - before, 5000);
+    assert.equal((await sessions.admin(`/collections/overview?year=${year}`)).data.months[2].paid_amount - overviewBefore, 5000);
+  });
+
+  it('only the admin can reverse a payment, and reversal restores every total', async () => {
+    const body = { subscriber_id: own, period };
+    assert.equal((await sessions.delegate1('/collections/undo', { method: 'POST', body })).status, 403);
+    const before = (await sessions.admin(`/collections/overview?year=${year}`)).data.months[2].paid_amount;
+    assert.equal((await sessions.admin('/collections/undo', { method: 'POST', body })).status, 200);
+    assert.equal((await row(sessions.delegate1, own)).paid_mask, 0);
+    assert.equal(before - (await sessions.admin(`/collections/overview?year=${year}`)).data.months[2].paid_amount, 5000);
+    assert.equal((await pay(sessions.delegate1, own)).status, 201);
+  });
+
+  it('masks phones in the register', async () => {
+    const { data } = await sessions.admin(`/collections/grid?year=${year}`);
+    const withPhone = data.items.find((item) => item.phone);
+    assert.match(withPhone.phone, /•/);
+  });
+
+  it('a delegate cannot change another delegate\'s photo', async () => {
+    const form = new FormData();
+    form.set('image', webp(), 'image');
+    assert.equal((await sessions.delegate1('/collections/delegates/4/photo', { method: 'POST', form })).status, 404);
+    const mine = new FormData();
+    mine.set('image', webp(), 'image');
+    assert.equal((await sessions.delegate1('/collections/delegates/3/photo', { method: 'POST', form: mine })).status, 200);
+  });
+
+  it('the register stays within budget at full size', async () => {
+    const grid = await sessions.admin(`/collections/grid?year=${year}`);
+    const overview = await sessions.admin(`/collections/overview?year=${year}`);
+    const search = await sessions.admin('/collections/search', { method: 'POST', body: { q: 'زينب', year, status: 'alive' } });
+    // The overview lists every delegate, so its budget follows their number and not the register's size.
+    const overviewLimit = 40 + 4 * overview.data.delegates.length;
+    for (const [name, result, limit] of [['grid', grid, 62], ['overview', overview, overviewLimit], ['search', search, 62]]) {
+      console.log(`  rows_read=${rows(result).read} (limit ${limit}) ${name}`);
+      assert.ok(rows(result).read <= limit, name);
+    }
+    const payment = await pay(sessions.delegate1, own, `${year}-04`);
+    console.log(`  rows_written=${rows(payment).written} payment`);
+  });
 });

@@ -18,6 +18,7 @@ const fields = {
   death_date: zDate.nullable().optional(),
   delegate_id: zId.nullable().optional(),
   family_size: z.number().int().min(1).max(50).optional(),
+  monthly_fee: z.number().int().min(0).max(1_000_000_000).optional(),
   address: zText(200).nullable().optional(),
   notes: zText(500).nullable().optional(),
 };
@@ -50,7 +51,7 @@ async function loadScoped<T extends { delegate_id: number | null }>(c: Context<A
   return row;
 }
 
-async function searchRows<T>(c: Context<AppEnv>, columns: string, q: string, status?: string): Promise<T[]> {
+export async function searchRows<T>(c: Context<AppEnv>, columns: string, q: string, status?: string, delegate?: number | null, columnParams: unknown[] = []): Promise<T[]> {
   const digits = normalizeDigits(q);
   const isPhone = digits.length >= 3 && /^[\d\s+\-٠-٩۰-۹]+$/.test(q);
   const term = isPhone ? digits : normalizeName(q);
@@ -61,16 +62,18 @@ async function searchRows<T>(c: Context<AppEnv>, columns: string, q: string, sta
   const where = ['deleted_at IS NULL', `${column} >= ?`, `${column} < ?`];
   const params: unknown[] = [from, to];
   if (isPhone) where.push('phone IS NOT NULL');
-  const scope = delegateScope(c);
+  const scope = delegateScope(c) ?? delegate ?? null;
   if (scope !== null) {
     where.push('delegate_id = ?');
     params.push(scope);
   }
+  // Unary + keeps the planner off the status index: it would scan every subscriber
+  // of that status and sort them, about 25,000 rows instead of 30.
   if (status) {
-    where.push('status = ?');
+    where.push('+status = ?');
     params.push(status);
   }
-  return all<T>(c, `SELECT ${columns} FROM subscribers WHERE ${where.join(' AND ')} ORDER BY ${column} LIMIT ${PAGE_SIZE}`, ...params);
+  return all<T>(c, `SELECT ${columns} FROM subscribers WHERE ${where.join(' AND ')} ORDER BY ${column} LIMIT ${PAGE_SIZE}`, ...columnParams, ...params);
 }
 
 export const subscribers = new Hono<AppEnv>();
@@ -118,14 +121,14 @@ subscribers.post('/', requireRole('admin', 'delegate'), async (c) => {
   const statements = [
     stmt(c,
       `INSERT INTO subscribers (full_name, name_norm, phone, national_id_enc, national_id_bidx, national_id_last4,
-         status, death_date, delegate_id, family_size, address, notes, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+         status, death_date, delegate_id, family_size, monthly_fee, address, notes, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       body.full_name, normalizeName(body.full_name), body.phone ?? null,
       nationalId ? await encryptText(c.env.DATA_KEY, nationalId) : null,
       nationalId ? await hmac(c.env.BLIND_KEY, nationalId) : null,
       nationalId ? nationalId.slice(-4) : null,
       status, status === 'deceased' ? body.death_date ?? null : null, delegateId,
-      body.family_size ?? 1, body.address ?? null, body.notes ?? null, user.id),
+      body.family_size ?? 1, body.monthly_fee ?? 0, body.address ?? null, body.notes ?? null, user.id),
     auditInsertedStmt(c, 'create', 'subscriber'),
   ];
   const results = await batch(c, statements);
@@ -176,7 +179,7 @@ subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
     put('national_id_bidx', value ? await hmac(c.env.BLIND_KEY, value) : null);
     put('national_id_last4', value ? value.slice(-4) : null);
   }
-  for (const column of ['phone', 'status', 'death_date', 'delegate_id', 'family_size', 'address', 'notes'] as const) {
+  for (const column of ['phone', 'status', 'death_date', 'delegate_id', 'family_size', 'monthly_fee', 'address', 'notes'] as const) {
     if (body[column] !== undefined) put(column, body[column]);
   }
   if (body.status === 'alive') put('death_date', null);

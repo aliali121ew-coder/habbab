@@ -1,0 +1,79 @@
+/* Order matters: legacy sheets live inside layer(base) so Tailwind v4 utilities always take precedence cleanly. */
+@layer theme, base, components, utilities;
+
+@import './tokens.css' layer(base);
+@import './base.css' layer(base);
+@import './login.css' layer(base);
+@import './shell.css' layer(base);
+@import './datepicker.css' layer(base);
+@import './subscribers.css' layer(base);
+@import './delegates.css' layer(base);
+@import './home.css' layer(base);
+@import './expenses.css' layer(base);
+@import './ledger.css' layer(base);
+@import './patients.css' layer(base);
+@import './families.css' layer(base);
+@import './family-profile.css' layer(base);
+@import './receipt.css' layer(base);
+@import './record.css' layer(base);
+@import './blue.css' layer(base);
+@import './official.css' layer(base);
+@import './responsive.css' layer(base);
+@import './print-statement.css' layer(base);
+@import './print-register.css' layer(base);
+@import './stamp.css' layer(base);
+@import './glow.css' layer(base);
+@import './subscribers-theme.css' layer(base);
+@import './accent-gradient.css' layer(base);
+@import './strip.css' layer(base);
+@import './delegate-panel.css' layer(base);
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import './families-dark.css';
+
+/* Families v2 font & control normalization inside @layer base so Tailwind utilities override freely. */
+@layer base {
+  .fam-saas,
+  .fam-saas :is(h1, h2, h3, h4, button, input, select, textarea) {
+    font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  }
+
+  .fam-saas button {
+    border: 0;
+    background-color: transparent;
+  }
+
+  .fam-saas ul,
+  .fam-saas ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .fam-saas input:not([type="checkbox"]),
+  .fam-saas select {
+    min-height: 0;
+  }
+
+  .fam-saas input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    min-height: 0;
+    padding: 0;
+    border-radius: 0.25rem;
+    accent-color: #2563EB;
+  }
+}
+
+/* Force zero-noise print for the official family print sheet */
+@media print {
+  body:has(.fam-v2-print) > *:not(.fam-v2-print),
+  body:has(.fam-v2-print) .rail,
+  body:has(.fam-v2-print) .topbar {
+    display: none !important;
+  }
+  .fam-v2-print {
+    display: block !important;
+  }
+}

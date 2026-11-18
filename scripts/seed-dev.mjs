@@ -16,8 +16,19 @@ async function hashPassword(value) {
   return `pbkdf2$100000$${b64u(salt)}$${b64u(new Uint8Array(bits))}`;
 }
 
-const FIRST = ['أحمد', 'محمد', 'علي', 'حسين', 'زينب', 'فاطمة', 'مريم', 'يوسف', 'سارة', 'عباس', 'نور', 'كريم'];
-const LAST = ['الكاظمي', 'العبيدي', 'الجبوري', 'التميمي', 'الموسوي', 'الربيعي', 'الدليمي', 'الحسيني'];
+const GIVEN = [
+  'أحمد', 'محمد', 'علي', 'حسين', 'حسن', 'حيدر', 'مصطفى', 'يوسف', 'عباس', 'كريم',
+  'مرتضى', 'سجاد', 'عمار', 'ياسر', 'قاسم', 'زيد', 'نبيل', 'طارق', 'وليد', 'خالد',
+  'زينب', 'فاطمة', 'مريم', 'سارة', 'نور', 'حوراء', 'رقية', 'زهراء', 'هدى', 'آية',
+];
+const FATHERS = [
+  'محمد', 'علي', 'حسين', 'حسن', 'عبد الله', 'كاظم', 'جعفر', 'صادق', 'إبراهيم', 'أحمد',
+  'جاسم', 'فاضل', 'عباس', 'كريم', 'صالح', 'محمود', 'حميد', 'مجيد', 'رشيد', 'سلمان',
+];
+const LAST = [
+  'الكاظمي', 'العبيدي', 'الجبوري', 'التميمي', 'الموسوي', 'الربيعي', 'الدليمي', 'الحسيني',
+  'الشمري', 'الزبيدي', 'العامري', 'الساعدي', 'المالكي', 'الخفاجي', 'البياتي', 'الطائي',
+];
 const normalize = (text) => text.replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
 
 const hash = await hashPassword(PASSWORD);
@@ -36,10 +47,17 @@ for (const [id, username, name, role] of users) {
 for (let i = 1; i <= COUNT; i += 500) {
   const values = [];
   for (let j = i; j < i + 500 && j <= COUNT; j++) {
-    const name = `${FIRST[j % FIRST.length]} ${FIRST[(j * 7) % FIRST.length]} ${LAST[j % LAST.length]}`;
+    const first = GIVEN[j % GIVEN.length];
+    const father = FATHERS[(j * 7 + 3) % FATHERS.length];
+    const resolvedFather = father === first ? FATHERS[(j * 7 + 4) % FATHERS.length] : father;
+    const last = LAST[(j * 11 + 5) % LAST.length];
+    const name = `${first} ${resolvedFather} ${last}`;
     const phone = `0770${String(1000000 + j).slice(-7)}`;
     const delegate = j % 3 === 0 ? 3 : 4;
-    const status = j % 20 === 0 ? 'deceased' : 'alive';
+    // About one in twenty is deceased, spread by a multiplicative hash rather than j % 20: the
+    // father's name also cycles every 20, so j % 20 made every deceased «زينب» share one father and
+    // sort ahead of every living one, and a status-filtered name search read 447 rows, not 30.
+    const status = Math.floor(((j * 2654435761) % 2 ** 32) / 2 ** 32 * 20) === 0 ? 'deceased' : 'alive';
     values.push(`('${name}','${normalize(name)}','${phone}','${status}',${delegate},${1 + (j % 8)},1)`);
   }
   lines.push(`INSERT INTO subscribers (full_name, name_norm, phone, status, delegate_id, family_size, created_by) VALUES ${values.join(',')};`);

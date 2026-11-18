@@ -1,0 +1,52 @@
+/* Buttons and icon chips take the sidebar's own gradient for the chosen palette, across the app.
+   The official palette's sidebar is white, so it uses its navy instead. */
+:root { --accent-grad: var(--rail-bg); }
+:root[data-palette="official"] { --accent-grad: linear-gradient(180deg, #1b3a68 0%, #234982 55%, #1a3560 100%); }
+
+:root:root :is(
+  .btn.primary,
+  .seg button[aria-pressed="true"],
+  .dpn-card-btn,
+  .people-add-btn,
+  .pd-fab
+) {
+  background: var(--accent-grad) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+}
+
+:root:root :is(
+  .page-icon,
+  .stats .stat-icon,
+  .people-parent .tile-icon,
+  .dpn-fact-icon
+) {
+  background: var(--accent-grad) !important;
+  color: #fff !important;
+  border: 0 !important;
+}
+
+/* The icons' glow follows them: one theme colour instead of a different hue per card. */
+
+
+/* A touch lighter than the sidebar itself: a soft white wash over the same gradient. */
+:root { --accent-grad: linear-gradient(rgb(255 255 255 / 16%), rgb(255 255 255 / 16%)), var(--rail-bg); }
+:root[data-palette="official"] { --accent-grad: linear-gradient(rgb(255 255 255 / 16%), rgb(255 255 255 / 16%)), linear-gradient(180deg, #1b3a68 0%, #234982 55%, #1a3560 100%); }
+
+/* Revised: a clear, bright theme blue (as the night icons show), not a washed sidebar shade.
+   Same in day and night. */
+:root, :root[data-palette="official"] {
+  --accent-grad: linear-gradient(180deg, color-mix(in srgb, var(--bar-active) 82%, #fff) 0%, var(--bar-active) 100%);
+}
+
+/* Summary cards keep their own coloured icons and matching glow. */
+:root:root .stage .stats > .stat:nth-child(1) { --tone: #0ea5e9; }
+:root:root .stage .stats > .stat:nth-child(2) { --tone: #10b981; }
+:root:root .stage .stats > .stat:nth-child(3) { --tone: #8b5cf6; }
+:root:root .stage .stats > .stat:nth-child(4) { --tone: #f59e0b; }
+:root:root .people-parent .people-hero { --tone: #8b5cf6; }
+:root:root .people-parent .people-tile:nth-child(1) { --tone: #0ea5e9; }
+:root:root .people-parent .people-tile:nth-child(2) { --tone: #10b981; }
+:root:root .people-parent .people-tile:nth-child(3) { --tone: #94a3b8; }
+:root:root .people-parent .people-tile:nth-child(4) { --tone: #f59e0b; }
+:root:root:root:root :is(.stats .stat-icon, .people-parent .tile-icon) { background: var(--tone) !important; }

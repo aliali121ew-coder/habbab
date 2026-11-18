@@ -1,0 +1,369 @@
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  ArrowLeft, Building2, CalendarDays, Camera, HandCoins, HeartPulse, Pill, Printer, Search, Stethoscope, UserRound, UsersRound,
+} from 'lucide-react';
+import type { Me } from '../../api';
+import { formatNumber } from '../../format';
+import { compressAvatar } from '../../image';
+import { SortTh, compare, nextSort, type SortState } from '../../components/SortTh';
+import { printWhenReady } from '../../components/printWhenReady';
+import { PatientRecordSheet } from './PatientRecordSheet';
+import { PatientsReportSheet } from './PatientsReportSheet';
+import { FOUNDATIONS, OWN_FOUNDATION, PATIENTS, type Patient } from './sample';
+
+const FEMALE_NAMES = new Set([
+  'زينب', 'فاطمة', 'مريم', 'نور', 'سارة', 'هدى', 'زهراء', 'رقية', 'خديجة', 'عائشة',
+  'آمنة', 'سمر', 'سعاد', 'أميرة', 'ليلى', 'ميساء', 'دعاء', 'أمل', 'حوراء', 'بتول',
+  'إيناس', 'هند', 'ريم', 'شهد', 'تبارك', 'نرجس', 'غدير', 'أسماء', 'بشرى',
+]);
+const MALE_TA_NAMES = new Set(['حمزة', 'أسامة', 'طلحة', 'حذيفة', 'معاوية', 'قتيبة']);
+const isFemale = (patient: Patient & { gender?: 'male' | 'female' }) => {
+  if (patient.gender) return patient.gender === 'female';
+  const first = patient.name.trim().split(/\s+/)[0] ?? '';
+  if (FEMALE_NAMES.has(first)) return true;
+  if (MALE_TA_NAMES.has(first)) return false;
+  return first.endsWith('ة');
+};
+
+function AvatarSilhouette({ female }: { female: boolean }) {
+  if (female) {
+    return (
+      <svg className="pt-photo-silhouette" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+        <path d="M32 10c-8.8 0-15 6.4-15 15.2 0 4.6 1.4 8.5 3.6 11.1-5.9 2.9-10.1 8.5-10.6 15.4-.1 1.3.9 2.3 2.2 2.3h39.6c1.3 0 2.3-1 2.2-2.3-.5-6.9-4.7-12.5-10.6-15.4 2.2-2.6 3.6-6.5 3.6-11.1C47 16.4 40.8 10 32 10Zm0 6.5c4.8 0 8.5 3.8 8.5 8.8s-3.7 9.2-8.5 9.2-8.5-4.2-8.5-9.2 3.7-8.8 8.5-8.8Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="pt-photo-silhouette" viewBox="0 0 64 64" fill="currentColor" aria-hidden="true">
+      <circle cx="32" cy="22" r="10.5" />
+      <path d="M12.2 54c-1.3 0-2.3-1-2.2-2.3C10.9 41.7 19.6 36 32 36s21.1 5.7 22 15.7c.1 1.3-.9 2.3-2.2 2.3H12.2Z" />
+    </svg>
+  );
+}
+
+// 2026-01-05 → «2026-1-5», always read left to right.
+const shortDate = (iso: string) => `${iso.slice(0, 4)}-${Number(iso.slice(5, 7))}-${Number(iso.slice(8, 10))}`;
+const DateText = ({ iso }: { iso: string }) => <bdi dir="ltr">{shortDate(iso)}</bdi>;
+const initials = (name: string) => name.split(' ').slice(0, 2).map((part) => part[0]).join(' ');
+
+function totals(patient: Patient) {
+  const sum = (key: 'cash' | 'medicine' | 'exams') => patient.records.reduce((total, record) => total + record[key], 0);
+  return {
+    cash: sum('cash'),
+    medicine: sum('medicine'),
+    exams: sum('exams'),
+    last: patient.records[0],
+    foundations: [...new Set(patient.records.map((record) => record.foundation))],
+  };
+}
+
+// The shared patients section: four headline cards, the register of patients (three quarters of
+// the width) and, beside it, the selected patient's card: who they are on a coloured band, then
+// what they have received, from how many foundations. Built on sample data for now.
+type ListKey = 'name' | 'date' | 'cash' | 'medicine' | 'exams' | 'doctor';
+const LIST_LABELS: Record<ListKey, string> = {
+  name: 'المريض', date: 'التاريخ', cash: 'مبالغ مسلّمة', medicine: 'شراء دواء', exams: 'كشفيات طبية', doctor: 'الطبيب',
+};
+
+export function PatientsPage({ me }: { me: Me }) {
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState(PATIENTS[0].id);
+  const [printing, setPrinting] = useState<Patient | 'register' | null>(null);
+  const [sort, setSort] = useState<SortState<ListKey>>({ key: 'date', dir: 'desc' });
+  const sortBy = (key: ListKey) => setSort((current) => nextSort(current, key, key === 'name' || key === 'doctor' ? 'asc' : 'desc'));
+
+  const rows = useMemo(() => {
+    const needle = query.trim();
+    const value = (row: ReturnType<typeof totals> & { patient: Patient }): string | number => {
+      switch (sort.key) {
+        case 'name': return row.patient.name;
+        case 'date': return row.last.date;
+        case 'doctor': return row.last.doctor;
+        default: return row[sort.key];
+      }
+    };
+    return PATIENTS
+      .filter((patient) => !needle || patient.name.includes(needle) || patient.file.includes(needle.toUpperCase()) || patient.phone.replaceAll(' ', '').includes(needle))
+      .map((patient) => ({ patient, ...totals(patient) }))
+      .sort((a, b) => compare(value(a), value(b), sort.dir));
+  }, [query, sort]);
+
+  const all = useMemo(() => PATIENTS.map(totals), []);
+  const headline = {
+    patients: PATIENTS.length,
+    cash: all.reduce((sum, item) => sum + item.cash, 0),
+    // Medicine is what this foundation bought itself, not what the other foundations bought.
+    medicine: PATIENTS.flatMap((patient) => patient.records)
+      .filter((record) => record.foundation === OWN_FOUNDATION)
+      .reduce((sum, record) => sum + record.medicine, 0),
+    exams: all.reduce((sum, item) => sum + item.exams, 0),
+    visits: PATIENTS.reduce((sum, patient) => sum + patient.records.length, 0),
+  };
+
+  const selected = PATIENTS.find((patient) => patient.id === selectedId) ?? PATIENTS[0];
+  const detail = totals(selected);
+  const [photos, setPhotos] = useState<Record<number, string>>(() => {
+    try { return JSON.parse(localStorage.getItem('ahbab:patient-photos') || '{}') as Record<number, string>; }
+    catch { return {}; }
+  });
+
+  const pickPhoto = async (patientId: number, file: File | undefined) => {
+    if (!file) return;
+    const blob = await compressAvatar(file);
+    const dataUrl = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.readAsDataURL(blob);
+    });
+    if (!dataUrl) return;
+    setPhotos((current) => {
+      const next = { ...current, [patientId]: dataUrl };
+      try { localStorage.setItem('ahbab:patient-photos', JSON.stringify(next)); } catch { /* ignore quota */ }
+      return next;
+    });
+  };
+
+  // Print one patient's sheet: render it outside the app, print, then remove it.
+  useEffect(() => {
+    if (!printing) return undefined;
+    const done = () => setPrinting(null);
+    window.addEventListener('afterprint', done);
+    const cancel = printWhenReady('.rec');
+    return () => {
+      cancel();
+      window.removeEventListener('afterprint', done);
+    };
+  }, [printing]);
+
+  const money = (value: number) => (value > 0 ? <bdi>{formatNumber(value)}</bdi> : <span className="pt-nil">—</span>);
+
+  return (
+    <div className="pt">
+      <header className="pt-top">
+        <span className="pt-top-icon" aria-hidden><HeartPulse size={24} /></span>
+        <div className="pt-top-text">
+          <h1>المرضى</h1>
+          <p>السجل المشترك بين المؤسسات لكل المساعدات المقدّمة للمرضى</p>
+        </div>
+        <button type="button" className="pt-report" onClick={() => setPrinting('register')}>
+          <Printer size={17} aria-hidden /> طباعة تقرير
+        </button>
+      </header>
+
+      <section className="pt-cards" aria-label="الملخص">
+        <article className="pt-card">
+          <header><h2>عدد المرضى</h2><UsersRound size={18} className="ink-violet" aria-hidden /></header>
+          <p className="pt-card-value"><bdi>{formatNumber(headline.patients)}</bdi> <span className="ink-violet">مريض</span></p>
+          <small><bdi>{formatNumber(headline.visits)}</bdi> مراجعة مسجلة</small>
+        </article>
+        <article className="pt-card">
+          <header><h2>شراء دواء</h2><Pill size={18} className="ink-teal" aria-hidden /></header>
+          <p className="pt-card-value"><bdi>{formatNumber(headline.medicine)}</bdi> <span className="ink-teal">{me.currency}</span></p>
+          <small>مشتريات {OWN_FOUNDATION}</small>
+        </article>
+        <article className="pt-card">
+          <header><h2>مبالغ مسلّمة</h2><HandCoins size={18} className="ink-green" aria-hidden /></header>
+          <p className="pt-card-value ink-green"><bdi>{formatNumber(headline.cash)}</bdi> <span>{me.currency}</span></p>
+          <small>نقداً للمرضى</small>
+        </article>
+        <article className="pt-card">
+          <header><h2>كشفيات طبية</h2><Stethoscope size={18} className="ink-amber" aria-hidden /></header>
+          <p className="pt-card-value"><bdi>{formatNumber(headline.exams)}</bdi> <span className="ink-amber">{me.currency}</span></p>
+          <small>أجور أطباء وفحوصات</small>
+        </article>
+      </section>
+
+      <div className="pt-main">
+        <section className="pt-panel pt-register" aria-labelledby="pt-register-title">
+          <header className="pt-panel-head">
+            <div className="tbl-title">
+              <h2 id="pt-register-title">سجل المرضى <span className="tbl-count"><bdi>{rows.length}</bdi></span></h2>
+              <small>مرتب حسب {LIST_LABELS[sort.key]}</small>
+            </div>
+            <div className="pt-quick-pills" role="group" aria-label="فرز سريع">
+              {([['date', 'الأحدث'], ['cash', 'الأعلى مساعدة'], ['name', 'الاسم']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={sort.key === key ? 'is-on' : undefined}
+                  onClick={() => sortBy(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <label className="pt-search">
+              <Search size={16} aria-hidden />
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث بالاسم أو الهاتف" aria-label="بحث عن مريض" />
+            </label>
+          </header>
+
+          <div className="pt-table-wrap">
+            <table className="pt-table">
+              <thead>
+                <tr>
+                  <th scope="col" className="pt-idx">#</th>
+                  <SortTh id="name" label={LIST_LABELS.name} sort={sort} onSort={sortBy} />
+                  <SortTh id="date" label={LIST_LABELS.date} sort={sort} onSort={sortBy} className="mid" />
+                  <SortTh id="cash" label={LIST_LABELS.cash} sort={sort} onSort={sortBy} className="num" />
+                  <SortTh id="medicine" label={LIST_LABELS.medicine} sort={sort} onSort={sortBy} className="num" />
+                  <SortTh id="exams" label={LIST_LABELS.exams} sort={sort} onSort={sortBy} className="num" />
+                  <SortTh id="doctor" label={LIST_LABELS.doctor} sort={sort} onSort={sortBy} />
+                  <th scope="col" className="act mid">الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ patient, cash, medicine, exams, last }, index) => (
+                  <tr
+                    key={patient.id}
+                    className={patient.id === selected.id ? 'on' : undefined}
+                    onClick={() => setSelectedId(patient.id)}
+                    aria-selected={patient.id === selected.id}
+                  >
+                    <td className="pt-idx">{index + 1}</td>
+                    <td>
+                      <div className="pt-who">
+                        <span className={`pt-avatar tone-${patient.tone}`} aria-hidden>{initials(patient.name)}</span>
+                        <b>{patient.name}</b>
+                      </div>
+                    </td>
+                    <td className="pt-date mid"><span><CalendarDays size={14} aria-hidden /><DateText iso={last.date} /></span></td>
+                    <td className="num pt-cash">{money(cash)}</td>
+                    <td className="num">{money(medicine)}</td>
+                    <td className="num">{money(exams)}</td>
+                    <td className="pt-doctor"><span><UserRound size={14} aria-hidden />{last.doctor}</span></td>
+                    <td className="act mid">
+                      <button
+                        type="button"
+                        className="pt-print"
+                        onClick={(event) => { event.stopPropagation(); setPrinting(patient); }}
+                        aria-label={`طباعة سجل ${patient.name}`}
+                      >
+                        <Printer size={15} aria-hidden /> طباعة
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {rows.length === 0 && <p className="pt-empty">لا يوجد مريض يطابق البحث.</p>}
+          </div>
+        </section>
+
+        <aside className="pt-profile" aria-label={`ملف ${selected.name}`}>
+          <div className="pt-band">
+            <label className={`pt-photo pt-photo-pick tone-${selected.tone}`} title="اضغط لإضافة أو تغيير الصورة">
+              {photos[selected.id]
+                ? <img src={photos[selected.id]} alt={selected.name} />
+                : <AvatarSilhouette female={isFemale(selected)} />}
+              <span className="pt-photo-cam" aria-hidden><Camera size={15} /></span>
+              <input
+                type="file"
+                accept="image/*"
+                aria-label={`صورة ${selected.name}`}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  void pickPhoto(selected.id, file);
+                }}
+                hidden
+              />
+            </label>
+          </div>
+
+          <a className="pt-name-link" href={`#/patients/${selected.id}`} title="عرض تفاصيل المريض">
+            <h2>{selected.name}</h2>
+            <ArrowLeft size={18} aria-hidden />
+          </a>
+
+          <div className="pt-lower">
+            <div className="pt-facts">
+              <article className="pt-fact">
+                <span className="pt-fact-icon tone-amber"><HandCoins size={17} aria-hidden /></span>
+                <h3>المبلغ المسلّم</h3>
+                <p><bdi>{formatNumber(detail.cash)}</bdi></p>
+              </article>
+              <article className="pt-fact">
+                <span className="pt-fact-icon tone-teal"><Pill size={17} aria-hidden /></span>
+                <h3>شراء دواء</h3>
+                <p><bdi>{formatNumber(detail.medicine)}</bdi></p>
+              </article>
+              <article className="pt-fact">
+                <span className="pt-fact-icon tone-rose"><Stethoscope size={17} aria-hidden /></span>
+                <h3>كشفيات طبية</h3>
+                <p><bdi>{formatNumber(detail.exams)}</bdi></p>
+              </article>
+              <article className="pt-fact">
+                <span className="pt-fact-icon tone-violet"><Building2 size={17} aria-hidden /></span>
+                <h3>المؤسسات</h3>
+                <p><bdi>{formatNumber(detail.foundations.length)}</bdi> <span>من {formatNumber(FOUNDATIONS.length)}</span></p>
+              </article>
+            </div>
+
+            <FoundationChart patient={selected} />
+          </div>
+        </aside>
+      </div>
+
+      {printing && createPortal(
+        printing === 'register'
+          ? <PatientsReportSheet rows={rows} currency={me.currency} query={query.trim()} sortLabel={LIST_LABELS[sort.key]} />
+          : <PatientRecordSheet patient={printing} currency={me.currency} />,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+// «المؤسسة» and «جمعية» add nothing on a short axis label.
+const shortName = (name: string) => name.replace(/^(مؤسسة|جمعية)\s+/, '').replace(/\s+(للرعاية|الخيرية)$/, '');
+
+// What each foundation gave this patient, as paired columns: cash, and medicine with exams.
+// The foundation that gave the most is marked with a dot on top of its column.
+function FoundationChart({ patient }: { patient: Patient }) {
+  const groups = FOUNDATIONS.map((foundation) => {
+    const records = patient.records.filter((record) => record.foundation === foundation);
+    return {
+      foundation,
+      cash: records.reduce((sum, record) => sum + record.cash, 0),
+      care: records.reduce((sum, record) => sum + record.medicine + record.exams, 0),
+    };
+  });
+  const max = Math.max(1, ...groups.flatMap((group) => [group.cash, group.care]));
+  const top = groups.reduce((best, group) => (group.cash + group.care > best.cash + best.care ? group : best), groups[0]);
+  const height = (value: number) => (value > 0 ? `${Math.max(6, (value / max) * 100)}%` : '4px');
+  return (
+    <div className="pt-chart">
+      <header>
+        <h3>المساعدات حسب المؤسسة</h3>
+        <ul className="pt-legend">
+          <li><i className="cash" />مبالغ</li>
+          <li><i className="care" />دواء وكشفيات</li>
+        </ul>
+      </header>
+      <div className="pt-bars" role="img" aria-label={groups.map((g) => `${g.foundation}: مبالغ ${formatNumber(g.cash)}، دواء وكشفيات ${formatNumber(g.care)}`).join('؛ ')}>
+        {groups.map((group) => (
+          <div key={group.foundation} className={`pt-group${group === top && group.cash + group.care > 0 ? ' top' : ''}`} title={group.foundation}>
+            <div className="pt-pair">
+              <span className="pt-bar cash" style={{ height: height(group.cash) }} />
+              <span className="pt-bar care" style={{ height: height(group.care) }} />
+            </div>
+            <small>{shortName(group.foundation)}</small>
+          </div>
+        ))}
+      </div>
+      <ul className="pt-found-list" aria-label="إجمالي كل مؤسسة">
+        {groups.map((group) => {
+          const total = group.cash + group.care;
+          return (
+            <li key={group.foundation} className={total === 0 ? 'is-zero' : undefined}>
+              <span>{shortName(group.foundation)}</span>
+              <b><bdi>{formatNumber(total)}</bdi></b>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}

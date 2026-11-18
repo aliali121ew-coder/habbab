@@ -11,16 +11,19 @@ src/
   lib/   auth  cache  crypto  db  http  text
   routes/ auth  subscribers  programs  transactions  prescriptions  closings
           admin (dashboard, meta, delegates, users, audit)
-public/
-  index.html  app.css  _headers
-  js/ main.js (الموجّه والقائمة)  ui.js (المكوّنات)  api.js  image.js (ضغط الصور)
-  js/pages/ dashboard  subscribers  programs  transactions  prescriptions
-            closings  delegates  admin
+web/
+  index.html  vite.config.ts  public/_headers
+  src/ App  api  format  image  theme  styles.css
+  src/components/ Shell  Modal  StateMessage
+  src/pages/ Login
+  src/pages/subscribers/ SubscribersPage  StatCards  DelegatePanel  MonthlyChart
+                         Register  PaymentDialog  AddSubscriberDialog
+  public/legacy/  الواجهة السابقة، تعمل مؤقتاً حتى إعادة بناء بقية الصفحات
 scripts/  create-admin  seed-dev  decrypt-backup
 tests/    api.test.mjs  mobile.mjs
 ```
 
-كل الصفحات مكتوبة بملفات ES modules تُقدَّم كما هي، بلا خطوة بناء.
+الواجهة الجديدة مبنية بـ React وVite وتُخرج إلى `dist/`. أما `web/public/legacy/` فملفات تُقدَّم كما هي.
 
 ## الأدوار
 
@@ -59,6 +62,12 @@ tests/    api.test.mjs  mobile.mjs
 | `GET /api/closings/preview?month=` | A F | معاينة قبل الإقفال |
 | `POST /api/closings` | A F | إقفال شهر منتهٍ |
 | `POST /api/closings/:month/reopen` | A | إعادة الفتح |
+| `GET /api/collections/overview?year=&delegate=` | A D | بطاقات الصفحة ولوحة المندوب والرسم البياني |
+| `GET /api/collections/grid?year=&status=&delegate=&cursor=` | A D | سجل التسديد |
+| `POST /api/collections/search` | A D | بحث في سجل التسديد |
+| `POST /api/collections/pay` | A D | تسجيل تسديد شهر |
+| `POST /api/collections/undo` | A | إلغاء تسديد |
+| `POST /api/collections/delegates/:id/photo` | A D | صورة المندوب |
 | `GET /api/delegates` | A F | المندوبون وإحصائياتهم |
 | `GET /api/delegates/:id` | A F D | صفحة مندوب، والمندوب لصفحته فقط |
 | `GET /api/users?cursor=` | A | المستخدمون |

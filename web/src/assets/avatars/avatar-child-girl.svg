@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none">
+  <defs>
+    <linearGradient id="bgC2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FCE7F3" />
+      <stop offset="100%" stop-color="#FBCFE8" />
+    </linearGradient>
+    <linearGradient id="shirtC2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EC4899" />
+      <stop offset="100%" stop-color="#DB2777" />
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="28" fill="url(#bgC2)" />
+  <circle cx="26" cy="24" r="15" fill="#FFFFFF" opacity="0.45" />
+  <!-- Hair Back -->
+  <circle cx="34" cy="56" r="11" fill="#3F2E26" />
+  <circle cx="86" cy="56" r="11" fill="#3F2E26" />
+  <!-- Child Shoulders -->
+  <path d="M24 120C24 98 40 86 60 86C80 86 96 98 96 120H24Z" fill="url(#shirtC2)" />
+  <path d="M49 86C53 92 67 92 71 86" stroke="#FDF2F8" stroke-width="3" stroke-linecap="round" />
+  <!-- Neck -->
+  <rect x="53" y="74" width="14" height="14" rx="7" fill="#E8B89A" />
+  <!-- Round Child Head -->
+  <rect x="37" y="30" width="46" height="47" rx="23" fill="#F5CBB0" />
+  <!-- Hair Top & Bow -->
+  <path d="M37 49C37 32 47 24 60 24C73 24 83 32 83 49C78 39 69 36 60 36C51 36 42 39 37 49Z" fill="#3F2E26" />
+  <circle cx="79" cy="34" r="5" fill="#F43F5E" />
+  <!-- Rosy Cheeks -->
+  <circle cx="44" cy="61" r="4" fill="#FB7185" opacity="0.32" />
+  <circle cx="76" cy="61" r="4" fill="#FB7185" opacity="0.32" />
+  <!-- Eyes -->
+  <circle cx="49" cy="54" r="2.8" fill="#0F172A" />
+  <circle cx="71" cy="54" r="2.8" fill="#0F172A" />
+  <circle cx="48" cy="53" r="0.9" fill="#FFFFFF" />
+  <circle cx="70" cy="53" r="0.9" fill="#FFFFFF" />
+  <!-- Happy Smile -->
+  <path d="M52 64C55 68 65 68 68 64" stroke="#9D174D" stroke-width="2.4" stroke-linecap="round" />
+</svg>

@@ -1,0 +1,251 @@
+/* The delegates page summary as one joined strip (like the patient page cards): the month's
+   collection ring and the four figures sit in a single panel, split by thin dividers, with one
+   neutral icon style and the same type scale. Loaded last so it settles the older per-palette and
+   dark-mode tile rules. */
+:root .people-side {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+:root .people-side .people-hero {
+  gap: 14px;
+  padding: 16px 20px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+:root .people-side .donut { width: 64px; height: 64px; }
+:root .people-side .people-hero-tag { color: var(--ink-3); font-size: .8rem; font-weight: 600; }
+:root .people-side .people-hero-meta h2 { font-size: .84rem; font-weight: 600; color: var(--ink-2); }
+:root .people-side .people-total { font-size: 1.55rem; font-weight: 700; }
+:root .people-side .people-total small { font-size: .8rem; color: var(--ink-3); }
+:root .people-side .people-hero-sub { font-size: .78rem; color: var(--ink-3); }
+
+:root .people-side .people-tiles { gap: 0; }
+:root .people-side .people-tiles .people-tile {
+  gap: 10px;
+  padding: 18px 20px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+:root .people-side .people-tiles .people-tile:hover { background: color-mix(in srgb, var(--brand) 4%, transparent); box-shadow: none; }
+:root .people-side .people-tile dt { font-size: .84rem; font-weight: 600; color: var(--ink-2); }
+:root .people-side .tile-icon,
+:root .people-side .tile-icon:is(.brand, .paid, .muted, .gold) {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+}
+:root .people-side .tile-value { font-size: 1.55rem; font-weight: 700; }
+:root .people-side .tile-foot {
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  font-size: .76rem;
+  color: var(--ink-3);
+}
+
+/* Dividers: wide screens put the ring beside one row of four; narrower screens stack. */
+:root .people-side .people-hero { border-bottom: 1px solid var(--line); }
+:root .people-side .people-tiles .people-tile:nth-child(even) { border-inline-start: 1px solid var(--line); }
+:root .people-side .people-tiles .people-tile:nth-child(n+3) { border-top: 1px solid var(--line); }
+@media (min-width: 900px) {
+  :root .people-side .people-tiles .people-tile + .people-tile { border-inline-start: 1px solid var(--line); }
+  :root .people-side .people-tiles .people-tile:nth-child(n+3) { border-top: 0; }
+}
+@media (min-width: 1024px) {
+  :root .people-side { gap: 0; }
+  :root .people-side .people-hero { border-bottom: 0; border-inline-end: 1px solid var(--line); }
+}
+
+/* Zebra striping + row hover across all themes */
+:root :is(.exp-flat, .lg-table, .reg-table, .pt-table, .ptd-table) tbody tr {
+  transition: background-color .14s ease;
+}
+:root :is(.exp-flat, .lg-table, .reg-table, .pt-table, .ptd-table) tbody tr:nth-child(even) > td {
+  background: var(--surface-2);
+}
+:root :is(.exp-flat, .lg-table, .reg-table, .pt-table, .ptd-table) tbody tr:hover > td {
+  background: var(--gold-soft);
+}
+
+/* Mobile-only frosted glassmorphic summary card (.people-side) adapting to active theme & palette */
+@media (max-width: 768px) {
+  :root .people-side {
+    padding: 14px;
+    gap: 12px;
+    border-radius: 24px;
+    border: 1px solid color-mix(in srgb, var(--brand) 36%, var(--line));
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--brand) 16%, #eff6ff) 0%,
+      color-mix(in srgb, var(--brand) 26%, #dbeafe) 55%,
+      color-mix(in srgb, var(--brand-2) 22%, #e0e7ff) 100%
+    );
+    box-shadow: 0 12px 30px -12px color-mix(in srgb, var(--brand) 28%, transparent);
+  }
+  :root .people-side .people-hero {
+    border: 1px solid rgba(255, 255, 255, 0.88);
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: color-mix(in srgb, #ffffff 76%, var(--brand) 6%);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 4px 16px -6px color-mix(in srgb, var(--brand) 16%, transparent);
+  }
+  :root .people-side .people-tiles {
+    gap: 10px;
+  }
+  :root .people-side .people-tiles .people-tile,
+  :root .people-side .people-tiles .people-tile:nth-child(even),
+  :root .people-side .people-tiles .people-tile:nth-child(n+3) {
+    border: 1px solid rgba(255, 255, 255, 0.88);
+    border-radius: 16px;
+    padding: 14px;
+    background: color-mix(in srgb, #ffffff 72%, var(--brand) 8%);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--brand) 18%, transparent);
+  }
+  :root .people-side .tile-icon,
+  :root .people-side .tile-icon:is(.brand, .paid, .muted, .gold) {
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand) 22%, transparent);
+    color: var(--brand);
+  }
+  :root .people-side .tile-foot {
+    border-top-color: color-mix(in srgb, var(--line) 75%, transparent);
+  }
+  :root .people-side .people-tile dt {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.3;
+  }
+
+  /* Full-page frosted glass styling for Delegates list & toolbar on mobile */
+  :root .people-main .search,
+  :root .people-main .people-sort {
+    border-color: color-mix(in srgb, var(--brand) 22%, var(--line));
+    background: color-mix(in srgb, var(--surface) 78%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--brand) 12%, transparent);
+  }
+  :root .people-main .dcard {
+    border-color: color-mix(in srgb, var(--brand) 24%, var(--line));
+    border-radius: 18px;
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--surface) 88%, var(--brand) 6%) 0%,
+      color-mix(in srgb, var(--surface) 74%, var(--paper)) 100%
+    );
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--brand) 16%, transparent);
+  }
+  :root .people-main .dcard-initial {
+    background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  }
+
+  :root[data-theme="dark"] .people-side {
+    border-color: color-mix(in srgb, var(--brand-2) 32%, var(--line));
+    background: linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--brand) 28%, var(--paper)) 0%,
+      color-mix(in srgb, var(--brand-2) 22%, var(--surface)) 55%,
+      var(--paper) 100%
+    );
+    box-shadow: 0 16px 36px -12px rgb(0 0 0 / 55%);
+  }
+  :root[data-theme="dark"] .people-side .people-hero,
+  :root[data-theme="dark"] .people-side .people-tiles .people-tile,
+  :root[data-theme="dark"] .people-side .people-tiles .people-tile:nth-child(even),
+  :root[data-theme="dark"] .people-side .people-tiles .people-tile:nth-child(n+3) {
+    border-color: color-mix(in srgb, var(--brand-2) 22%, var(--line));
+    background: color-mix(in srgb, var(--paper) 58%, transparent);
+    box-shadow: 0 4px 14px -6px rgb(0 0 0 / 35%);
+  }
+  :root[data-theme="dark"] .people-side .tile-icon,
+  :root[data-theme="dark"] .people-side .tile-icon:is(.brand, .paid, .muted, .gold) {
+    background: color-mix(in srgb, var(--brand) 20%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-2) 28%, transparent);
+    color: var(--bar-active);
+  }
+  :root[data-theme="dark"] .people-side .tile-foot {
+    border-top-color: color-mix(in srgb, var(--line) 80%, transparent);
+  }
+  :root[data-theme="dark"] .people-main .search,
+  :root[data-theme="dark"] .people-main .people-sort {
+    border-color: color-mix(in srgb, var(--brand-2) 24%, var(--line));
+    background: color-mix(in srgb, var(--paper) 64%, transparent);
+    box-shadow: 0 4px 14px -6px rgb(0 0 0 / 35%);
+  }
+  :root[data-theme="dark"] .people-main .dcard {
+    border-color: color-mix(in srgb, var(--brand-2) 26%, var(--line));
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--brand) 16%, var(--surface)) 0%,
+      color-mix(in srgb, var(--paper) 82%, transparent) 100%
+    );
+    box-shadow: 0 8px 22px -10px rgb(0 0 0 / 48%);
+  }
+  :root[data-theme="dark"] .people-main .dcard-initial {
+    background: color-mix(in srgb, var(--brand) 20%, var(--paper));
+    border-color: color-mix(in srgb, var(--brand-2) 28%, transparent);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .people-side {
+      border-color: color-mix(in srgb, var(--brand-2) 32%, var(--line));
+      background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--brand) 28%, var(--paper)) 0%,
+        color-mix(in srgb, var(--brand-2) 22%, var(--surface)) 55%,
+        var(--paper) 100%
+      );
+      box-shadow: 0 16px 36px -12px rgb(0 0 0 / 55%);
+    }
+    :root:not([data-theme="light"]) .people-side .people-hero,
+    :root:not([data-theme="light"]) .people-side .people-tiles .people-tile,
+    :root:not([data-theme="light"]) .people-side .people-tiles .people-tile:nth-child(even),
+    :root:not([data-theme="light"]) .people-side .people-tiles .people-tile:nth-child(n+3) {
+      border-color: color-mix(in srgb, var(--brand-2) 22%, var(--line));
+      background: color-mix(in srgb, var(--paper) 58%, transparent);
+      box-shadow: 0 4px 14px -6px rgb(0 0 0 / 35%);
+    }
+    :root:not([data-theme="light"]) .people-side .tile-icon,
+    :root:not([data-theme="light"]) .people-side .tile-icon:is(.brand, .paid, .muted, .gold) {
+      background: color-mix(in srgb, var(--brand) 20%, transparent);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brand-2) 28%, transparent);
+      color: var(--bar-active);
+    }
+    :root:not([data-theme="light"]) .people-side .tile-foot {
+      border-top-color: color-mix(in srgb, var(--line) 80%, transparent);
+    }
+    :root:not([data-theme="light"]) .people-main .search,
+    :root:not([data-theme="light"]) .people-main .people-sort {
+      border-color: color-mix(in srgb, var(--brand-2) 24%, var(--line));
+      background: color-mix(in srgb, var(--paper) 64%, transparent);
+      box-shadow: 0 4px 14px -6px rgb(0 0 0 / 35%);
+    }
+    :root:not([data-theme="light"]) .people-main .dcard {
+      border-color: color-mix(in srgb, var(--brand-2) 26%, var(--line));
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--brand) 16%, var(--surface)) 0%,
+        color-mix(in srgb, var(--paper) 82%, transparent) 100%
+      );
+      box-shadow: 0 8px 22px -10px rgb(0 0 0 / 48%);
+    }
+    :root:not([data-theme="light"]) .people-main .dcard-initial {
+      background: color-mix(in srgb, var(--brand) 20%, var(--paper));
+      border-color: color-mix(in srgb, var(--brand-2) 28%, transparent);
+    }
+  }
+}

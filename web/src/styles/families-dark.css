@@ -1,0 +1,218 @@
+/* Dark mode support for the redesigned Needy Families pages (.fam-saas).
+   Follows both explicit [data-theme="dark"] and OS prefers-color-scheme: dark. */
+
+@layer utilities {
+  :root[data-theme="dark"] .fam-saas,
+  :root[data-theme="dark"] .fam-saas dialog {
+    color: var(--ink);
+  }
+
+  :root[data-theme="dark"] .fam-saas.bg-\[\#F5F7FB\] {
+    background-color: var(--paper);
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(.bg-white, dialog.bg-white, table tr.bg-white td) {
+    background-color: var(--surface);
+  }
+
+  :root[data-theme="dark"] .fam-saas .bg-white\/85 {
+    background-color: color-mix(in srgb, var(--surface) 88%, transparent);
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(
+    .bg-slate-50,
+    .bg-slate-50\/70,
+    .bg-slate-50\/60,
+    .bg-slate-50\/50,
+    .bg-slate-50\/95,
+    .bg-slate-100,
+    .bg-slate-100\/80,
+    .bg-slate-100\/70,
+    .bg-slate-200\/80,
+    .bg-slate-200\/70
+  ) {
+    background-color: var(--surface-2);
+  }
+
+  :root[data-theme="dark"] .fam-saas .bg-blue-50\/70 {
+    background-color: color-mix(in srgb, var(--brand) 16%, var(--surface));
+  }
+
+  :root[data-theme="dark"] .fam-saas .from-blue-600\/12 {
+    --tw-gradient-from: color-mix(in srgb, var(--brand) 20%, var(--surface));
+  }
+
+  :root[data-theme="dark"] .fam-saas .via-indigo-50\/70 {
+    --tw-gradient-via: color-mix(in srgb, var(--brand) 10%, var(--surface));
+  }
+
+  :root[data-theme="dark"] .fam-saas .to-white {
+    --tw-gradient-to: var(--surface);
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(
+    .border-slate-100,
+    .border-slate-200,
+    .border-slate-200\/80,
+    .border-slate-200\/70,
+    .border-slate-200\/60,
+    .border-slate-300\/80
+  ) {
+    border-color: var(--line);
+  }
+
+  :root[data-theme="dark"] .fam-saas .border-rose-200\/70 {
+    border-color: rgb(244 63 94 / 32%);
+  }
+
+  :root[data-theme="dark"] .fam-saas .border-blue-200\/80 {
+    border-color: rgb(59 130 246 / 35%);
+  }
+
+  :root[data-theme="dark"] .fam-saas .border-emerald-200 {
+    border-color: rgb(16 185 129 / 35%);
+  }
+
+  :root[data-theme="dark"] .fam-saas .divide-slate-100 > :not(:first-child) {
+    border-color: var(--line);
+  }
+
+  :root[data-theme="dark"] .fam-saas .ring-white {
+    --tw-ring-color: var(--surface);
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(.ring-slate-200, .ring-slate-200\/80) {
+    --tw-ring-color: var(--line);
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(.text-slate-900, .text-slate-800) {
+    color: var(--ink);
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(.text-slate-700, .text-slate-600) {
+    color: var(--ink-2);
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(.text-slate-500, .text-slate-400) {
+    color: var(--ink-3);
+  }
+
+  :root[data-theme="dark"] .fam-saas .text-rose-700 { color: #fda4af; }
+  :root[data-theme="dark"] .fam-saas .text-rose-600 { color: #fb7185; }
+  :root[data-theme="dark"] .fam-saas .text-amber-700 { color: #fcd34d; }
+  :root[data-theme="dark"] .fam-saas .text-emerald-700 { color: #6ee7b7; }
+  :root[data-theme="dark"] .fam-saas .text-emerald-600 { color: #34d399; }
+  :root[data-theme="dark"] .fam-saas :is(.text-blue-700, .text-blue-600) { color: #93c5fd; }
+  :root[data-theme="dark"] .fam-saas .text-indigo-700 { color: #a5b4fc; }
+  :root[data-theme="dark"] .fam-saas .text-white { color: #ffffff; }
+
+  :root[data-theme="dark"] .fam-saas :is(
+    .hover\:bg-slate-50:hover,
+    .hover\:bg-slate-50\/90:hover,
+    .hover\:bg-slate-100:hover,
+    .hover\:bg-white\/70:hover
+  ) {
+    background-color: var(--surface-2);
+  }
+
+  :root[data-theme="dark"] .fam-saas .hover\:bg-blue-50:hover {
+    background-color: color-mix(in srgb, var(--brand) 18%, var(--surface));
+  }
+
+  :root[data-theme="dark"] .fam-saas :is(input:not([type="checkbox"]), select, textarea) {
+    background-color: var(--surface-2);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+
+  :root[data-theme="dark"] .fam-saas svg circle[stroke="#ECFDF5"] {
+    stroke: rgb(16 185 129 / 18%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .fam-saas,
+    :root:not([data-theme="light"]) .fam-saas dialog {
+      color: var(--ink);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas.bg-\[\#F5F7FB\] {
+      background-color: var(--paper);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas :is(.bg-white, dialog.bg-white) {
+      background-color: var(--surface);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas .bg-white\/85 {
+      background-color: color-mix(in srgb, var(--surface) 88%, transparent);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas :is(
+      .bg-slate-50,
+      .bg-slate-50\/70,
+      .bg-slate-50\/60,
+      .bg-slate-50\/50,
+      .bg-slate-50\/95,
+      .bg-slate-100,
+      .bg-slate-100\/80,
+      .bg-slate-100\/70,
+      .bg-slate-200\/80,
+      .bg-slate-200\/70
+    ) {
+      background-color: var(--surface-2);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas .bg-blue-50\/70 {
+      background-color: color-mix(in srgb, var(--brand) 16%, var(--surface));
+    }
+
+    :root:not([data-theme="light"]) .fam-saas :is(
+      .border-slate-100,
+      .border-slate-200,
+      .border-slate-200\/80,
+      .border-slate-200\/70,
+      .border-slate-200\/60,
+      .border-slate-300\/80
+    ) {
+      border-color: var(--line);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas .ring-white {
+      --tw-ring-color: var(--surface);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas :is(.ring-slate-200, .ring-slate-200\/80) {
+      --tw-ring-color: var(--line);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas :is(.text-slate-900, .text-slate-800) {
+      color: var(--ink);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas :is(.text-slate-700, .text-slate-600) {
+      color: var(--ink-2);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas :is(.text-slate-500, .text-slate-400) {
+      color: var(--ink-3);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas .text-rose-700 { color: #fda4af; }
+    :root:not([data-theme="light"]) .fam-saas .text-rose-600 { color: #fb7185; }
+    :root:not([data-theme="light"]) .fam-saas .text-amber-700 { color: #fcd34d; }
+    :root:not([data-theme="light"]) .fam-saas .text-emerald-700 { color: #6ee7b7; }
+    :root:not([data-theme="light"]) .fam-saas .text-emerald-600 { color: #34d399; }
+    :root:not([data-theme="light"]) .fam-saas :is(.text-blue-700, .text-blue-600) { color: #93c5fd; }
+    :root:not([data-theme="light"]) .fam-saas .text-white { color: #ffffff; }
+
+    :root:not([data-theme="light"]) .fam-saas :is(input:not([type="checkbox"]), select, textarea) {
+      background-color: var(--surface-2);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    :root:not([data-theme="light"]) .fam-saas svg circle[stroke="#ECFDF5"] {
+      stroke: rgb(16 185 129 / 18%);
+    }
+  }
+}
