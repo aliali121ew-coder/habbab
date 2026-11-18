@@ -23,5 +23,7 @@ export async function hashPassword(value) {
 
 mkdirSync('scripts/out', { recursive: true });
 writeFileSync('scripts/out/admin.sql',
-  `INSERT INTO users (username, full_name, role, password_hash) VALUES (${quote(username)}, ${quote(fullName)}, 'admin', ${quote(await hashPassword(password))});\n`);
+  `INSERT INTO users (username, full_name, role, password_hash) VALUES (${quote(username)}, ${quote(fullName)}, 'admin', ${quote(await hashPassword(password))})\n` +
+  // Running it again for the same username resets that admin's password and name.
+  `ON CONFLICT(username) DO UPDATE SET full_name = excluded.full_name, role = 'admin', password_hash = excluded.password_hash;\n`);
 console.log('Wrote scripts/out/admin.sql');
