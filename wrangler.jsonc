@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ahbab-registry",
-  "account_id": "24bc39a4dab0b83ae6e3e7020787e96d",
+  "account_id": "b9feb23f6cd181cd9c4b39e6594d92c9",
   "main": "src/index.ts",
   "compatibility_date": "2026-01-01",
   "compatibility_flags": ["nodejs_compat"],
@@ -15,12 +15,12 @@
     {
       "binding": "DB",
       "database_name": "ahbab-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "1d3f35fa-a053-404a-8cfb-a28c2d9799ed",
       "migrations_dir": "migrations"
     }
   ],
   "r2_buckets": [{ "binding": "FILES", "bucket_name": "ahbab-files" }],
-  "kv_namespaces": [{ "binding": "CACHE", "id": "00000000000000000000000000000000" }],
+  "kv_namespaces": [{ "binding": "CACHE", "id": "a11e3f5fb2084e019a55bdb49899dae3" }],
   "ratelimits": [
     { "name": "LOGIN_LIMITER", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
     { "name": "API_LIMITER", "namespace_id": "1002", "simple": { "limit": 300, "period": 60 } }
