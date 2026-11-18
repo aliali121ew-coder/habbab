@@ -16,6 +16,7 @@
       "binding": "DB",
       "database_name": "ahbab-db",
       "database_id": "1d3f35fa-a053-404a-8cfb-a28c2d9799ed",
+      "preview_database_id": "00000000-0000-0000-0000-000000000000",
       "migrations_dir": "migrations"
     }
   ],

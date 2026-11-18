@@ -6,6 +6,7 @@ import { DelegatesPage } from './pages/delegates/DelegatesPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { HomePage } from './pages/home/HomePage';
 import { Login } from './pages/Login';
+import { ChangePassword } from './pages/ChangePassword';
 import { ExpensesPage } from './pages/expenses/ExpensesPage';
 import { ExpensesLedgerPage } from './pages/expenses/ExpensesLedgerPage';
 import { FamiliesPage } from './pages/FamiliesPage';
@@ -45,6 +46,20 @@ export function App() {
   if (status === 'loading') return <div className="boot" aria-busy="true"><span className="boot-star" /></div>;
   if (status === 'error') return <StateMessage kind="error" title="تعذّر تحميل التطبيق" onRetry={load} />;
   if (status === 'login' || !me) return <Login onDone={load} />;
+  if (me.must_change_password) {
+    return (
+      <ChangePassword
+        name={me.full_name}
+        onDone={load}
+        onSignOut={() => {
+          void api('/auth/logout', { method: 'POST' }).catch(() => undefined);
+          clearLocalRecords();
+          setMe(null);
+          setStatus('login');
+        }}
+      />
+    );
+  }
 
   return (
     <Shell me={me} onSignedOut={() => { clearLocalRecords(); setMe(null); setStatus('login'); }}>
