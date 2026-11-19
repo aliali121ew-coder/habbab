@@ -25,6 +25,27 @@ export async function compressAvatar(file: File): Promise<Blob> {
   return blob;
 }
 
+/** A square of the source picture, in its own pixels, as chosen in the photo framer. */
+export interface AvatarCrop { sx: number; sy: number; side: number }
+
+// The framed square, at the same size and quality as compressAvatar's centre crop.
+export async function cropAvatar(file: Blob, crop: AvatarCrop): Promise<Blob> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => {
+    throw new Error('تعذّر قراءة الصورة');
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = AVATAR_SIDE;
+  canvas.height = AVATAR_SIDE;
+  const context = canvas.getContext('2d')!;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(bitmap, crop.sx, crop.sy, crop.side, crop.side, 0, 0, AVATAR_SIDE, AVATAR_SIDE);
+  bitmap.close();
+  const webp = await encode(canvas, 'image/webp', 0.85);
+  const blob = webp?.type === 'image/webp' ? webp : await encode(canvas, 'image/jpeg', 0.85);
+  if (!blob || blob.size > MAX_BYTES) throw new Error('تعذّر ضغط الصورة، جرّب صورة أخرى');
+  return blob;
+}
+
 const RECEIPT_SIDE = 1800;
 const RECEIPT_MAX = 1536 * 1024;
 

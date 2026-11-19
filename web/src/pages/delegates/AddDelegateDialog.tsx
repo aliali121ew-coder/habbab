@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent, type MouseEvent, type ReactNode } from 'react';
-import { AtSign, CalendarDays, Camera, ChevronDown, Eye, EyeOff, HeartHandshake, Lock, MapPin, Phone, Trash2, UserCheck, UserMinus, UserPlus, UserRound, Users, X } from 'lucide-react';
+import { AtSign, CalendarDays, Camera, ChevronDown, Crop, Eye, EyeOff, HeartHandshake, Lock, MapPin, Phone, Trash2, UserCheck, UserMinus, UserPlus, UserRound, Users, X } from 'lucide-react';
 import { api } from '../../api';
 import { formatNumber, initialOf } from '../../format';
-import { compressAvatar } from '../../image';
+import { PhotoFramer } from '../../components/PhotoFramer';
 
 interface Props {
   onClose: () => void;
@@ -26,7 +26,10 @@ export function AddDelegateDialog({ onClose, onCreated }: Props) {
   const [age, setAge] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  // The framed square (already sized for upload) and the original, kept to frame it again.
+  const [photoFile, setPhotoFile] = useState<Blob | null>(null);
+  const [photoOriginal, setPhotoOriginal] = useState<Blob | null>(null);
+  const [framing, setFraming] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
 
   const [hasAlive, setHasAlive] = useState(true);
@@ -51,18 +54,26 @@ export function AddDelegateDialog({ onClose, onCreated }: Props) {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
   }, [previewUrl]);
 
+  // A chosen photo goes to the framer first; the preview shows what will be saved.
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPhotoFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
     event.target.value = '';
+    if (!file) return;
+    setPhotoOriginal(file);
+    setFraming(file);
+  };
+
+  const acceptFramed = (framed: Blob) => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPhotoFile(framed);
+    setPreviewUrl(URL.createObjectURL(framed));
+    setFraming(null);
   };
 
   const clearPhoto = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPhotoFile(null);
+    setPhotoOriginal(null);
     setPreviewUrl('');
   };
 
@@ -83,7 +94,7 @@ export function AddDelegateDialog({ onClose, onCreated }: Props) {
     setBusy(true);
     setError('');
     try {
-      const compressedPhoto = photoFile ? await compressAvatar(photoFile) : null;
+      const compressedPhoto = photoFile;
       const created = await api<{ id: number }>('/collections/delegates', {
         method: 'POST',
         body: {
@@ -116,6 +127,8 @@ export function AddDelegateDialog({ onClose, onCreated }: Props) {
       aria-labelledby="add-delegate-title"
       onClick={handleBackdropClick}
       onClose={onClose}
+      // Escape while framing closes only the framer.
+      onCancel={(event) => { if (framing) event.preventDefault(); }}
     >
       <form onSubmit={submit}>
         <header className="add-head">
@@ -138,12 +151,18 @@ export function AddDelegateDialog({ onClose, onCreated }: Props) {
             </div>
             <div className="delegate-photo-meta">
               <strong>صورة المندوب</strong>
-              <small>اختيارية — تُضغط تلقائياً قبل الحفظ</small>
+              <small>اختيارية — تضبط إطارها قبل الحفظ</small>
               <div className="delegate-photo-actions">
                 <button type="button" className="btn" onClick={() => fileRef.current?.click()}>
                   <Camera size={15} aria-hidden />
                   <span>{previewUrl ? 'تغيير الصورة' : 'اختيار صورة'}</span>
                 </button>
+                {previewUrl && photoOriginal && (
+                  <button type="button" className="btn" onClick={() => setFraming(photoOriginal)}>
+                    <Crop size={15} aria-hidden />
+                    <span>ضبط الصورة</span>
+                  </button>
+                )}
                 {previewUrl && (
                   <button type="button" className="btn danger" aria-label="إزالة الصورة" onClick={clearPhoto}>
                     <Trash2 size={15} aria-hidden />
@@ -152,6 +171,9 @@ export function AddDelegateDialog({ onClose, onCreated }: Props) {
                 )}
               </div>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={handlePhotoChange} />
+              {framing && (
+                <PhotoFramer source={framing} container={ref.current} onCancel={() => setFraming(null)} onDone={acceptFramed} />
+              )}
             </div>
           </div>
 

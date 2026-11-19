@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { CalendarDays, Camera, IdCard, MapPin, Phone, Save, UserRound, UsersRound, X } from 'lucide-react';
+import { CalendarDays, Camera, Crop, IdCard, MapPin, Phone, Save, UserRound, UsersRound, X } from 'lucide-react';
 import { api, type DelegateProfile } from '../../api';
 import { formatNumber, initialOf } from '../../format';
 import { useDelegatePhoto } from '../subscribers/useDelegatePhoto';
+import { PhotoFramer } from '../../components/PhotoFramer';
 
 interface Props {
   delegateId: number;
@@ -51,14 +52,16 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
     .catch((failure) => setError((failure as Error).message));
 
   useEffect(() => { void load(); }, [delegateId]);
-  const { uploading, uploadError, changePhoto } = useDelegatePhoto(() => { void load(); onChanged(); });
+  const { uploading, uploadError, framing, pickPhoto, reframe, uploadFramed, cancelFraming } =
+    useDelegatePhoto(() => { void load(); onChanged(); });
 
   useEffect(() => {
     closeRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
+    // While the photo framer is open, Escape is the framer's (it closes itself, not the profile).
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape' && !framing) onClose(); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, framing]);
 
   const dirty = !!(profile && draft && JSON.stringify(toDraft(profile)) !== JSON.stringify(draft));
   const set = (key: keyof Draft) => (event: { target: { value: string } }) => setDraft((current) => current && { ...current, [key]: event.target.value });
@@ -83,6 +86,7 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
   };
 
   return createPortal(
+    <>
     <div className="profile-overlay" onClick={onClose}>
       <aside className="profile-drawer" role="dialog" aria-modal="true" aria-label="الملف الشخصي للمندوب" onClick={(event) => event.stopPropagation()}>
         <header className={profile?.avatar_url ? 'profile-hero has-photo' : 'profile-hero'}>
@@ -101,10 +105,17 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
 
           <div className="profile-photo">
             {!profile?.avatar_url && <span aria-hidden>{profile ? initialOf(profile.full_name) : ''}</span>}
-            <button type="button" className="profile-photo-btn" disabled={uploading || !profile} onClick={() => fileRef.current?.click()}>
-              <Camera size={14} aria-hidden /> {uploading ? 'جارٍ الرفع…' : 'صورة المندوب'}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => changePhoto(delegateId, event)} />
+            <div className="profile-photo-actions">
+              <button type="button" className="profile-photo-btn" disabled={uploading || !profile} onClick={() => fileRef.current?.click()}>
+                <Camera size={14} aria-hidden /> {uploading ? 'جارٍ الرفع…' : 'صورة المندوب'}
+              </button>
+              {profile?.avatar_url && (
+                <button type="button" className="profile-photo-btn" disabled={uploading} onClick={() => reframe(profile.avatar_url!)}>
+                  <Crop size={14} aria-hidden /> ضبط الصورة
+                </button>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPhoto} />
           </div>
 
         </header>
@@ -148,7 +159,12 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
           </footer>
         </form>
       </aside>
-    </div>,
+    </div>
+    {/* Outside the overlay, so a click in the framer never reaches the overlay's close. */}
+    {framing && (
+      <PhotoFramer source={framing} onCancel={cancelFraming} onDone={(framed) => uploadFramed(delegateId, framed)} />
+    )}
+    </>,
     document.body,
   );
 }

@@ -1179,3 +1179,8 @@
   .pd-trio dt { font-size: clamp(9px, 2.7vw, 10.5px); overflow: hidden; text-overflow: ellipsis; }
   .pd-trio dd { font-size: clamp(15px, 4.6vw, 18px); }
 }
+
+/* Profile photo: "change photo" and "adjust photo" side by side under the picture. */
+.profile-photo-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.profile-hero.has-photo .profile-photo-actions { margin-bottom: 8px; }
+.profile-hero.has-photo .profile-photo-actions .profile-photo-btn { margin-bottom: 0; }

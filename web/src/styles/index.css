@@ -6,6 +6,7 @@
 @import './login.css' layer(base);
 @import './shell.css' layer(base);
 @import './datepicker.css' layer(base);
+@import './framer.css' layer(base);
 @import './subscribers.css' layer(base);
 @import './delegates.css' layer(base);
 @import './home.css' layer(base);
