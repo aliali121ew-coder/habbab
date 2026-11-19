@@ -105,7 +105,8 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
       {error && !overview
         ? <StateMessage kind="error" title="تعذّر تحميل الإحصائيات" hint={error} onRetry={loadOverview} />
         : fullList && delegateId !== null
-          ? (
+          // Phone: the delegate's page already shows these cards, so the list starts straight away.
+          ? !isPhone && (
             <ListCards
               overview={overview}
               delegateId={delegateId}
