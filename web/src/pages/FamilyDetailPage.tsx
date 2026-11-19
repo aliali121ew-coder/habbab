@@ -19,7 +19,8 @@ import type { AidSource, CaseOfficer, FamilyDetail, FamilyMember } from '../type
 export function FamilyDetailPage() {
   const familyId = familyIdFromHash();
   const [family, setFamily] = useState<FamilyDetail | null>(() => getFamilyDetailById(familyId));
-  const [loading, setLoading] = useState(true);
+  // Read from this device at once: no waiting screen (it used to hold one for 500 ms each visit).
+  const loading = false;
   const [foundationOpen, setFoundationOpen] = useState(false);
   const [selectedSource, setSelectedSource] = useState<AidSource | null>(null);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
@@ -37,10 +38,7 @@ export function FamilyDetailPage() {
   const [memStatus, setMemStatus] = useState('طالب ابتدائي');
 
   useEffect(() => {
-    setLoading(true);
     setFamily(getFamilyDetailById(familyId));
-    const timer = window.setTimeout(() => setLoading(false), 500);
-    return () => window.clearTimeout(timer);
   }, [familyId]);
 
   useEffect(() => {

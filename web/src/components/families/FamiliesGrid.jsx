@@ -39,7 +39,7 @@ export function FamiliesGrid({
     <motion.div
       variants={{
         hidden: {},
-        show: { transition: { staggerChildren: 0.04 } },
+        show: { transition: { staggerChildren: 0 } }, // all cards fade in together, no queue
       }}
       initial="hidden"
       animate="show"

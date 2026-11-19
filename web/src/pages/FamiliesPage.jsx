@@ -37,18 +37,14 @@ export function FamiliesPage() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [viewMode, setViewMode] = useState('table');
   const [selectedId, setSelectedId] = useState(() => loadFamiliesStore()[0]?.id ?? null);
-  const [loading, setLoading] = useState(true);
+  // The families are read from this device synchronously, so there is nothing to wait for:
+  // the page shows them at once (it used to hold empty boxes for 600 ms on every visit).
+  const loading = false;
 
   const [addOpen, setAddOpen] = useState(false);
   const [payingFamily, setPayingFamily] = useState(null);
   const [visitingFamily, setVisitingFamily] = useState(null);
   const [printingList, setPrintingList] = useState(null);
-
-  // Subtle 600ms skeleton transition on mount for refined perceived polish
-  useEffect(() => {
-    const timer = window.setTimeout(() => setLoading(false), 600);
-    return () => window.clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (!printingList) return undefined;
