@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Calendar, Check, ClipboardCheck, HandCoins, HeartHandshake,
-  Pill, Stethoscope, User, Wallet, X,
+  Banknote, Calendar, Check, ClipboardCheck, HandCoins, HeartHandshake,
+  Pill, ShoppingBasket, Stethoscope, User, Wallet, X,
 } from 'lucide-react';
 import { DELEGATES } from '../../data/families';
 import { CATEGORY_CONFIG, formatIQD, totalEntitlement } from '../../utils/format';
 
+// The six kinds of aid (the same as the cards at the top of the families page). The ids are what
+// the records store, so the older ones keep their wording; the labels are what people read.
 const PAYMENT_TYPES = [
-  { id: 'راتب شهري', label: 'راتب شهري', icon: Wallet, tone: 'text-blue-600 bg-blue-600/10' },
-  { id: 'مساعدات', label: 'مساعدات', icon: HandCoins, tone: 'text-emerald-600 bg-emerald-600/10' },
-  { id: 'أدوية', label: 'أدوية مرضى', icon: Pill, tone: 'text-amber-600 bg-amber-500/10' },
-  { id: 'كشفية', label: 'كشفية طبية', icon: Stethoscope, tone: 'text-rose-600 bg-rose-500/10' },
+  { id: 'سلة غذائية', label: 'سلة غذائية', icon: ShoppingBasket, tone: 'text-orange-600 bg-orange-500/10' },
+  { id: 'مبالغ مالية', label: 'مبالغ مالية', icon: Banknote, tone: 'text-emerald-600 bg-emerald-600/10' },
+  { id: 'أدوية', label: 'شراء دواء', icon: Pill, tone: 'text-pink-600 bg-pink-500/10' },
+  { id: 'راتب شهري', label: 'صرف رواتب', icon: Wallet, tone: 'text-sky-600 bg-sky-500/10' },
+  { id: 'مساعدات', label: 'مساعدات إنسانية', icon: HandCoins, tone: 'text-violet-600 bg-violet-500/10' },
+  { id: 'كشفية', label: 'كشفيات طبية', icon: Stethoscope, tone: 'text-rose-600 bg-rose-500/10' },
 ];
 
 export function AddFamilyModal({ open, onClose, onCreate }) {

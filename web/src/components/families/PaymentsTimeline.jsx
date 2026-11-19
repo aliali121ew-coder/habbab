@@ -1,4 +1,4 @@
-import { CheckCircle2, HandCoins, Pill, Stethoscope, Wallet } from 'lucide-react';
+import { Banknote, CheckCircle2, HandCoins, Pill, ShoppingBasket, Stethoscope, Wallet } from 'lucide-react';
 import { formatIQD } from '../../utils/format';
 
 const TYPE_META = {
@@ -6,6 +6,8 @@ const TYPE_META = {
   'مساعدات': { icon: HandCoins, tint: 'bg-emerald-600/10 text-emerald-700' },
   'أدوية': { icon: Pill, tint: 'bg-amber-600/10 text-amber-700' },
   'كشفية': { icon: Stethoscope, tint: 'bg-rose-600/10 text-rose-700' },
+  'سلة غذائية': { icon: ShoppingBasket, tint: 'bg-orange-500/10 text-orange-700' },
+  'مبالغ مالية': { icon: Banknote, tint: 'bg-emerald-600/10 text-emerald-700' },
 };
 
 export function PaymentsTimeline({ payments = [] }) {

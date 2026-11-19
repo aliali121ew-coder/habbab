@@ -735,3 +735,14 @@ div.list-card { cursor: default; }
   .list-card-label { font-size: clamp(.76rem, 3.7vw, .86rem); }
   .list-card-value { text-align: start; font-size: clamp(1.75rem, 8vw, 2.1rem); line-height: 1.05; font-weight: 800; letter-spacing: -.01em; }
 }
+
+/* Families page: the six kinds of aid, in the coloured card style. */
+.list-card.food { --tone: #f97316; }
+.list-card.cash { --tone: #10b981; }
+.list-card.medicine { --tone: #ec4899; }
+.list-card.salary { --tone: #0ea5e9; }
+.list-card.aid { --tone: #8b5cf6; }
+.list-card.exam { --tone: #ef4444; }
+.list-cards.fam-aid-cards { margin-bottom: 0; }
+@media (min-width: 768px) { .list-cards.fam-aid-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .list-cards.fam-aid-cards { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
