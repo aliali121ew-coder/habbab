@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   CalendarCheck,
   Check,
@@ -129,7 +130,9 @@ export function SubscriberModal({
 
   const stateLabel = (state: string) => MONTH_STATE_LABELS[state as keyof typeof MONTH_STATE_LABELS];
 
-  return (
+  // Rendered on the page body: inside the glass register card (backdrop-filter) a fixed overlay
+  // is placed against the card instead of the screen, so on a phone the sheet landed off-screen.
+  return createPortal(
     <div className="sub-overlay" role="dialog" aria-modal="true" aria-label={`تفاصيل المشترك ${row.full_name}`} onClick={onClose}>
       <div className="sub-card" onClick={(event) => event.stopPropagation()}>
         <header className="sub-hero">
@@ -254,7 +257,8 @@ export function SubscriberModal({
           onClose={() => setShowPrint(false)}
         />
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
