@@ -1,0 +1,50 @@
+# Every push to main checks, builds and deploys the app to Cloudflare.
+# Order matters: database changes are applied before the new code goes live, so the code never
+# reads a column that does not exist yet. Migrations here only ever add (never drop), so the
+# old code keeps working during the minute the deploy takes.
+# Needs one repository secret: CLOUDFLARE_API_TOKEN (Workers Scripts: Edit, D1: Edit).
+# The account is pinned in wrangler.jsonc.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time; a newer push waits for the running one instead of racing it.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Type check (server and app)
+        run: npm run typecheck
+
+      - name: Build the app
+        run: npm run build
+
+      - name: Apply database changes
+        run: npx wrangler d1 migrations apply ahbab-db --remote
+
+      - name: Deploy
+        run: npx wrangler deploy
