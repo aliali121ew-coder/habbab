@@ -4,6 +4,7 @@ import { Shell } from './components/Shell';
 import { StateMessage } from './components/StateMessage';
 import { DelegatesPage } from './pages/delegates/DelegatesPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
+import { ReportsPage } from './pages/reports/ReportsPage';
 import { HomePage } from './pages/home/HomePage';
 import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
@@ -63,7 +64,9 @@ export function App() {
 
   return (
     <Shell me={me} onSignedOut={() => { clearLocalRecords(); setMe(null); setStatus('login'); }}>
-      {typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'
+      {route === 'soon:reports' && me.role === 'admin'
+        ? <ReportsPage me={me} />
+        : typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'
         ? <ComingSoonPage slug={route.slice(5)} />
         : route === 'family-detail' && me.role === 'admin'
         ? <FamilyDetailPage />

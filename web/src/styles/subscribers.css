@@ -657,3 +657,16 @@ a.whatsapp-row-btn { text-decoration: none; }
 
 /* Phone delegate page: the way to the subscribers' own page, under the delegate card. */
 .reg-open-list { width: 100%; margin: 0; min-height: 50px; border-radius: 16px; text-decoration: none; font-size: .95rem; }
+
+/* Reports: one card per report, a form of a few fields and a primary action. */
+.report-card { display: grid; gap: 14px; max-width: 560px; padding: 16px; border: 1px solid var(--line); border-radius: 22px; background: var(--surface); }
+.report-card header { display: flex; align-items: center; gap: 12px; }
+.report-card h2 { margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--ink); }
+.report-card header p { margin: 2px 0 0; font-size: .8rem; color: var(--ink-3); }
+.report-card-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; border-radius: 14px; background: var(--bar-active); color: #fff; box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--bar-active) 70%, transparent); }
+.report-field { display: grid; gap: 6px; }
+.report-field > span { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; font-weight: 700; color: var(--ink-2); }
+.report-field select { min-height: 46px; padding-inline: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); color: var(--ink); font: inherit; }
+.report-field .seg { width: 100%; }
+.report-field .seg button { flex: 1; }
+.report-go { min-height: 48px; justify-content: center; font-size: .95rem; }

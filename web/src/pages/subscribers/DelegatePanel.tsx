@@ -215,12 +215,6 @@ export function DelegatePanel({ me, overview, selectedMonth, onSelectMonth, onPh
             <Card tone="patients" icon={<Pill size={18} />} label="المرضى" value={overview.patients} note="مسجّلون" />
             <Card tone="families" icon={<HandHeart size={18} />} label="العوائل المتعففة" value={null} note="تُضاف لاحقاً" />
           </ListCards>
-          {/* The way to the subscribers' own page, part of the card rather than a block under it. */}
-          <a className="dpn-open-list" href={subscriberListHref(delegate.id)}>
-            <span className="dpn-open-list-icon" aria-hidden><UsersRound size={18} /></span>
-            <span>عرض المشتركين</span>
-            <ArrowLeft size={18} aria-hidden />
-          </a>
         </div>
       ) : (
       <dl className="dpn-facts">

@@ -5,7 +5,7 @@ import {
 import { api, type Me, type Overview } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
-import { listFilterFromHash, registerHref } from '../../route';
+import { listFilterFromHash, registerHref, subscriberListHref } from '../../route';
 import { useIsPhone } from '../../useIsPhone';
 import { ListCards } from './ListCards';
 import type { PayFilter } from './Register';
@@ -76,13 +76,24 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
               : overview?.delegate ? `سجل ${overview.delegate.full_name}` : 'سجل كل المشتركين'}
           </h1>
         </div>
-        <div className="page-actions">
-          <DatePicker mode="single" label="شهر التسديد" value={{ from: shownDay, to: shownDay }} onChange={({ from }) => pickDay(from)} />
-          <button type="button" className="btn" aria-label="طباعة السجل" onClick={() => setPrinting(true)}>
-            <Printer size={18} aria-hidden />
-            <span className="btn-label">طباعة السجل</span>
-            <span className="btn-short" aria-hidden>طباعة</span>
-          </button>
+        <div className={phonePreview ? 'page-actions page-actions-two' : 'page-actions'}>
+          {/* Phone, delegate's page: the date and print move off (printing lives on the reports
+              page); "عرض المشتركين" takes their place beside "إضافة". */}
+          {phonePreview && delegateId !== null ? (
+            <a className="btn" href={subscriberListHref(delegateId)}>
+              <Users size={18} aria-hidden />
+              <span>عرض المشتركين</span>
+            </a>
+          ) : (
+            <>
+              <DatePicker mode="single" label="شهر التسديد" value={{ from: shownDay, to: shownDay }} onChange={({ from }) => pickDay(from)} />
+              <button type="button" className="btn" aria-label="طباعة السجل" onClick={() => setPrinting(true)}>
+                <Printer size={18} aria-hidden />
+                <span className="btn-label">طباعة السجل</span>
+                <span className="btn-short" aria-hidden>طباعة</span>
+              </button>
+            </>
+          )}
           <button type="button" className="btn primary" aria-label="إضافة مشترك" onClick={() => setAdding(true)}>
             <UserPlus size={18} aria-hidden />
             <span className="btn-label">إضافة مشترك</span>
