@@ -1151,3 +1151,13 @@
   }
   .people-parent .search { flex: 0 1 140px !important; min-width: 140px; }
 }
+
+/* Phone: full delegate names (from the register) wrap onto a second line instead of being cut. */
+@media (max-width: 767.98px) {
+  .pd-card .pd-card-info h3 {
+    white-space: normal; overflow: hidden; text-overflow: clip; line-height: 1.3;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  }
+  .pd-card-head { align-items: flex-start; }
+  .pd-card-head .pd-photo, .pd-card .dcard-menu { align-self: center; }
+}
