@@ -17,7 +17,6 @@ interface Draft {
   phone: string;
   address: string;
   birth_date: string;
-  joined_year: string;
 }
 
 const toDraft = (profile: DelegateProfile): Draft => ({
@@ -25,8 +24,92 @@ const toDraft = (profile: DelegateProfile): Draft => ({
   phone: profile.phone ?? '',
   address: profile.address ?? '',
   birth_date: profile.birth_date ?? '',
-  joined_year: String(profile.joined_year),
 });
+
+const CURRENT_YEAR = new Date().getUTCFullYear();
+const YEARS = Array.from({ length: CURRENT_YEAR - 1924 }, (_, idx) => CURRENT_YEAR - idx);
+const MONTHS = Array.from({ length: 12 }, (_, idx) => idx + 1);
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const daysInMonth = (year: number, month: number) => new Date(year || 2000, month || 1, 0).getDate();
+
+function parseBirthDate(value: string): { year: string; month: string; day: string } {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return { year: '', month: '', day: '' };
+  return {
+    year: String(Number(match[1])),
+    month: String(Number(match[2])),
+    day: String(Number(match[3])),
+  };
+}
+
+function BirthDatePicker({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const initial = parseBirthDate(value);
+  const [year, setYear] = useState(initial.year);
+  const [month, setMonth] = useState(initial.month);
+  const [day, setDay] = useState(initial.day);
+
+  useEffect(() => {
+    const parsed = parseBirthDate(value);
+    setYear(parsed.year);
+    setMonth(parsed.month);
+    setDay(parsed.day);
+  }, [value]);
+
+  const maxDay = daysInMonth(Number(year), Number(month));
+  const days = Array.from({ length: maxDay }, (_, idx) => idx + 1);
+
+  const update = (nextYear: string, nextMonth: string, nextDay: string) => {
+    const clampedDay = nextDay
+      ? String(Math.min(Number(nextDay), daysInMonth(Number(nextYear), Number(nextMonth))))
+      : '';
+    setYear(nextYear);
+    setMonth(nextMonth);
+    setDay(clampedDay);
+    if (nextYear && nextMonth && clampedDay) {
+      onChange(`${nextYear}-${pad2(Number(nextMonth))}-${pad2(Number(clampedDay))}`);
+    } else if (!nextYear && !nextMonth && !clampedDay) {
+      onChange('');
+    }
+  };
+
+  return (
+    <div className="birth-date-grid" dir="ltr">
+      <div className="birth-date-col">
+        <span className="birth-date-sub">السنة</span>
+        <select
+          aria-label="سنة الميلاد"
+          value={year}
+          onChange={(e) => update(e.target.value, month, day)}
+        >
+          <option value="">YYYY</option>
+          {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+      <div className="birth-date-col">
+        <span className="birth-date-sub">الشهر</span>
+        <select
+          aria-label="شهر الميلاد"
+          value={month}
+          onChange={(e) => update(year, e.target.value, day)}
+        >
+          <option value="">MM</option>
+          {MONTHS.map((m) => <option key={m} value={m}>{pad2(m)}</option>)}
+        </select>
+      </div>
+      <div className="birth-date-col">
+        <span className="birth-date-sub">اليوم</span>
+        <select
+          aria-label="يوم الميلاد"
+          value={day}
+          onChange={(e) => update(year, month, e.target.value)}
+        >
+          <option value="">DD</option>
+          {days.map((d) => <option key={d} value={d}>{pad2(d)}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 function FieldCard({ icon, label, children }: { icon: ReactNode; label: string; children: ReactNode }) {
   return (
@@ -74,7 +157,7 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
     try {
       await api(`/collections/delegates/${delegateId}/profile`, {
         method: 'PATCH',
-        body: { ...draft, joined_year: draft.joined_year ? Number(draft.joined_year) : null },
+        body: draft,
       });
       onChanged();
       // Saved: the drawer has done its job.
@@ -123,7 +206,6 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
           <dl className="profile-tiles">
             <div><dt><UsersRound size={14} aria-hidden /> الأحياء</dt><dd><bdi>{profile ? formatNumber(profile.alive) : '—'}</bdi></dd></div>
             <div><dt><UserRound size={14} aria-hidden /> الأموات</dt><dd><bdi>{profile ? formatNumber(profile.deceased) : '—'}</bdi></dd></div>
-            <div><dt><CalendarDays size={14} aria-hidden /> منذ</dt><dd><bdi>{profile ? profile.joined_year : '—'}</bdi></dd></div>
           </dl>
         </div>
 
@@ -141,14 +223,15 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
                 <FieldCard icon={<MapPin size={15} />} label="العنوان">
                   <input value={draft.address} onChange={set('address')} placeholder="المحافظة - القضاء - الحي" maxLength={200} />
                 </FieldCard>
-                <FieldCard icon={<CalendarDays size={15} />} label="المواليد">
-                  <input type="date" dir="ltr" value={draft.birth_date} onChange={set('birth_date')} max={new Date().toISOString().slice(0, 10)} />
-                </FieldCard>
-                <FieldCard icon={<IdCard size={15} />} label="سنة الاشتراك">
-                  <input type="number" inputMode="numeric" dir="ltr" value={draft.joined_year} onChange={set('joined_year')} min={1990} max={new Date().getUTCFullYear()} />
-                </FieldCard>
+                <div className="profile-field">
+                  <span className="profile-field-label"><span aria-hidden><CalendarDays size={15} /></span>المواليد</span>
+                  <BirthDatePicker
+                    value={draft.birth_date}
+                    onChange={(next) => setDraft((current) => current && { ...current, birth_date: next })}
+                  />
+                </div>
               </>
-            ) : !error && [0, 1, 2, 3, 4].map((key) => <div key={key} className="profile-field skeleton" />)}
+            ) : !error && [0, 1, 2, 3].map((key) => <div key={key} className="profile-field skeleton" />)}
           </div>
 
           <footer className="profile-actions">

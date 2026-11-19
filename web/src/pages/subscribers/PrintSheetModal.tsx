@@ -5,23 +5,13 @@ import { api, type GridRow, type SubscriberDetail } from '../../api';
 import { MONTH_NAMES, formatNumber, isPaid, today } from '../../format';
 import { FoundationStamp } from './FoundationStamp';
 
-// The sheet is laid out once at A4 and scaled to fit the smaller pages whole.
+// The sheet is laid out once at A4 and scaled to fit smaller pages if needed.
 const PAPER = {
   A4: 1,
   A5: Math.min(148 / 210, 210 / 297),
   A6: Math.min(105 / 210, 148 / 297),
 } as const;
 type Paper = keyof typeof PAPER;
-const PAPER_KEY = 'print-paper';
-
-function savedPaper(): Paper {
-  try {
-    const value = localStorage.getItem(PAPER_KEY);
-    return value && value in PAPER ? value as Paper : 'A4';
-  } catch {
-    return 'A4';
-  }
-}
 
 export const FOUNDATION = 'مؤسسة أحباب الحسين الثقافية الخيرية';
 const ADDRESS = 'بابل - قضاء الهاشمية - حي الزهراء';
@@ -276,12 +266,6 @@ export function PrintSheetModal({
   onClose,
 }: Props) {
   const [detail, setDetail] = useState<SubscriberDetail | null>(null);
-  const [paper, setPaper] = useState<Paper>(savedPaper);
-
-  const choosePaper = (next: Paper) => {
-    setPaper(next);
-    try { localStorage.setItem(PAPER_KEY, next); } catch { /* storage blocked: keep it for this visit only */ }
-  };
 
   useEffect(() => {
     let active = true;
@@ -306,28 +290,25 @@ export function PrintSheetModal({
     <div className="print-modal-overlay" role="dialog" aria-modal="true" aria-label={`كشف اشتراكات ${row.full_name}`}>
       <div className="print-modal-container">
         <header className="print-modal-toolbar">
-          <div className="pmt-title">
-            <strong>كشف الاشتراكات السنوية</strong>
-            <span>{row.full_name} • سنة {year}</span>
+          <div className="pmt-head">
+            <div className="pmt-title">
+              <strong>كشف الاشتراكات السنوية</strong>
+              <span>{row.full_name} • سنة {year}</span>
+            </div>
+            <button type="button" className="icon-btn print-close-btn" aria-label="إغلاق" onClick={onClose}>
+              <X size={20} aria-hidden />
+            </button>
           </div>
           <div className="pmt-actions">
-            <div className="seg" role="group" aria-label="حجم الورقة">
-              {(Object.keys(PAPER) as Paper[]).map((size) => (
-                <button key={size} type="button" aria-pressed={paper === size} onClick={() => choosePaper(size)}>{size}</button>
-              ))}
-            </div>
             <button type="button" className="btn primary print-trigger-btn" onClick={() => window.print()}>
               <Printer size={17} aria-hidden />
               <span>طباعة الكشف</span>
-            </button>
-            <button type="button" className="icon-btn print-close-btn" aria-label="إغلاق" onClick={onClose}>
-              <X size={20} aria-hidden />
             </button>
           </div>
         </header>
 
         <div className="print-sheet-scroll">
-          <StatementSheet row={row} year={year} currentMonth={currentMonth} currency={currency} delegateName={delegateName} detail={detail} paper={paper} id="printable-sheet" />
+          <StatementSheet row={row} year={year} currentMonth={currentMonth} currency={currency} delegateName={delegateName} detail={detail} paper="A4" id="printable-sheet" />
         </div>
       </div>
     </div>,

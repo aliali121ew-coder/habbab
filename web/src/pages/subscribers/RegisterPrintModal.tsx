@@ -323,12 +323,17 @@ export function RegisterPrintModal({ year, cutoff, status, delegateId, delegateN
     <div className="print-modal-overlay" role="dialog" aria-modal="true" aria-label={`طباعة سجل ${delegateName}`}>
       <div className="print-modal-container reg-print">
         <header className="print-modal-toolbar">
-          <div className="pmt-title">
-            <strong>{status === 'deceased' ? 'طباعة سجل المتوفين' : 'طباعة سجل المشتركين'}</strong>
-            <span>
-              {delegateName} • سنة {year}
-              {report && <> • المشتركون: <bdi>{formatNumber(rows?.length ?? 0)}</bdi> • الصفحات: <bdi>{formatNumber(report.pages.length)}</bdi></>}
-            </span>
+          <div className="pmt-head">
+            <div className="pmt-title">
+              <strong>{status === 'deceased' ? 'طباعة سجل المتوفين' : 'طباعة سجل المشتركين'}</strong>
+              <span>
+                {delegateName} • سنة {year}
+                {report && <> • المشتركون: <bdi>{formatNumber(rows?.length ?? 0)}</bdi> • الصفحات: <bdi>{formatNumber(report.pages.length)}</bdi></>}
+              </span>
+            </div>
+            <button type="button" className="icon-btn print-close-btn" aria-label="إغلاق" onClick={onClose}>
+              <X size={20} aria-hidden />
+            </button>
           </div>
           <div className="pmt-actions">
             <button type="button" className="btn primary print-trigger-btn" disabled={!report} onClick={() => window.print()}>
@@ -356,9 +361,6 @@ export function RegisterPrintModal({ year, cutoff, status, delegateId, delegateN
                 build={() => buildRegisterPdf({ year, cutoff, status, delegateId, delegateName, currency })}
               />
             )}
-            <button type="button" className="icon-btn print-close-btn" aria-label="إغلاق" onClick={onClose}>
-              <X size={20} aria-hidden />
-            </button>
           </div>
         </header>
 
