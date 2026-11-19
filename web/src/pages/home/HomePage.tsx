@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   ArrowDownRight, ArrowUpRight, ChevronLeft,
   HandCoins, HeartHandshake, HeartPulse, Receipt,
@@ -11,7 +11,9 @@ import { SAMPLE_DONATIONS } from '../../data/donations';
 import { loadFamiliesStore } from '../../data/families';
 import { formatNumber, MONTH_NAMES, monthIndex } from '../../format';
 import { AidDisbursementsTable } from './AidDisbursementsTable';
-import { PhoneMoneyOverview } from './PhoneMoneyOverview';
+// The phone's money overview draws a chart (recharts, the heaviest library): its own file, so the
+// banner and figures show first; a box of the same height holds its place meanwhile.
+const PhoneMoneyOverview = lazy(() => import('./PhoneMoneyOverview').then((m) => ({ default: m.PhoneMoneyOverview })));
 import { WORK_ICONS, WorkSummaryCard, type WorkRow } from './WorkSummaryCard';
 import type { ExpenseItem } from '../expenses/ExpensesPage';
 import { PATIENTS } from '../patients/sample';
@@ -214,6 +216,7 @@ export function HomePage({ me }: { me: Me }) {
 
         {/* Four headline figures: each one appears once on the page */}
         <div className="md:hidden">
+          <Suspense fallback={<div className="home-chart-slot" aria-busy="true" />}>
           <PhoneMoneyOverview
             currency={unit}
             month={month}
@@ -221,6 +224,7 @@ export function HomePage({ me }: { me: Me }) {
             spent={sheet ? spentYear : null}
             donations={SAMPLE_DONATIONS}
           />
+          </Suspense>
         </div>
         <div className="fp-kpi-parent hidden md:block">
         <h2 className="fp-kpi-parent-title mb-2.5 items-center justify-between px-1 text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>

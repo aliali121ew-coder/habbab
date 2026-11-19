@@ -6,7 +6,7 @@ import {
   HeartPulse, ImagePlus, MapPin, MoreHorizontal, PackageCheck, Pencil,
   Plus, Sparkles, Trash2, X,
 } from 'lucide-react';
-import slideFood from '../../assets/hero/slide-food.jpg';
+import slideFood from '../../assets/hero/slide-food.webp';
 import slideMedical from '../../assets/hero/slide-medical.svg';
 import slideFamily from '../../assets/hero/slide-family.svg';
 

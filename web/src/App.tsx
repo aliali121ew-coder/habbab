@@ -1,21 +1,45 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, ApiError, setSessionLostHandler, type Me } from './api';
 import { Shell } from './components/Shell';
 import { StateMessage } from './components/StateMessage';
-import { DelegatesPage } from './pages/delegates/DelegatesPage';
-import { ComingSoonPage } from './pages/ComingSoonPage';
-import { ReportsPage } from './pages/reports/ReportsPage';
-import { HomePage } from './pages/home/HomePage';
+import { OfflineBar } from './components/OfflineBar';
 import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
-import { ExpensesPage } from './pages/expenses/ExpensesPage';
-import { ExpensesLedgerPage } from './pages/expenses/ExpensesLedgerPage';
-import { FamiliesPage } from './pages/FamiliesPage';
-import { FamilyDetailPage } from './pages/FamilyDetailPage';
-import { PatientDetailPage } from './pages/patients/PatientDetailPage';
-import { PatientsPage } from './pages/patients/PatientsPage';
-import { SubscribersPage } from './pages/subscribers/SubscribersPage';
 import { useRoute } from './route';
+
+// Each page is its own file, fetched when first opened, so a phone downloads and prepares only
+// what it shows. After the first screen every page is fetched quietly in the background, so
+// moving around stays instant and the whole app is on the device for offline use.
+const pages = {
+  delegates: () => import('./pages/delegates/DelegatesPage'),
+  soon: () => import('./pages/ComingSoonPage'),
+  reports: () => import('./pages/reports/ReportsPage'),
+  home: () => import('./pages/home/HomePage'),
+  expenses: () => import('./pages/expenses/ExpensesPage'),
+  ledger: () => import('./pages/expenses/ExpensesLedgerPage'),
+  families: () => import('./pages/FamiliesPage'),
+  family: () => import('./pages/FamilyDetailPage'),
+  patient: () => import('./pages/patients/PatientDetailPage'),
+  patients: () => import('./pages/patients/PatientsPage'),
+  subscribers: () => import('./pages/subscribers/SubscribersPage'),
+};
+const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.DelegatesPage })));
+const ComingSoonPage = lazy(() => pages.soon().then((m) => ({ default: m.ComingSoonPage })));
+const ReportsPage = lazy(() => pages.reports().then((m) => ({ default: m.ReportsPage })));
+const HomePage = lazy(() => pages.home().then((m) => ({ default: m.HomePage })));
+const ExpensesPage = lazy(() => pages.expenses().then((m) => ({ default: m.ExpensesPage })));
+const ExpensesLedgerPage = lazy(() => pages.ledger().then((m) => ({ default: m.ExpensesLedgerPage })));
+const FamiliesPage = lazy(() => pages.families().then((m) => ({ default: m.FamiliesPage })));
+const FamilyDetailPage = lazy(() => pages.family().then((m) => ({ default: m.FamilyDetailPage })));
+const PatientDetailPage = lazy(() => pages.patient().then((m) => ({ default: m.PatientDetailPage })));
+const PatientsPage = lazy(() => pages.patients().then((m) => ({ default: m.PatientsPage })));
+const SubscribersPage = lazy(() => pages.subscribers().then((m) => ({ default: m.SubscribersPage })));
+
+function prefetchPages() {
+  const run = () => { for (const load of Object.values(pages)) void load().catch(() => undefined); };
+  const idle = (window as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
+  if (idle) idle(run); else setTimeout(run, 1500);
+}
 import { clearLocalRecords } from './localRecords';
 
 export function App() {
@@ -24,6 +48,8 @@ export function App() {
   const route = useRoute();
 
   useEffect(() => { window.scrollTo(0, 0); }, [route]);
+  // Once signed in and the first page is up, bring the other pages onto the device.
+  useEffect(() => { if (status === 'ready') prefetchPages(); }, [status]);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -64,6 +90,8 @@ export function App() {
 
   return (
     <Shell me={me} onSignedOut={() => { clearLocalRecords(); setMe(null); setStatus('login'); }}>
+      <OfflineBar />
+      <Suspense fallback={<div className="page-loading" aria-busy="true"><span className="boot-star" /></div>}>
       {route === 'soon:reports' && me.role === 'admin'
         ? <ReportsPage me={me} />
         : typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'
@@ -89,6 +117,7 @@ export function App() {
                       : route === 'delegates'
                         ? <DelegatesPage me={me} />
                         : <HomePage me={me} />}
+      </Suspense>
     </Shell>
   );
 }

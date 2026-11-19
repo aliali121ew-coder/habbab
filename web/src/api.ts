@@ -117,7 +117,26 @@ interface Options {
   signal?: AbortSignal;
 }
 
+// Recent answers, so going back to a page just seen is instant instead of loading again. Short
+// lived, and emptied by every write (a payment, an edit) so no figure is shown out of date
+// after a change made on this device.
+const RECENT_MS = 30_000;
+const recent = new Map<string, { at: number; data: unknown }>();
+export const forgetRecent = () => recent.clear();
+
+/** Whether the last data came from the copy saved on this device (no connection). */
+export let showingSavedCopy = false;
+const setSavedCopy = (value: boolean) => {
+  if (showingSavedCopy === value) return;
+  showingSavedCopy = value;
+  window.dispatchEvent(new CustomEvent('ahbab:saved-copy', { detail: value }));
+};
+
 export async function api<T>(path: string, { method = 'GET', body, form, signal }: Options = {}): Promise<T> {
+  if (method === 'GET') {
+    const hit = recent.get(path);
+    if (hit && Date.now() - hit.at < RECENT_MS) return hit.data as T;
+  }
   const headers: Record<string, string> = {};
   if (method !== 'GET') headers['x-app'] = '1';
   if (body !== undefined) headers['content-type'] = 'application/json';
@@ -133,13 +152,23 @@ export async function api<T>(path: string, { method = 'GET', body, form, signal 
     });
   } catch (error) {
     if ((error as Error).name === 'AbortError') throw error;
-    throw new ApiError(0, 'تعذّر الاتصال بالخادم، تحقق من الإنترنت');
+    throw new ApiError(0, method === 'GET'
+      ? 'تعذّر الاتصال بالخادم، تحقق من الإنترنت'
+      : 'لا يوجد اتصال بالإنترنت، لم يُحفظ التغيير. أعد المحاولة عند عودة الاتصال');
   }
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 401 && path !== '/auth/login') onSessionLost();
     throw new ApiError(response.status, data?.error ?? 'حدث خطأ غير متوقع', data);
+  }
+  if (method === 'GET') {
+    // A saved copy (offline) is shown but not kept as "recent", so the next visit asks again.
+    const saved = response.headers.get('x-offline-copy') === '1';
+    setSavedCopy(saved);
+    if (!saved) recent.set(path, { at: Date.now(), data });
+  } else {
+    recent.clear();
   }
   return data as T;
 }

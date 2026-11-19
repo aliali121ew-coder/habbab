@@ -175,3 +175,6 @@
 @media (prefers-reduced-motion: reduce) {
   .hm *, .hm-skel { animation: none !important; transition: none !important; }
 }
+
+/* Holds the phone chart's place while its file arrives (first visit only), so nothing jumps. */
+.home-chart-slot { min-height: 640px; border-radius: 24px; background: color-mix(in srgb, var(--surface) 55%, transparent); }
