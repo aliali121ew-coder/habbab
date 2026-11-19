@@ -6,11 +6,12 @@
 # The account is pinned in wrangler.jsonc.
 name: Deploy
 
-# Runs on every push to main, and on demand. `npm run release` (scripts/release.mjs) runs the
-# same steps from a computer and stays the fallback if Actions is unavailable.
+# On demand only for now: GitHub has locked Actions on this account over billing (rechecked
+# 2026-11-19), so every push showed a failed run. Releases go through `npm run release`
+# (scripts/release.mjs), which runs these same steps. Once the account is unlocked, add back:
+#   push:
+#     branches: [main]
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 # One deploy at a time; a newer push waits for the running one instead of racing it.
