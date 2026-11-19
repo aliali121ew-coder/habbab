@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { AlertTriangle, ArrowLeftRight, Banknote, MapPin, Minus, Phone, Plus, UserCheck, UserPlus, UserRound, Users, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeftRight, Banknote, MapPin, Phone, UserCheck, UserPlus, UserRound, X } from 'lucide-react';
 import { api, ApiError, type DelegateSummary, type Me } from '../../api';
 import { formatNumber } from '../../format';
 
@@ -31,15 +31,14 @@ function Field({ icon, label, hint, children }: { icon: ReactNode; label: string
   );
 }
 
-// A centred card on every screen: name, monthly category, address, the delegate, the family
-// size and an optional phone, each in its own card like the subscriber details.
+// A centred card on every screen: name, monthly category, address, the delegate and an optional
+// phone, each in its own card like the subscriber details. (Family size is not asked: it stays 1.)
 export function AddSubscriberDialog({ me, delegates, defaultDelegate, onClose, onSaved }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const [name, setName] = useState('');
   const [fee, setFee] = useState(String(TIERS[0]));
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
-  const [family, setFamily] = useState(1);
   const [delegate, setDelegate] = useState(defaultDelegate ? String(defaultDelegate) : '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -77,7 +76,6 @@ export function AddSubscriberDialog({ me, delegates, defaultDelegate, onClose, o
           monthly_fee: Number(fee) || 0,
           address: address.trim() || null,
           phone: phone.trim() || null,
-          family_size: family,
           ...(me.role === 'admin' ? { delegate_id: delegate ? Number(delegate) : null } : {}),
           // Sent only after the admin has seen the warning and chosen to add anyway.
           ...(conflicts && me.role === 'admin' ? { confirm_other_delegate: true } : {}),
@@ -158,22 +156,6 @@ export function AddSubscriberDialog({ me, delegates, defaultDelegate, onClose, o
               )}
             </Field>
 
-            <Field icon={<Users size={15} />} label="أفراد الأسرة">
-              <div className="add-stepper">
-                <button type="button" aria-label="إنقاص" disabled={family <= 1} onClick={() => setFamily((value) => Math.max(1, value - 1))}><Minus size={15} aria-hidden /></button>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  dir="ltr"
-                  min={1}
-                  max={50}
-                  value={family}
-                  onChange={(event) => setFamily(Math.min(50, Math.max(1, Number(event.target.value) || 1)))}
-                  aria-label="عدد أفراد الأسرة"
-                />
-                <button type="button" aria-label="زيادة" disabled={family >= 50} onClick={() => setFamily((value) => Math.min(50, value + 1))}><Plus size={15} aria-hidden /></button>
-              </div>
-            </Field>
 
             <Field icon={<Phone size={15} />} label="رقم الهاتف" hint="إن وُجد">
               <input type="tel" inputMode="tel" dir="ltr" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="07XXXXXXXXX" autoComplete="off" maxLength={20} />

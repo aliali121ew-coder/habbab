@@ -722,3 +722,16 @@ div.list-card { cursor: default; }
   .register .reg-pager .pager-pages { gap: 6px; }
   .register .reg-pager .pager-num { min-width: 38px; min-height: 38px; border-radius: 12px; }
 }
+
+/* Phone cards: icon on top, then the title, then the figure — large, under its title — and the
+   note last. Title and figure run the full card width, so nothing is cut. */
+@media (max-width: 767.98px) {
+  .list-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "icon" "label" "value" "note";
+    justify-items: start; row-gap: 4px;
+  }
+  .list-card-icon { margin-bottom: 4px; }
+  .list-card-label { font-size: clamp(.76rem, 3.7vw, .86rem); }
+  .list-card-value { text-align: start; font-size: clamp(1.75rem, 8vw, 2.1rem); line-height: 1.05; font-weight: 800; letter-spacing: -.01em; }
+}
