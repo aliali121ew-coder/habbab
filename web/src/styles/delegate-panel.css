@@ -136,3 +136,8 @@
 .dpn-line-foot { margin-top: 6px; padding-top: 8px; }
 .panel.dpn .donut-label { white-space: normal; overflow: visible; line-height: 1.3; }
 .panel.dpn .panel-donut li small { min-width: 0; padding: 1px 4px; }
+
+/* Phone: the delegate's page keeps the photo card and figures only; the two charts are desktop-only. */
+@media (max-width: 767.98px) {
+  .dpn-stack > .dpn-charts { display: none; }
+}
