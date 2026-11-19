@@ -746,3 +746,14 @@ div.list-card { cursor: default; }
 .list-cards.fam-aid-cards { margin-bottom: 0; }
 @media (min-width: 768px) { .list-cards.fam-aid-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 1280px) { .list-cards.fam-aid-cards { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+
+/* Light mode: a much lighter wash on the coloured cards — a hint of the card's colour by the
+   icon, fading to almost white. Dark mode keeps its stronger wash, which it needs to read. */
+:root[data-theme="light"] .stage .list-card:not(.patients):not(.families)::after,
+:root:not([data-theme]) .stage .list-card:not(.patients):not(.families)::after {
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--tone) 9%, transparent) 0%,
+    color-mix(in srgb, var(--tone) 6%, transparent) 40%,
+    color-mix(in srgb, var(--tone) 3%, transparent) 65%,
+    color-mix(in srgb, var(--tone) 1%, transparent) 100%) !important;
+}
