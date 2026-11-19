@@ -494,3 +494,28 @@
     background: linear-gradient(225deg, color-mix(in srgb, var(--tone) 40%, transparent) 0%, color-mix(in srgb, var(--tone) 20%, transparent) 40%, transparent 65%) !important;
   }
 }
+/* List cards: one smooth wash from the icon side across the card. It never fades to the bare
+   surface: the far side keeps a light tint of the same colour, so nothing reads as black. */
+.stage .list-card::after {
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--tone) 24%, transparent) 0%,
+    color-mix(in srgb, var(--tone) 17%, transparent) 30%,
+    color-mix(in srgb, var(--tone) 11%, transparent) 65%,
+    color-mix(in srgb, var(--tone) 8%, transparent) 100%) !important;
+}
+:root[data-theme="dark"] .stage .list-card::after {
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--tone) 34%, transparent) 0%,
+    color-mix(in srgb, var(--tone) 25%, transparent) 30%,
+    color-mix(in srgb, var(--tone) 17%, transparent) 65%,
+    color-mix(in srgb, var(--tone) 13%, transparent) 100%) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stage .list-card::after {
+    background: linear-gradient(to left,
+      color-mix(in srgb, var(--tone) 34%, transparent) 0%,
+      color-mix(in srgb, var(--tone) 25%, transparent) 30%,
+      color-mix(in srgb, var(--tone) 17%, transparent) 65%,
+      color-mix(in srgb, var(--tone) 13%, transparent) 100%) !important;
+  }
+}
