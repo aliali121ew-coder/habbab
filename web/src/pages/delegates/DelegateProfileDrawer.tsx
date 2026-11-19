@@ -17,6 +17,7 @@ interface Draft {
   phone: string;
   address: string;
   birth_date: string;
+  joined_year: string;
 }
 
 const toDraft = (profile: DelegateProfile): Draft => ({
@@ -24,6 +25,7 @@ const toDraft = (profile: DelegateProfile): Draft => ({
   phone: profile.phone ?? '',
   address: profile.address ?? '',
   birth_date: profile.birth_date ?? '',
+  joined_year: profile.joined_year ? String(profile.joined_year) : '',
 });
 
 const CURRENT_YEAR = new Date().getUTCFullYear();
@@ -157,7 +159,7 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
     try {
       await api(`/collections/delegates/${delegateId}/profile`, {
         method: 'PATCH',
-        body: draft,
+        body: { ...draft, joined_year: draft.joined_year ? Number(draft.joined_year) : null },
       });
       onChanged();
       // Saved: the drawer has done its job.
@@ -206,6 +208,7 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
           <dl className="profile-tiles">
             <div><dt><UsersRound size={14} aria-hidden /> الأحياء</dt><dd><bdi>{profile ? formatNumber(profile.alive) : '—'}</bdi></dd></div>
             <div><dt><UserRound size={14} aria-hidden /> الأموات</dt><dd><bdi>{profile ? formatNumber(profile.deceased) : '—'}</bdi></dd></div>
+            <div><dt><CalendarDays size={14} aria-hidden /> منذ</dt><dd><bdi>{profile ? profile.joined_year : '—'}</bdi></dd></div>
           </dl>
         </div>
 
@@ -230,8 +233,22 @@ export function DelegateProfileDrawer({ delegateId, onClose, onChanged }: Props)
                     onChange={(next) => setDraft((current) => current && { ...current, birth_date: next })}
                   />
                 </div>
+                <FieldCard icon={<IdCard size={15} />} label="سنة الاشتراك">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{4}"
+                    maxLength={4}
+                    placeholder="2026"
+                    value={draft.joined_year}
+                    onChange={(e) => {
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setDraft((current) => current && { ...current, joined_year: digits });
+                    }}
+                  />
+                </FieldCard>
               </>
-            ) : !error && [0, 1, 2, 3].map((key) => <div key={key} className="profile-field skeleton" />)}
+            ) : !error && [0, 1, 2, 3, 4].map((key) => <div key={key} className="profile-field skeleton" />)}
           </div>
 
           <footer className="profile-actions">

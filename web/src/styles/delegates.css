@@ -352,7 +352,7 @@
 /* The figures under the band, on the same dark ground. */
 .profile-strip { padding: 0 18px 16px; background-color: color-mix(in srgb, var(--brand) 55%, #050b14); }
 .profile-hero.has-photo + .profile-strip { padding-top: 12px; background: #0a0f18; }
-.profile-tiles { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.profile-tiles { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .profile-tiles div { padding: 10px 6px; border: 1px solid rgb(255 255 255 / 14%); border-radius: 12px; background: rgb(255 255 255 / 6%); text-align: center; }
 .profile-tiles dt { display: inline-flex; align-items: center; gap: 4px; color: rgb(255 255 255 / 72%); font-size: .74rem; }
 .profile-tiles dd { margin: 2px 0 0; color: #fff; font-size: 1.15rem; font-weight: 500; }
