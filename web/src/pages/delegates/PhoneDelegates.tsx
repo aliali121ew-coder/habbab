@@ -107,7 +107,11 @@ export function PhoneDelegateCard({ person, currency, menu }: { person: Delegate
         </span>
         <div className="pd-card-info">
           <h3>{person.full_name}</h3>
-          <p><Users size={13} aria-hidden /> <bdi>{formatNumber(person.alive)}</bdi> مشترك</p>
+          <p>
+            <Users size={13} aria-hidden /> <bdi>{formatNumber(person.alive)}</bdi> مشترك
+            {/* Phone only: the month's amount sits here, so the name keeps the whole first line. */}
+            {!empty && <span className="pd-sub-amount"><bdi>{formatNumber(person.paid_amount)}</bdi> {currency} هذا الشهر</span>}
+          </p>
         </div>
         {!empty && (
           <p className="pd-head-amount"><bdi>{formatNumber(person.paid_amount)}</bdi><small>{currency} هذا الشهر</small></p>

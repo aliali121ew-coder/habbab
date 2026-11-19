@@ -1152,12 +1152,16 @@
   .people-parent .search { flex: 0 1 140px !important; min-width: 140px; }
 }
 
-/* Phone: full delegate names (from the register) wrap onto a second line instead of being cut. */
+/* Phone: the full delegate name on one line. The month's amount moves from beside the name to
+   the line under it (next to the subscriber count), so the name has the card's whole width. */
+.pd-sub-amount { display: none; }
 @media (max-width: 767.98px) {
-  .pd-card .pd-card-info h3 {
-    white-space: normal; overflow: hidden; text-overflow: clip; line-height: 1.3;
-    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
-  }
-  .pd-card-head { align-items: flex-start; }
-  .pd-card-head .pd-photo, .pd-card .dcard-menu { align-self: center; }
+  .pd-card .pd-head-amount { display: none; }
+  .pd-sub-amount { display: inline; color: var(--ink-2); font-weight: 700; }
+  .pd-sub-amount::before { content: "·"; margin-inline: 4px; color: var(--ink-3); font-weight: 400; }
+  .pd-card .pd-card-info h3 { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+}
+@media (max-width: 767.98px) {
+  .pd-card .pd-card-info p { flex-wrap: nowrap; white-space: nowrap; font-size: .74rem; }
+  .pd-sub-amount { white-space: nowrap; }
 }
