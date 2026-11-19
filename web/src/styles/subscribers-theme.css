@@ -331,3 +331,62 @@
 @media (max-width: 767.98px) {
   .register-head .register-title { display: none; }
 }
+
+/* Phone: each subscriber as the delegate card. A rounded card; photo square and name on top;
+   then three equal tiles (category, unpaid months, last payment), the value large over a small
+   label like the delegate card's figures; print and WhatsApp underneath. The striped cell
+   backgrounds of the desktop table are cleared so no stray boxes show. */
+@media (max-width: 767.98px) {
+  :root:root .stage .register .reg-table tbody tr {
+    grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 6px;
+    padding: 12px 14px; border: 1px solid var(--line); border-radius: 22px;
+    background: var(--surface) !important;
+  }
+  :root:root[data-theme="dark"] .stage .register .reg-table tbody tr {
+    border-color: rgb(255 255 255 / 6%);
+    background: color-mix(in srgb, var(--surface) 70%, #05080f) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%), 0 6px 18px -12px rgb(0 0 0 / 50%);
+  }
+  :root:root .stage .register .reg-table tbody tr > :is(td, th) { background: transparent !important; padding: 0; }
+
+  /* Head: the same photo square and bold name as the delegate card. */
+  .register .reg-table th.reg-name { padding-block-end: 0; }
+  .register .sub-cell { gap: 12px; }
+  :root:root .stage .register .sub-avatar {
+    width: 50px; height: 50px; border: 0 !important; border-radius: 16px;
+    background: color-mix(in srgb, var(--bar-active) 14%, var(--surface)) !important;
+    color: var(--bar-active); font-size: 1.2rem; font-weight: 800;
+  }
+  .register .sub-name { font-size: 1rem; font-weight: 800; }
+
+  /* Three equal tiles: value on top, label underneath. */
+  :root:root .stage .register .reg-table tbody td:is(.reg-col-tier, .reg-col-unpaid, .reg-col-date) {
+    flex-direction: column-reverse; align-items: center; justify-content: center; gap: 3px;
+    padding: 9px 4px; border-radius: 12px; text-align: center;
+    background: color-mix(in srgb, var(--ink) 5%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--ink) 12%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 10%, transparent), 0 4px 10px -6px rgb(0 0 0 / 35%);
+  }
+  .register .reg-table tbody td:is(.reg-col-tier, .reg-col-unpaid, .reg-col-date)::before {
+    font-size: 10.5px; font-weight: 700; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+  }
+  .register :is(.tier-badge, .unpaid-text, .last-paid-date) {
+    font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: 100%; background: none; padding: 0; border: 0;
+  }
+  .register .last-paid-date { font-size: 13px; }
+  .register .last-paid-date.none { font-size: 12px; font-weight: 700; color: var(--ink-3); }
+  /* Colour carries the meaning, as on the delegate card: paid green, owing red. */
+  .register .unpaid-text.clean { color: var(--paid); }
+  .register .unpaid-text.has-unpaid { color: var(--danger); }
+  :root[data-theme="dark"] .register .unpaid-text.has-unpaid { color: #f87171; }
+
+  .register .reg-table tbody td.reg-col-action { gap: 8px; }
+  .register .reg-col-action :is(.print-row-btn, .whatsapp-row-btn, .no-phone-tag) { min-height: 40px; border-radius: 12px; }
+}
+/* Phone tiles: short labels that fit a third of the card. */
+@media (max-width: 767.98px) {
+  .register .reg-table tbody td.reg-col-tier::before { content: "الاشتراك"; }
+  .register .reg-table tbody td.reg-col-unpaid::before { content: "المتبقي"; }
+  .register .reg-table tbody td.reg-col-date::before { content: "آخر تسديد"; }
+}
