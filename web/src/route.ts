@@ -31,7 +31,7 @@ function parse(hash: string): Route {
   if (/^#\/families\/\d+$/.test(hash)) return 'family-detail';
   const soon = /^#\/soon\/([a-z-]+)$/.exec(hash);
   if (soon) return `soon:${soon[1]}`;
-  const list = /^#\/delegates\/(\d+)\/list$/.exec(hash);
+  const list = /^#\/delegates\/(\d+)\/list(?:\/(?:paid|unpaid|overdue))?$/.exec(hash);
   if (list) return `list:${Number(list[1])}`;
   const match = /^#\/delegates\/(\d+)$/.exec(hash);
   return match ? Number(match[1]) : 'home';
@@ -44,4 +44,10 @@ export const familyIdFromHash = () => Number(/^#\/families\/(\d+)$/.exec(locatio
 
 export const registerHref = (delegateId: number | null) => (delegateId === null ? '#/all' : `#/delegates/${delegateId}`);
 export const familyHref = (familyId: number) => `#/families/${familyId}`;
-export const subscriberListHref = (delegateId: number) => `#/delegates/${delegateId}/list`;
+// The full list, optionally opened on a filter: #/delegates/4/list/unpaid.
+export const subscriberListHref = (delegateId: number, filter: 'all' | 'paid' | 'unpaid' | 'overdue' = 'all') =>
+  `#/delegates/${delegateId}/list${filter === 'all' ? '' : `/${filter}`}`;
+export const listFilterFromHash = (): 'all' | 'paid' | 'unpaid' | 'overdue' => {
+  const match = /\/list\/(paid|unpaid|overdue)$/.exec(location.hash);
+  return match ? (match[1] as 'paid' | 'unpaid' | 'overdue') : 'all';
+};

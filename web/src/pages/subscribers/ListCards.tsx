@@ -10,28 +10,35 @@ interface Props {
   year: number;
   /** The month the register's filters count up to; -1 for a year still ahead. */
   month: number;
-  filter: PayFilter;
+  /** The card the list below is filtered by; null where there is no list (the delegate card). */
+  filter: PayFilter | null;
   onPick: (filter: PayFilter) => void;
+  /** More cards after the four, in the same style (e.g. patients and families). */
+  children?: ReactNode;
 }
 
 interface Counts { alive: number; paid: number; unpaid: number; overdue: number }
 
-function Card({ tone, icon, label, value, note, active, onClick }: {
-  tone: string; icon: ReactNode; label: string; value: number | null; note?: string; active: boolean; onClick: () => void;
+export function Card({ tone, icon, label, value, note, active = false, onClick }: {
+  tone: string; icon: ReactNode; label: string; value: number | null; note?: string; active?: boolean; onClick?: () => void;
 }) {
-  return (
-    <button type="button" className={`list-card ${tone}`} aria-pressed={active} onClick={onClick}>
+  const body = (
+    <>
       <span className="list-card-icon" aria-hidden>{icon}</span>
       <span className="list-card-label">{label}</span>
       <strong className="list-card-value">{value === null ? '—' : <bdi>{formatNumber(value)}</bdi>}</strong>
       {note && <small>{note}</small>}
-    </button>
+    </>
   );
+  // A card with nothing to open is plain text, not a button.
+  return onClick
+    ? <button type="button" className={`list-card ${tone}`} aria-pressed={active} onClick={onClick}>{body}</button>
+    : <div className={`list-card ${tone}`}>{body}</div>;
 }
 
 // The full subscriber list's four figures, two by two. Each card filters the list below, and
 // its figure is counted by the server with that filter's own rules, so the two always agree.
-export function ListCards({ overview, delegateId, year, month, filter, onPick }: Props) {
+export function ListCards({ overview, delegateId, year, month, filter, onPick, children }: Props) {
   const [counts, setCounts] = useState<Counts | null>(null);
 
   useEffect(() => {
@@ -61,6 +68,7 @@ export function ListCards({ overview, delegateId, year, month, filter, onPick }:
         note={until && `عليهم شهر أو أكثر ${until}`} active={filter === 'unpaid'} onClick={() => onPick('unpaid')} />
       <Card tone="late" icon={<AlarmClock size={18} />} label="المتأخرون" value={counts?.overdue ?? null}
         note="4 أشهر أو أكثر بلا تسديد" active={filter === 'overdue'} onClick={() => onPick('overdue')} />
+      {children}
     </div>
   );
 }

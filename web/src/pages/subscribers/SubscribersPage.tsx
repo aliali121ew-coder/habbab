@@ -1,30 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Printer, UserPlus, Users,
+  ChevronLeft, Printer, UserPlus, Users,
 } from 'lucide-react';
 import { api, type Me, type Overview } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
-import { registerHref, subscriberListHref } from '../../route';
+import { listFilterFromHash, registerHref, subscriberListHref } from '../../route';
 import { useIsPhone } from '../../useIsPhone';
 import { ListCards } from './ListCards';
 import type { PayFilter } from './Register';
 import { DatePicker } from '../../components/DatePicker';
-import { today } from '../../format';
+import { formatNumber, today } from '../../format';
 import { AddSubscriberDialog } from './AddSubscriberDialog';
 import { DelegatePanel } from './DelegatePanel';
 import { Register } from './Register';
 import { RegisterPrintModal } from './RegisterPrintModal';
 import { StatCards } from './StatCards';
 
-// The phone shows five subscribers under the delegate card; this many, then "عرض المزيد".
-const PHONE_PREVIEW = 5;
-
 export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; delegateId: number | null; fullList?: boolean }) {
   const isPhone = useIsPhone();
   // Phone, one delegate's page: delegate card first, then a short list. Desktop is unchanged.
   const phonePreview = isPhone && !fullList && delegateId !== null;
-  const [payFilter, setPayFilter] = useState<PayFilter>('all');
+  // The full list opens on the filter in its address (a card tapped on the delegate's page).
+  const [payFilter, setPayFilter] = useState<PayFilter>(() => (fullList ? listFilterFromHash() : 'all'));
   const now = new Date();
   const thisYear = now.getUTCFullYear();
   const thisMonth = now.getUTCMonth();
@@ -131,6 +129,16 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
             onPhotoChanged={loadOverview}
           />
         )}
+        {/* Phone: the delegate's page holds no subscriber cards; they live on their own page,
+            reached from the cards above or this button. */}
+        {phonePreview && delegateId !== null ? (
+          <a className="reg-more reg-open-list" href={subscriberListHref(delegateId)}>
+            <Users size={17} aria-hidden />
+            عرض المشتركين
+            {overview && <span>(<bdi>{formatNumber(overview.alive + overview.deceased)}</bdi>)</span>}
+            <ChevronLeft size={16} aria-hidden />
+          </a>
+        ) : (
         <Register
           key={`${year}-${delegateId}-${listVersion}`}
           me={me}
@@ -143,11 +151,9 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
           onPaymentChanged={loadOverview}
           status={status}
           onStatusChange={setStatus}
-          {...(phonePreview && delegateId !== null
-            ? { limit: PHONE_PREVIEW, onShowMore: () => { location.hash = subscriberListHref(delegateId); } }
-            : {})}
           {...(fullList ? { filter: payFilter, onFilterChange: setPayFilter } : {})}
         />
+        )}
         {!phonePreview && !fullList && (
           <DelegatePanel
             me={me}

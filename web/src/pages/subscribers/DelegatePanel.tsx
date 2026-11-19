@@ -3,7 +3,10 @@ import { ArrowLeft, HandHeart, MoonStar, Phone, Pill, UsersRound } from 'lucide-
 import type { Me, Overview } from '../../api';
 import { MONTH_NAMES, formatNumber, formatPercent, initialOf } from '../../format';
 import { DelegateProfileDrawer } from '../delegates/DelegateProfileDrawer';
+import { subscriberListHref } from '../../route';
+import { useIsPhone } from '../../useIsPhone';
 import { CollectionLine } from './CollectionLine';
+import { Card, ListCards } from './ListCards';
 import { WhatsAppMark } from './WhatsAppButton';
 
 // One summary tile, drawn like the patient card's: icon, label, figure.
@@ -139,6 +142,7 @@ interface Props {
 
 export function DelegatePanel({ me, overview, selectedMonth, onSelectMonth, onPhotoChanged }: Props) {
   const [profile, setProfile] = useState(false);
+  const isPhone = useIsPhone();
   // A photo that fails to load falls back to the initial instead of its alt text.
   const [brokenPhoto, setBrokenPhoto] = useState(false);
   useEffect(() => setBrokenPhoto(false), [overview?.delegate?.avatar_url]);
@@ -191,13 +195,35 @@ export function DelegatePanel({ me, overview, selectedMonth, onSelectMonth, onPh
         </div>
       </div>
 
-      {/* 2 · The four figures as separate tiles. */}
+      {/* 2 · Phone: the full list's coloured cards plus patients and families, two by two. A
+             paid / unpaid / late card opens the full list already filtered to those subscribers.
+             Desktop keeps the four plain figures below. */}
+      {isPhone && delegate ? (
+        <div className="dpn-cards">
+          <ListCards
+            overview={overview}
+            delegateId={delegate.id}
+            year={overview.year}
+            month={(() => {
+              const now = new Date();
+              const thisYear = now.getUTCFullYear();
+              return overview.year === thisYear ? now.getUTCMonth() : overview.year > thisYear ? -1 : selectedMonth;
+            })()}
+            filter={null}
+            onPick={(picked) => { location.hash = subscriberListHref(delegate.id, picked); }}
+          >
+            <Card tone="patients" icon={<Pill size={18} />} label="المرضى" value={overview.patients} note="المسجّلون في المرضى" />
+            <Card tone="families" icon={<HandHeart size={18} />} label="العوائل المتعففة" value={null} note="تُضاف لاحقاً" />
+          </ListCards>
+        </div>
+      ) : (
       <dl className="dpn-facts">
         <Figure icon={<UsersRound size={17} />} label="المشتركون الأحياء" value={formatNumber(overview.alive)} />
         <Figure icon={<MoonStar size={17} />} label="المشتركون الأموات" value={formatNumber(overview.deceased)} />
         <Figure icon={<Pill size={17} />} label="المرضى" value={formatNumber(overview.patients)} />
         <Figure icon={<HandHeart size={17} />} label="العوائل المتعففة" value="—" note="تُضاف لاحقاً" />
       </dl>
+      )}
       </section>
 
       <section className="panel dpn dpn-charts" aria-label="الرسوم البيانية">

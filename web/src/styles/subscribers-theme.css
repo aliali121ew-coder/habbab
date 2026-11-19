@@ -527,3 +527,50 @@
 @media (max-width: 767.98px) {
   :root:root .stage .page-head.reg-head h1 { font-size: clamp(.8rem, 4vw, 1.15rem) !important; text-overflow: clip; }
 }
+
+/* The delegate card's six coloured cards (phone): patients rose, families teal. */
+.list-card.patients { --tone: #f43f5e; }
+.list-card.families { --tone: #14b8a6; }
+.dpn-cards { padding: 12px 12px 0; }
+.dpn-cards .list-cards { margin-bottom: 0; }
+div.list-card { cursor: default; }
+
+/* Patients and families: the icons keep their colours; the card itself is a light grey wash,
+   which also sets them apart from the four cards that open the list. */
+.stage .list-card:is(.patients, .families)::after {
+  background: linear-gradient(to left, color-mix(in srgb, #94a3b8 22%, transparent) 0%, color-mix(in srgb, #94a3b8 12%, transparent) 55%, color-mix(in srgb, #94a3b8 7%, transparent) 100%) !important;
+}
+:root[data-theme="dark"] .stage .list-card:is(.patients, .families)::after {
+  background: linear-gradient(to left, color-mix(in srgb, #cbd5e1 16%, transparent) 0%, color-mix(in srgb, #cbd5e1 9%, transparent) 55%, color-mix(in srgb, #cbd5e1 5%, transparent) 100%) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stage .list-card:is(.patients, .families)::after {
+    background: linear-gradient(to left, color-mix(in srgb, #cbd5e1 16%, transparent) 0%, color-mix(in srgb, #cbd5e1 9%, transparent) 55%, color-mix(in srgb, #cbd5e1 5%, transparent) 100%) !important;
+  }
+}
+
+/* Coloured list cards: full colour over the first 65% from the icon, then the last 35% fades
+   almost away (lighter than the colour, never black). */
+.stage .list-card:not(.patients):not(.families)::after {
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--tone) 26%, transparent) 0%,
+    color-mix(in srgb, var(--tone) 18%, transparent) 40%,
+    color-mix(in srgb, var(--tone) 11%, transparent) 65%,
+    color-mix(in srgb, var(--tone) 3%, transparent) 100%) !important;
+}
+:root[data-theme="dark"] .stage .list-card:not(.patients):not(.families)::after {
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--tone) 36%, transparent) 0%,
+    color-mix(in srgb, var(--tone) 26%, transparent) 40%,
+    color-mix(in srgb, var(--tone) 15%, transparent) 65%,
+    color-mix(in srgb, var(--tone) 5%, transparent) 100%) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stage .list-card:not(.patients):not(.families)::after {
+    background: linear-gradient(to left,
+      color-mix(in srgb, var(--tone) 36%, transparent) 0%,
+      color-mix(in srgb, var(--tone) 26%, transparent) 40%,
+      color-mix(in srgb, var(--tone) 15%, transparent) 65%,
+      color-mix(in srgb, var(--tone) 5%, transparent) 100%) !important;
+  }
+}
