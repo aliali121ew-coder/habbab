@@ -635,3 +635,19 @@ div.list-card { cursor: default; }
   .list-card-label { grid-area: label; font-size: clamp(.74rem, 3.6vw, .84rem); }
   .list-card small { grid-area: note; }
 }
+
+/* Phone delegate card: "عرض المشتركين" as the card's own footer button. A solid brand pill
+   with a soft lit edge: an icon chip at the start, the label, and an arrow at the far end. */
+.dpn-open-list {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px;
+  margin: 12px 10px 2px; min-height: 52px; padding: 0 8px 0 16px; border-radius: 16px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--bar-active) 92%, #fff), var(--bar-active) 55%, color-mix(in srgb, var(--bar-active) 80%, #000));
+  color: #fff; font-size: .95rem; font-weight: 800; text-decoration: none;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 30%), 0 10px 22px -12px color-mix(in srgb, var(--bar-active) 80%, transparent);
+  transition: transform .15s ease, filter .15s ease;
+}
+.dpn-open-list:hover { filter: brightness(1.06); }
+.dpn-open-list:active { transform: scale(.985); }
+.dpn-open-list:focus-visible { outline: 2px solid var(--bar-active); outline-offset: 3px; }
+.dpn-open-list-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: rgb(255 255 255 / 18%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 25%); }
+.dpn-open-list > svg { opacity: .9; }

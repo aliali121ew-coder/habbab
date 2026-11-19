@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ChevronLeft, Printer, UserPlus, Users,
+  Printer, UserPlus, Users,
 } from 'lucide-react';
 import { api, type Me, type Overview } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
-import { listFilterFromHash, registerHref, subscriberListHref } from '../../route';
+import { listFilterFromHash, registerHref } from '../../route';
 import { useIsPhone } from '../../useIsPhone';
 import { ListCards } from './ListCards';
 import type { PayFilter } from './Register';
 import { DatePicker } from '../../components/DatePicker';
-import { formatNumber, today } from '../../format';
+import { today } from '../../format';
 import { AddSubscriberDialog } from './AddSubscriberDialog';
 import { DelegatePanel } from './DelegatePanel';
 import { Register } from './Register';
@@ -131,14 +131,8 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
         )}
         {/* Phone: the delegate's page holds no subscriber cards; they live on their own page,
             reached from the cards above or this button. */}
-        {phonePreview && delegateId !== null ? (
-          <a className="reg-more reg-open-list" href={subscriberListHref(delegateId)}>
-            <Users size={17} aria-hidden />
-            عرض المشتركين
-            {overview && <span>(<bdi>{formatNumber(overview.alive + overview.deceased)}</bdi>)</span>}
-            <ChevronLeft size={16} aria-hidden />
-          </a>
-        ) : (
+        {/* Phone: no subscriber cards here; the delegate card's button leads to their own page. */}
+        {phonePreview && delegateId !== null ? null : (
         <Register
           key={`${year}-${delegateId}-${listVersion}`}
           me={me}

@@ -59,14 +59,14 @@ export function ListCards({ overview, delegateId, year, month, filter, onPick, c
 
   return (
     <div className="list-cards" role="group" aria-label="أرقام المشتركين">
-      <Card tone="all" icon={<Users size={18} />} label="المشتركون" value={total}
+      <Card tone="all" icon={<Users size={18} />} label="المشتركين" value={total}
         note={alive !== null && overview ? `${formatNumber(alive)} أحياء · ${formatNumber(overview.deceased)} أموات` : undefined}
         active={filter === 'all'} onClick={() => onPick('all')} />
-      <Card tone="paid" icon={<CircleCheck size={18} />} label="المسددون" value={counts?.paid ?? null}
+      <Card tone="paid" icon={<CircleCheck size={18} />} label="مسدد" value={counts?.paid ?? null}
         note={until} active={filter === 'paid'} onClick={() => onPick('paid')} />
-      <Card tone="unpaid" icon={<CircleX size={18} />} label="غير المسددين" value={counts?.unpaid ?? null}
+      <Card tone="unpaid" icon={<CircleX size={18} />} label="غير مسدد" value={counts?.unpaid ?? null}
         note={until} active={filter === 'unpaid'} onClick={() => onPick('unpaid')} />
-      <Card tone="late" icon={<AlarmClock size={18} />} label="المتأخرون" value={counts?.overdue ?? null}
+      <Card tone="late" icon={<AlarmClock size={18} />} label="المتأخرين" value={counts?.overdue ?? null}
         note="4 أشهر بلا تسديد" active={filter === 'overdue'} onClick={() => onPick('overdue')} />
       {children}
     </div>
