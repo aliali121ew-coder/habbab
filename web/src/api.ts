@@ -101,7 +101,8 @@ export interface Page<T> {
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  /** The whole error body, for responses that carry more than a message. */
+  constructor(public status: number, message: string, public data: Record<string, unknown> | null = null) {
     super(message);
   }
 }
@@ -138,7 +139,7 @@ export async function api<T>(path: string, { method = 'GET', body, form, signal 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 401 && path !== '/auth/login') onSessionLost();
-    throw new ApiError(response.status, data?.error ?? 'حدث خطأ غير متوقع');
+    throw new ApiError(response.status, data?.error ?? 'حدث خطأ غير متوقع', data);
   }
   return data as T;
 }

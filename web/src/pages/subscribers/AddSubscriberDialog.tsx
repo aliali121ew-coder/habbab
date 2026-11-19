@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { Banknote, MapPin, Minus, Phone, Plus, UserCheck, UserPlus, UserRound, Users, X } from 'lucide-react';
-import { api, type DelegateSummary, type Me } from '../../api';
+import { AlertTriangle, ArrowLeftRight, Banknote, MapPin, Minus, Phone, Plus, UserCheck, UserPlus, UserRound, Users, X } from 'lucide-react';
+import { api, ApiError, type DelegateSummary, type Me } from '../../api';
 import { formatNumber } from '../../format';
 
 // The usual monthly amounts, one tap each; any other amount goes in the field beside them.
 const TIERS = [5000, 10000, 15000, 25000];
+
+interface Conflict {
+  id: number;
+  full_name: string;
+  status: string;
+  delegate_id: number | null;
+  delegate_name: string | null;
+}
 
 interface Props {
   me: Me;
@@ -35,6 +43,14 @@ export function AddSubscriberDialog({ me, delegates, defaultDelegate, onClose, o
   const [delegate, setDelegate] = useState(defaultDelegate ? String(defaultDelegate) : '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // The same name already under another delegate: shown before anything is added.
+  const [conflicts, setConflicts] = useState<Conflict[] | null>(null);
+
+  const conflictRef = useRef<HTMLDivElement>(null);
+  // A changed name or delegate is a new question; the old warning no longer applies.
+  useEffect(() => { setConflicts(null); }, [name, delegate]);
+  // The warning sits under the form: bring it into view, or a phone shows only the new button.
+  useEffect(() => { if (conflicts?.length) conflictRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, [conflicts]);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -43,6 +59,10 @@ export function AddSubscriberDialog({ me, delegates, defaultDelegate, onClose, o
 
   const delegateName = defaultDelegate !== null ? delegates.find((person) => person.id === defaultDelegate)?.full_name : null;
   const chooseDelegate = me.role === 'admin' && defaultDelegate === null;
+
+  // Where the subscriber is being added: the fixed delegate, the one picked, or none.
+  const targetId = defaultDelegate ?? (me.role === 'admin' ? (delegate ? Number(delegate) : null) : me.id);
+  const targetName = targetId === null ? null : delegates.find((person) => person.id === targetId)?.full_name ?? (me.role === 'delegate' ? me.full_name : null);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -59,8 +79,27 @@ export function AddSubscriberDialog({ me, delegates, defaultDelegate, onClose, o
           phone: phone.trim() || null,
           family_size: family,
           ...(me.role === 'admin' ? { delegate_id: delegate ? Number(delegate) : null } : {}),
+          // Sent only after the admin has seen the warning and chosen to add anyway.
+          ...(conflicts && me.role === 'admin' ? { confirm_other_delegate: true } : {}),
         },
       });
+      onSaved();
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.status === 409 && Array.isArray(failure.data?.conflicts)) {
+        setConflicts(failure.data.conflicts as Conflict[]);
+      }
+      setError((failure as Error).message);
+      setBusy(false);
+    }
+  };
+
+  // Instead of a second copy: the existing subscriber moves to the delegate chosen here.
+  const moveHere = async (conflict: Conflict) => {
+    if (busy || targetId === null) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/subscribers/${conflict.id}`, { method: 'PATCH', body: { delegate_id: targetId } });
       onSaved();
     } catch (failure) {
       setError((failure as Error).message);
@@ -145,13 +184,38 @@ export function AddSubscriberDialog({ me, delegates, defaultDelegate, onClose, o
             </Field>
           </div>
 
-          {error && <p className="form-error" role="alert">{error}</p>}
+          {conflicts && conflicts.length > 0 ? (
+            <div ref={conflictRef} className="add-conflict" role="alert">
+              <p className="add-conflict-head">
+                <AlertTriangle size={17} aria-hidden />
+                <span>هذا الاسم مسجّل عند مندوب آخر. راجِعه قبل الإضافة:</span>
+              </p>
+              <ul>
+                {conflicts.map((conflict) => (
+                  <li key={conflict.id}>
+                    <div>
+                      <strong>{conflict.full_name}</strong>
+                      <small>{conflict.status === 'deceased' ? 'متوفى' : 'حي'} · عند <b>{conflict.delegate_name ?? 'بدون مندوب'}</b></small>
+                    </div>
+                    {targetId !== null && (
+                      <button type="button" className="btn" disabled={busy} onClick={() => moveHere(conflict)}>
+                        <ArrowLeftRight size={15} aria-hidden /> نقله إلى {targetName ?? 'هذا المندوب'}
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <small>النقل يُبقي سجلّه وتسديداته كما هي، ولا يُضيف نسخة ثانية.</small>
+            </div>
+          ) : (
+            error && <p className="form-error" role="alert">{error}</p>
+          )}
         </div>
 
         <footer className="add-actions">
           <button type="button" className="btn" onClick={() => ref.current?.close()}>إلغاء</button>
-          <button type="submit" className="btn primary" disabled={busy}>
-            <UserPlus size={17} aria-hidden /> {busy ? 'جارٍ الحفظ…' : 'إضافة المشترك'}
+          <button type="submit" className={conflicts?.length ? 'btn danger' : 'btn primary'} disabled={busy}>
+            <UserPlus size={17} aria-hidden /> {busy ? 'جارٍ الحفظ…' : conflicts?.length ? 'إضافة رغم ذلك' : 'إضافة المشترك'}
           </button>
         </footer>
       </form>

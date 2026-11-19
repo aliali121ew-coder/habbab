@@ -112,10 +112,32 @@ subscribers.post('/lookup', requireRole('admin', 'accountant', 'health', 'delega
 });
 
 subscribers.post('/', requireRole('admin', 'delegate'), async (c) => {
-  const body = await readJson(c, z.object(fields));
+  const body = await readJson(c, z.object({ ...fields, confirm_other_delegate: z.boolean().optional() }));
   const user = c.get('user');
   const delegateId = delegateScope(c) ?? body.delegate_id ?? null;
   const status = body.status ?? 'alive';
+
+  // The same name under another delegate is reported before anything is added. Only an admin
+  // can then add it anyway; a delegate is told to go through the administration. The same name
+  // twice under one delegate (e.g. alive and paying for a deceased relative) is normal.
+  if (!body.confirm_other_delegate || delegateScope(c) !== null) {
+    const conflicts = await all<{ id: number; full_name: string; status: string; delegate_id: number | null; delegate_name: string | null }>(
+      c,
+      `SELECT s.id, s.full_name, s.status, s.delegate_id, u.full_name AS delegate_name
+       FROM subscribers s LEFT JOIN users u ON u.id = s.delegate_id
+       WHERE s.name_norm = ? AND s.deleted_at IS NULL AND s.delegate_id IS NOT ? LIMIT 10`,
+      normalizeName(body.full_name), delegateId,
+    );
+    if (conflicts.length) {
+      const where = [...new Set(conflicts.map((row) => row.delegate_name ?? 'بدون مندوب'))].join('، ');
+      return c.json({
+        error: delegateScope(c) !== null
+          ? `هذا الاسم مسجّل عند مندوب آخر (${where}). راجع الإدارة لإضافته أو نقله إليك.`
+          : `هذا الاسم مسجّل عند مندوب آخر: ${where}`,
+        conflicts: delegateScope(c) !== null ? [] : conflicts,
+      }, 409);
+    }
+  }
 
   const nationalId = body.national_id ?? null;
   const statements = [

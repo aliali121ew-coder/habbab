@@ -626,3 +626,14 @@ a.whatsapp-row-btn { text-decoration: none; }
 .sub-info-wrap.editing dd > input, .sub-info-wrap.editing dd > select { min-height: 36px; padding-inline: 0; border: 0; background: transparent; font-size: 1rem; font-weight: 500; color: var(--ink); }
 .sub-info-wrap.editing dd > input:focus, .sub-info-wrap.editing dd > select:focus { outline: none; }
 .info-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+
+/* Add subscriber: the same name already under another delegate. */
+.add-conflict { display: grid; gap: 10px; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent); border-radius: 14px; background: var(--danger-soft); color: var(--ink); }
+.add-conflict-head { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: var(--danger); font-weight: 700; font-size: .9rem; }
+.add-conflict-head svg { flex: none; margin-top: 2px; }
+.add-conflict ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.add-conflict li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--surface); }
+.add-conflict li div { display: grid; gap: 2px; min-width: 0; }
+.add-conflict li strong { font-size: .9rem; }
+.add-conflict li small, .add-conflict > small { color: var(--ink-2); font-size: .76rem; }
+.add-conflict li .btn { min-height: 34px; padding: 0 12px; font-size: .8rem; }
