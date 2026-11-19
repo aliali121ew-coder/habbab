@@ -15,6 +15,22 @@ try {
   // Blocked storage: the system colour preference applies.
 }
 
+// With no choice made in the app, the page still carries the phone's own light/dark setting as
+// data-theme, so every dark-mode rule applies the same way whether dark was chosen in the app
+// or comes from the phone (some rules only knew the first, and washed the cards out). It
+// follows the phone while no choice is saved; a choice made in the app always wins.
+(function followSystemTheme() {
+  var media = matchMedia('(prefers-color-scheme: dark)');
+  var chosen = function () {
+    try { var t = localStorage.getItem('theme'); return t === 'light' || t === 'dark'; } catch (e) { return false; }
+  };
+  var apply = function () {
+    if (!chosen()) document.documentElement.dataset.theme = media.matches ? 'dark' : 'light';
+  };
+  apply();
+  media.addEventListener('change', function () { apply(); if (window.syncThemeColor) window.syncThemeColor(); });
+})();
+
 // The browser / installed-app title bar takes the top bar's colour (the --surface token) for the
 // current palette and light or dark mode. Called again whenever either changes.
 window.syncThemeColor = function () {
