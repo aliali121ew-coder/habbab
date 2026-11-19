@@ -53,6 +53,8 @@ export interface DelegateProfile {
 export interface PrintRow {
   id: number;
   full_name: string;
+  /** The delegate's area this subscriber belongs to, when the delegate covers several. */
+  area?: string | null;
   monthly_fee: number;
   paid_mask: number;
   paid_total: number;

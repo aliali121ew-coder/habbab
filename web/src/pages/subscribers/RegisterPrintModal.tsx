@@ -270,6 +270,27 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
   );
 }
 
+// A delegate who covers several areas gets each area's register on its own sheets,
+// titled "delegate – area". Rows arrive sorted by area, so groups are contiguous.
+function groupByArea(rows: PrintRow[]) {
+  const groups: { area: string | null; rows: PrintRow[] }[] = [];
+  for (const row of rows) {
+    const area = row.area?.trim() || null;
+    const last = groups[groups.length - 1];
+    if (last && last.area === area) last.rows.push(row);
+    else groups.push({ area, rows: [row] });
+  }
+  return groups;
+}
+
+export function buildRegisterGroups(rows: PrintRow[], cutoff: number, currency: string, delegateName: string) {
+  return groupByArea(rows).map((group) => ({
+    key: group.area ?? '',
+    name: group.area ? `${delegateName} – ${group.area}` : delegateName,
+    report: buildRegister(group.rows, cutoff, currency),
+  }));
+}
+
 export function RegisterPrintModal({ year, cutoff, status, delegateId, delegateName, currency, canSend = false, onClose }: Props) {
   const [rows, setRows] = useState<PrintRow[] | null>(null);
   const [error, setError] = useState('');
@@ -290,7 +311,13 @@ export function RegisterPrintModal({ year, cutoff, status, delegateId, delegateN
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const report = useMemo(() => (rows ? buildRegister(rows, cutoff, currency) : null), [rows, cutoff, currency]);
+  // Grouped by area only for one delegate; the all-delegates register stays one list.
+  const groups = useMemo(() => {
+    if (!rows) return null;
+    if (delegateId === null) return [{ key: '', name: delegateName, report: buildRegister(rows, cutoff, currency) }];
+    return buildRegisterGroups(rows, cutoff, currency, delegateName);
+  }, [rows, cutoff, currency, delegateId, delegateName]);
+  const report = groups ? { pages: groups.flatMap((group) => group.report.pages) } : null;
 
   return createPortal(
     <div className="print-modal-overlay" role="dialog" aria-modal="true" aria-label={`طباعة سجل ${delegateName}`}>
@@ -338,7 +365,9 @@ export function RegisterPrintModal({ year, cutoff, status, delegateId, delegateN
         <div className="print-sheet-scroll reg-sheets">
           {error && <p className="form-error" role="alert">{error}</p>}
           {!report && !error && <p className="hint" aria-busy="true">جارٍ تجهيز السجل…</p>}
-          {report && <RegisterSheets report={report} year={year} cutoff={cutoff} status={status} delegateName={delegateName} />}
+          {groups?.map((group) => (
+            <RegisterSheets key={group.key} report={group.report} year={year} cutoff={cutoff} status={status} delegateName={group.name} />
+          ))}
         </div>
       </div>
     </div>,

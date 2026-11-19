@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { api, type PrintRow } from '../../api';
-import { RegisterSheets, buildRegister } from './RegisterPrintModal';
+import { RegisterSheets, buildRegisterGroups } from './RegisterPrintModal';
 
 interface Options {
   year: number;
@@ -29,7 +29,9 @@ export async function buildRegisterPdf({ year, cutoff, status, delegateId, deleg
   const root = createRoot(host);
   try {
     flushSync(() => {
-      root.render(<RegisterSheets report={buildRegister(items, cutoff, currency)} year={year} cutoff={cutoff} status={status} delegateName={delegateName} />);
+      root.render(<>{buildRegisterGroups(items, cutoff, currency, delegateName).map((group) => (
+        <RegisterSheets key={group.key} report={group.report} year={year} cutoff={cutoff} status={status} delegateName={group.name} />
+      ))}</>);
     });
     await document.fonts.ready;
     await Promise.all([...host.querySelectorAll('img')].map((img) => img.decode().catch(() => undefined)));

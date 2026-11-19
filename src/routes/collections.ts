@@ -172,18 +172,18 @@ collections.get('/print', async (c) => {
     ? 'COALESCE(y.paid_total, 0)'
     : `COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.subscriber_id = s.id AND t.deleted_at IS NULL
          AND t.period BETWEEN '${year}-01' AND '${year}-${String(until + 1).padStart(2, '0')}'), 0)`;
-  const rows = await all<{ id: number; full_name: string; monthly_fee: number; paid_mask: number; paid_total: number; last_paid: string | null }>(
+  const rows = await all<{ id: number; full_name: string; area: string | null; monthly_fee: number; paid_mask: number; paid_total: number; last_paid: string | null }>(
     c,
     `WITH base AS (
-       SELECT s.id, s.full_name, s.name_norm, s.monthly_fee,
+       SELECT s.id, s.full_name, s.area, s.name_norm, s.monthly_fee,
          COALESCE(y.paid_mask, 0) & ${mask} AS paid_mask, ${until < 0 ? '0' : paidTotal} AS paid_total
        FROM subscribers s
        LEFT JOIN subscriber_year y ON y.subscriber_id = s.id AND y.year = ?
        WHERE ${delegateId === null ? '' : 's.delegate_id = ? AND '}s.status = ? AND s.deleted_at IS NULL
-       ORDER BY s.name_norm
+       ORDER BY ${delegateId === null ? '' : "COALESCE(s.area, ''), "}s.name_norm
        LIMIT ${PRINT_LIMIT + 1}
      )
-     SELECT id, full_name, monthly_fee, paid_mask, paid_total,
+     SELECT id, full_name, area, monthly_fee, paid_mask, paid_total,
        (SELECT tx_date FROM transactions t WHERE t.subscriber_id = base.id AND t.deleted_at IS NULL
           AND t.period = ? || '-' || printf('%02d', ${LAST_PAID_MONTH})) AS last_paid
      FROM base`,
