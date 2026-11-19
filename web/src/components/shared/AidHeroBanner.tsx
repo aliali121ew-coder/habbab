@@ -252,6 +252,14 @@ const TEXT_VARIANTS = {
   }),
 };
 
+// "توزيع السلات الغذائية للعوائل" → ["توزيع السلات", "الغذائية للعوائل"]
+function pairWords(text: string): string[] {
+  const words = text.trim().split(/\s+/);
+  const pairs: string[] = [];
+  for (let i = 0; i < words.length; i += 2) pairs.push(words.slice(i, i + 2).join(' '));
+  return pairs;
+}
+
 export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
   const [slides, setSlides] = useState<HeroSlide[]>(loadSlides);
   const [[index, direction], setSlideState] = useState<[number, number]>([0, 1]);
@@ -518,7 +526,10 @@ export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
               className="max-w-2xl"
             >
               <h2 className="text-lg font-bold leading-snug tracking-tight text-white sm:text-2xl">
-                {slide.title}
+                {/* Phone: two words per line. From sm up the pairs run on as one free line. */}
+                {pairWords(slide.title).map((pair, index) => (
+                  <span key={index} className="block sm:inline">{index > 0 && <span className="hidden sm:inline"> </span>}{pair}</span>
+                ))}
               </h2>
 
               <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5">
