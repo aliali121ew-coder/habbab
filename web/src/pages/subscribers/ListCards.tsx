@@ -1,0 +1,66 @@
+import { useEffect, useState, type ReactNode } from 'react';
+import { AlarmClock, CircleCheck, CircleX, Users } from 'lucide-react';
+import { api, type Overview } from '../../api';
+import { MONTH_NAMES, formatNumber } from '../../format';
+import type { PayFilter } from './Register';
+
+interface Props {
+  overview: Overview | null;
+  delegateId: number;
+  year: number;
+  /** The month the register's filters count up to; -1 for a year still ahead. */
+  month: number;
+  filter: PayFilter;
+  onPick: (filter: PayFilter) => void;
+}
+
+interface Counts { alive: number; paid: number; unpaid: number; overdue: number }
+
+function Card({ tone, icon, label, value, note, active, onClick }: {
+  tone: string; icon: ReactNode; label: string; value: number | null; note?: string; active: boolean; onClick: () => void;
+}) {
+  return (
+    <button type="button" className={`list-card ${tone}`} aria-pressed={active} onClick={onClick}>
+      <span className="list-card-icon" aria-hidden>{icon}</span>
+      <span className="list-card-label">{label}</span>
+      <strong className="list-card-value">{value === null ? '—' : <bdi>{formatNumber(value)}</bdi>}</strong>
+      {note && <small>{note}</small>}
+    </button>
+  );
+}
+
+// The full subscriber list's four figures, two by two. Each card filters the list below, and
+// its figure is counted by the server with that filter's own rules, so the two always agree.
+export function ListCards({ overview, delegateId, year, month, filter, onPick }: Props) {
+  const [counts, setCounts] = useState<Counts | null>(null);
+
+  useEffect(() => {
+    if (month < 0) { setCounts({ alive: overview?.alive ?? 0, paid: 0, unpaid: 0, overdue: 0 }); return; }
+    const controller = new AbortController();
+    const query = new URLSearchParams({ year: String(year), delegate: String(delegateId), month: String(month) });
+    api<Counts>(`/collections/pay-counts?${query}`, { signal: controller.signal })
+      .then(setCounts)
+      .catch(() => { /* the cards keep their dash; the list below still works */ });
+    return () => controller.abort();
+    // The overview reloads after every payment, so the counts follow it.
+  }, [delegateId, year, month, overview]);
+
+  // The living are counted with the list itself, so the card and the "الكل" rows agree.
+  const alive = counts?.alive ?? overview?.alive ?? null;
+  const total = alive !== null && overview ? alive + overview.deceased : null;
+  const until = month >= 0 ? `حتى ${MONTH_NAMES[month]}` : undefined;
+
+  return (
+    <div className="list-cards" role="group" aria-label="أرقام المشتركين">
+      <Card tone="all" icon={<Users size={18} />} label="المشتركون" value={total}
+        note={alive !== null && overview ? `${formatNumber(alive)} أحياء · ${formatNumber(overview.deceased)} أموات` : undefined}
+        active={filter === 'all'} onClick={() => onPick('all')} />
+      <Card tone="paid" icon={<CircleCheck size={18} />} label="المسددون" value={counts?.paid ?? null}
+        note={until && `مسددون ${until}`} active={filter === 'paid'} onClick={() => onPick('paid')} />
+      <Card tone="unpaid" icon={<CircleX size={18} />} label="غير المسددين" value={counts?.unpaid ?? null}
+        note={until && `عليهم شهر أو أكثر ${until}`} active={filter === 'unpaid'} onClick={() => onPick('unpaid')} />
+      <Card tone="late" icon={<AlarmClock size={18} />} label="المتأخرون" value={counts?.overdue ?? null}
+        note="4 أشهر أو أكثر بلا تسديد" active={filter === 'overdue'} onClick={() => onPick('overdue')} />
+    </div>
+  );
+}

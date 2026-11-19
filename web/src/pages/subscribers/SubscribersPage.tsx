@@ -5,7 +5,10 @@ import {
 import { api, type Me, type Overview } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
-import { registerHref } from '../../route';
+import { registerHref, subscriberListHref } from '../../route';
+import { useIsPhone } from '../../useIsPhone';
+import { ListCards } from './ListCards';
+import type { PayFilter } from './Register';
 import { DatePicker } from '../../components/DatePicker';
 import { today } from '../../format';
 import { AddSubscriberDialog } from './AddSubscriberDialog';
@@ -14,7 +17,14 @@ import { Register } from './Register';
 import { RegisterPrintModal } from './RegisterPrintModal';
 import { StatCards } from './StatCards';
 
-export function SubscribersPage({ me, delegateId }: { me: Me; delegateId: number | null }) {
+// The phone shows five subscribers under the delegate card; this many, then "عرض المزيد".
+const PHONE_PREVIEW = 5;
+
+export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; delegateId: number | null; fullList?: boolean }) {
+  const isPhone = useIsPhone();
+  // Phone, one delegate's page: delegate card first, then a short list. Desktop is unchanged.
+  const phonePreview = isPhone && !fullList && delegateId !== null;
+  const [payFilter, setPayFilter] = useState<PayFilter>('all');
   const now = new Date();
   const thisYear = now.getUTCFullYear();
   const thisMonth = now.getUTCMonth();
@@ -59,8 +69,14 @@ export function SubscribersPage({ me, delegateId }: { me: Me; delegateId: number
         <span className="page-icon" aria-hidden><Users size={24} /></span>
         <div>
           {/* The path stops at the parent: the heading below names this page. A delegate has only this page. */}
-          {me.role !== 'delegate' && <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'المندوبون', href: '#/delegates' }]} />}
-          <h1>{overview?.delegate ? `سجل ${overview.delegate.full_name}` : 'سجل كل المشتركين'}</h1>
+          {fullList && delegateId !== null
+            ? <Breadcrumbs items={[...(me.role !== 'delegate' ? [{ label: 'المندوبون', href: '#/delegates' }] : []), { label: overview?.delegate?.full_name ?? 'السجل', href: registerHref(delegateId) }]} />
+            : me.role !== 'delegate' && <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'المندوبون', href: '#/delegates' }]} />}
+          <h1>
+            {fullList
+              ? `مشتركو ${overview?.delegate?.full_name ?? ''}`
+              : overview?.delegate ? `سجل ${overview.delegate.full_name}` : 'سجل كل المشتركين'}
+          </h1>
         </div>
         <div className="page-actions">
           <DatePicker mode="single" label="شهر التسديد" value={{ from: shownDay, to: shownDay }} onChange={({ from }) => pickDay(from)} />
@@ -77,16 +93,42 @@ export function SubscribersPage({ me, delegateId }: { me: Me; delegateId: number
 
       {error && !overview
         ? <StateMessage kind="error" title="تعذّر تحميل الإحصائيات" hint={error} onRetry={loadOverview} />
-        : (
-          <StatCards
+        : fullList && delegateId !== null
+          ? (
+            <ListCards
+              overview={overview}
+              delegateId={delegateId}
+              year={year}
+              // The same month the register's filters count to (Register: effectiveMonth).
+              month={year === thisYear ? thisMonth : year > thisYear ? -1 : selectedMonth}
+              filter={payFilter}
+              onPick={(picked) => {
+                setPayFilter(picked);
+                // Paid, unpaid and late are about the living; "all" keeps the list shown.
+                if (picked !== 'all') setStatus('alive');
+              }}
+            />
+          )
+          // The phone leaves the four summary cards out: the delegate card takes their place.
+          : !phonePreview && (
+            <StatCards
+              overview={overview}
+              currency={me.currency}
+              selectedMonth={selectedMonth}
+              onSelectMonth={setSelectedMonth}
+            />
+          )}
+
+      <div className={phonePreview ? 'workspace workspace-phone' : 'workspace'}>
+        {phonePreview && (
+          <DelegatePanel
+            me={me}
             overview={overview}
-            currency={me.currency}
             selectedMonth={selectedMonth}
             onSelectMonth={setSelectedMonth}
+            onPhotoChanged={loadOverview}
           />
         )}
-
-      <div className="workspace">
         <Register
           key={`${year}-${delegateId}-${listVersion}`}
           me={me}
@@ -99,14 +141,20 @@ export function SubscribersPage({ me, delegateId }: { me: Me; delegateId: number
           onPaymentChanged={loadOverview}
           status={status}
           onStatusChange={setStatus}
+          {...(phonePreview && delegateId !== null
+            ? { limit: PHONE_PREVIEW, onShowMore: () => { location.hash = subscriberListHref(delegateId); } }
+            : {})}
+          {...(fullList ? { filter: payFilter, onFilterChange: setPayFilter } : {})}
         />
-        <DelegatePanel
-          me={me}
-          overview={overview}
-          selectedMonth={selectedMonth}
-          onSelectMonth={setSelectedMonth}
-          onPhotoChanged={loadOverview}
-        />
+        {!phonePreview && !fullList && (
+          <DelegatePanel
+            me={me}
+            overview={overview}
+            selectedMonth={selectedMonth}
+            onSelectMonth={setSelectedMonth}
+            onPhotoChanged={loadOverview}
+          />
+        )}
       </div>
 
       {printing && (

@@ -637,3 +637,23 @@ a.whatsapp-row-btn { text-decoration: none; }
 .add-conflict li strong { font-size: .9rem; }
 .add-conflict li small, .add-conflict > small { color: var(--ink-2); font-size: .76rem; }
 .add-conflict li .btn { min-height: 34px; padding: 0 12px; font-size: .8rem; }
+
+/* Phone register preview: the button to the full subscriber list. */
+.reg-more { display: flex; align-items: center; justify-content: center; gap: 6px; width: calc(100% - 24px); min-height: 44px; margin: 4px 12px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); color: var(--brand); font: inherit; font-size: .9rem; font-weight: 700; cursor: pointer; }
+.reg-more span { color: var(--ink-2); font-weight: 500; }
+.reg-more:hover { background: color-mix(in srgb, var(--brand) 8%, var(--surface-2)); }
+:root[data-theme="dark"] .reg-more { color: color-mix(in srgb, var(--bar-active) 70%, #fff); }
+
+/* Full subscriber list: four figures, two by two; each one filters the list. */
+.list-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+@media (min-width: 768px) { .list-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; } }
+.list-card { --tone: var(--brand); display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 10px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.list-card.paid { --tone: var(--paid, #16a34a); }
+.list-card.unpaid { --tone: var(--danger); }
+.list-card.late { --tone: #d97706; }
+.list-card-icon { grid-row: span 2; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: color-mix(in srgb, var(--tone) 14%, transparent); color: var(--tone); }
+.list-card-label { color: var(--ink-2); font-size: .8rem; font-weight: 600; }
+.list-card-value { font-size: 1.4rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.list-card small { grid-column: 1 / -1; color: var(--ink-3); font-size: .72rem; }
+.list-card[aria-pressed="true"] { border-color: var(--tone); box-shadow: inset 0 0 0 1px var(--tone); }
+.list-card:focus-visible { outline: 2px solid var(--tone); outline-offset: 2px; }

@@ -103,7 +103,15 @@ interface Props {
   // The living or deceased list; kept by the page so printing follows it.
   status: 'alive' | 'deceased';
   onStatusChange: (status: 'alive' | 'deceased') => void;
+  /** Phone preview: only this many rows, no filters or pages, and a button to the full list. */
+  limit?: number;
+  onShowMore?: () => void;
+  /** Set from outside (the full-list page's cards); the register's own buttons follow it. */
+  filter?: PayFilter;
+  onFilterChange?: (filter: PayFilter) => void;
 }
+
+export type { PayFilter };
 
 export function Register({
   me,
@@ -115,8 +123,15 @@ export function Register({
   onPaymentChanged,
   status,
   onStatusChange: setStatus,
+  limit,
+  onShowMore,
+  filter,
+  onFilterChange,
 }: Props) {
-  const [payFilter, setPayFilter] = useState<PayFilter>('all');
+  const [ownFilter, setOwnFilter] = useState<PayFilter>('all');
+  const payFilter = filter ?? ownFilter;
+  const setPayFilter = (value: PayFilter) => (onFilterChange ? onFilterChange(value) : setOwnFilter(value));
+  const preview = limit !== undefined;
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<GridRow[]>([]);
@@ -206,9 +221,11 @@ export function Register({
 
   const safePage = Math.min(pageIndex, Math.max(0, loadedPages - 1));
   const pageRows = useMemo(
-    () => filteredRows.slice(safePage * ROWS_PER_PAGE, (safePage + 1) * ROWS_PER_PAGE),
-    [filteredRows, safePage],
+    () => (limit !== undefined ? filteredRows.slice(0, limit) : filteredRows.slice(safePage * ROWS_PER_PAGE, (safePage + 1) * ROWS_PER_PAGE)),
+    [filteredRows, safePage, limit],
   );
+  // How many are behind "عرض المزيد": the whole list's count when known, else what has loaded.
+  const hiddenCount = Math.max(0, (totalCount ?? filteredRows.length) - pageRows.length);
 
   const goToPage = useCallback((targetPage: number) => {
     if (targetPage < 0) return;
@@ -282,7 +299,7 @@ export function Register({
           </button>
         </div>
 
-        <div className="register-filters">
+        {!preview && <div className="register-filters">
           <div className="seg filter-seg" role="group" aria-label="فلتر حالة التسديد">
             <button type="button" aria-pressed={payFilter === 'all'} onClick={() => setPayFilter('all')}>الكل</button>
             <button type="button" aria-pressed={payFilter === 'unpaid'} onClick={() => setPayFilter('unpaid')}>
@@ -307,7 +324,7 @@ export function Register({
               autoComplete="off"
             />
           </label>
-        </div>
+        </div>}
       </header>
 
       {phase === 'loading' && <div className="reg-loading" aria-busy="true">{[0, 1, 2, 3, 4].map((key) => <div key={key} className="skeleton" />)}</div>}
@@ -351,7 +368,15 @@ export function Register({
         <StateMessage kind="error" title="تعذّر تحميل الصفحة التالية" hint={error} onRetry={() => setPhase('ready')} />
       )}
 
-      {phase !== 'loading' && filteredRows.length > 0 && totalPages > 1 && (
+      {preview && phase !== 'loading' && onShowMore && (hiddenCount > 0 || next !== null) && (
+        <button type="button" className="reg-more" onClick={onShowMore}>
+          عرض المزيد
+          {hiddenCount > 0 && <span>(<bdi>{formatNumber(hiddenCount)}</bdi>)</span>}
+          <ChevronLeft size={16} aria-hidden />
+        </button>
+      )}
+
+      {!preview && phase !== 'loading' && filteredRows.length > 0 && totalPages > 1 && (
         <nav className="reg-pager" aria-label="ترقيم صفحات السجل">
           <button
             type="button"

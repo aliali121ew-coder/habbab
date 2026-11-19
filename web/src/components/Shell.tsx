@@ -195,7 +195,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
                   ? onPatients || (me.role === 'health' && !onFamilies)
                   : item.id === 'subscribers'
                     ? me.role === 'delegate' && !onFamilies
-                    : route === 'delegates' || typeof route === 'number';
+                    : route === 'delegates' || typeof route === 'number' || (typeof route === 'string' && route.startsWith('list:'));
             return (
               <a
                 key={item.id}

@@ -81,6 +81,8 @@ export function App() {
                     ? <ExpensesPage me={me} />
                     : typeof route === 'number'
                       ? <SubscribersPage key={route} me={me} delegateId={route} />
+                      : typeof route === 'string' && route.startsWith('list:')
+                      ? <SubscribersPage key={route} me={me} delegateId={Number(route.slice(5))} fullList />
                       : route === 'delegates'
                         ? <DelegatesPage me={me} />
                         : <HomePage me={me} />}

@@ -241,6 +241,33 @@ collections.get('/grid', async (c) => {
   return c.json({ items: rows.map(toItem), next: nextCursor(rows) });
 });
 
+// How many living subscribers each /grid pay_state filter would list, by the very same rules,
+// so a figure on the full-list page always matches the rows its card shows.
+collections.get('/pay-counts', async (c) => {
+  const year = parseOrFail(zYear, c.req.query('year'));
+  const delegateId = scopedDelegate(c, optionalId(c.req.query('delegate')));
+  if (delegateId === null) fail(422, 'اختر مندوباً');
+  const m = parseOrFail(zMonthIndex, c.req.query('month'));
+  const elapsedCount = m + 1;
+  const fullMask = (1 << elapsedCount) - 1;
+  const mask = 'COALESCE(y.paid_mask, 0)';
+  const paidBits = Array.from({ length: elapsedCount }, (_, b) => `((${mask} >> ${b}) & 1)`).join(' + ');
+  const overdue = elapsedCount < 4
+    ? '0'
+    : `SUM(CASE WHEN (${elapsedCount} - (${paidBits})) >= 4 OR (${mask} & ${((1 << 4) - 1) << (m - 3)}) = 0 THEN 1 ELSE 0 END)`;
+  const row = await first<{ alive: number; paid: number | null; unpaid: number | null; overdue: number | null }>(
+    c,
+    `SELECT COUNT(*) AS alive,
+       SUM(CASE WHEN (${mask} & ${fullMask}) = ${fullMask} THEN 1 ELSE 0 END) AS paid,
+       SUM(CASE WHEN (${mask} & ${fullMask}) <> ${fullMask} THEN 1 ELSE 0 END) AS unpaid,
+       ${overdue} AS overdue
+     FROM subscribers s LEFT JOIN subscriber_year y ON y.subscriber_id = s.id AND y.year = ?
+     WHERE s.delegate_id = ? AND s.status = 'alive' AND s.deleted_at IS NULL`,
+    year, delegateId,
+  );
+  return c.json({ alive: row?.alive ?? 0, paid: row?.paid ?? 0, unpaid: row?.unpaid ?? 0, overdue: row?.overdue ?? 0 });
+});
+
 // POST keeps the searched name out of URLs and request logs.
 collections.post('/search', async (c) => {
   const body = await readJson(c, z.object({

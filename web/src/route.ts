@@ -11,6 +11,8 @@ export type Route =
   | 'families'
   | 'family-detail'
   | `soon:${string}`
+  // One delegate's full subscriber list on its own page (the phone shows only five on the register page).
+  | `list:${number}`
   | number;
 
 const subscribe = (listener: () => void) => {
@@ -29,6 +31,8 @@ function parse(hash: string): Route {
   if (/^#\/families\/\d+$/.test(hash)) return 'family-detail';
   const soon = /^#\/soon\/([a-z-]+)$/.exec(hash);
   if (soon) return `soon:${soon[1]}`;
+  const list = /^#\/delegates\/(\d+)\/list$/.exec(hash);
+  if (list) return `list:${Number(list[1])}`;
   const match = /^#\/delegates\/(\d+)$/.exec(hash);
   return match ? Number(match[1]) : 'home';
 }
@@ -40,3 +44,4 @@ export const familyIdFromHash = () => Number(/^#\/families\/(\d+)$/.exec(locatio
 
 export const registerHref = (delegateId: number | null) => (delegateId === null ? '#/all' : `#/delegates/${delegateId}`);
 export const familyHref = (familyId: number) => `#/families/${familyId}`;
+export const subscriberListHref = (delegateId: number) => `#/delegates/${delegateId}/list`;
