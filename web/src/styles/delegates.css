@@ -1165,3 +1165,17 @@
   .pd-card .pd-card-info p { flex-wrap: nowrap; white-space: nowrap; font-size: .74rem; }
   .pd-sub-amount { white-space: nowrap; }
 }
+
+/* Grids sized to the screen, never to their widest content: an implicit "auto" column grew to
+   the cards' natural width (357px on a 344px screen) and pushed the page sideways. */
+.people-main, .pd-list, .pd-toolbar { grid-template-columns: minmax(0, 1fr); }
+.pd-list > *, .pd-trio > * { min-width: 0; }
+
+/* Narrow phones: the name, the line under it and the four tiles scale down a little rather
+   than overflow the card. */
+@media (max-width: 767.98px) {
+  .pd-card .pd-card-info h3 { font-size: clamp(.86rem, 4.3vw, 1rem); }
+  .pd-card .pd-card-info p { font-size: clamp(.66rem, 3.2vw, .74rem); overflow: hidden; }
+  .pd-trio dt { font-size: clamp(9px, 2.7vw, 10.5px); overflow: hidden; text-overflow: ellipsis; }
+  .pd-trio dd { font-size: clamp(15px, 4.6vw, 18px); }
+}
