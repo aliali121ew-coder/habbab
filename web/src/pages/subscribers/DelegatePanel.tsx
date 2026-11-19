@@ -212,7 +212,7 @@ export function DelegatePanel({ me, overview, selectedMonth, onSelectMonth, onPh
             filter={null}
             onPick={(picked) => { location.hash = subscriberListHref(delegate.id, picked); }}
           >
-            <Card tone="patients" icon={<Pill size={18} />} label="المرضى" value={overview.patients} note="المسجّلون في المرضى" />
+            <Card tone="patients" icon={<Pill size={18} />} label="المرضى" value={overview.patients} note="مسجّلون" />
             <Card tone="families" icon={<HandHeart size={18} />} label="العوائل المتعففة" value={null} note="تُضاف لاحقاً" />
           </ListCards>
         </div>

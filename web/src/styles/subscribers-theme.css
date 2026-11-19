@@ -574,3 +574,64 @@ div.list-card { cursor: default; }
       color-mix(in srgb, var(--tone) 5%, transparent) 100%) !important;
   }
 }
+
+/* Late is red (urgent) instead of orange; patients move to pink so the two stay apart. */
+.list-card.late { --tone: #ef4444; }
+.list-card.patients { --tone: #ec4899; }
+
+/* Phone: each card's title and short note stay on one line, so all six cards are one height. */
+@media (max-width: 767.98px) {
+  .list-card { column-gap: 8px; padding: 12px; }
+  .list-card-label { font-size: clamp(.7rem, 3.4vw, .8rem); white-space: nowrap; overflow: hidden; text-overflow: clip; }
+  .list-card small { font-size: clamp(.64rem, 3vw, .72rem); white-space: nowrap; overflow: hidden; }
+}
+@media (max-width: 767.98px) {
+  .dpn-cards { padding: 10px 10px 0; }
+  .dpn-cards .list-cards { gap: 8px; }
+  .list-card { padding: 11px 10px; }
+  :root:root .stage .list-card-icon { width: clamp(28px, 8.5vw, 36px); height: clamp(28px, 8.5vw, 36px); }
+  .list-card-icon svg { width: 16px; height: 16px; }
+}
+
+/* Coloured cards: a lighter start at the icon (20% instead of 26%), same fade after it. */
+.stage .list-card:not(.patients):not(.families)::after {
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--tone) 20%, transparent) 0%,
+    color-mix(in srgb, var(--tone) 15%, transparent) 40%,
+    color-mix(in srgb, var(--tone) 10%, transparent) 65%,
+    color-mix(in srgb, var(--tone) 3%, transparent) 100%) !important;
+}
+:root[data-theme="dark"] .stage .list-card:not(.patients):not(.families)::after {
+  background: linear-gradient(to left,
+    color-mix(in srgb, var(--tone) 28%, transparent) 0%,
+    color-mix(in srgb, var(--tone) 21%, transparent) 40%,
+    color-mix(in srgb, var(--tone) 13%, transparent) 65%,
+    color-mix(in srgb, var(--tone) 5%, transparent) 100%) !important;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .stage .list-card:not(.patients):not(.families)::after {
+    background: linear-gradient(to left,
+      color-mix(in srgb, var(--tone) 28%, transparent) 0%,
+      color-mix(in srgb, var(--tone) 21%, transparent) 40%,
+      color-mix(in srgb, var(--tone) 13%, transparent) 65%,
+      color-mix(in srgb, var(--tone) 5%, transparent) 100%) !important;
+  }
+}
+/* The longest title (العوائل المتعففة) gets a slightly smaller floor on the narrowest phones. */
+@media (max-width: 767.98px) {
+  .list-card-label { font-size: clamp(.64rem, 3.4vw, .8rem); }
+}
+
+/* Phone: icon and figure share the top row; the title and note run the card's full width
+   below, so even "العوائل المتعففة" stays on one line on a 320px phone. */
+@media (max-width: 767.98px) {
+  .list-card {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "icon value" "label label" "note note";
+    align-items: center; row-gap: 6px;
+  }
+  .list-card-icon { grid-area: icon; grid-row: auto; }
+  .list-card-value { grid-area: value; text-align: end; }
+  .list-card-label { grid-area: label; font-size: clamp(.74rem, 3.6vw, .84rem); }
+  .list-card small { grid-area: note; }
+}

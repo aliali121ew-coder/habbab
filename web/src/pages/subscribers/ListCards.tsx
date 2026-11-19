@@ -63,11 +63,11 @@ export function ListCards({ overview, delegateId, year, month, filter, onPick, c
         note={alive !== null && overview ? `${formatNumber(alive)} أحياء · ${formatNumber(overview.deceased)} أموات` : undefined}
         active={filter === 'all'} onClick={() => onPick('all')} />
       <Card tone="paid" icon={<CircleCheck size={18} />} label="المسددون" value={counts?.paid ?? null}
-        note={until && `مسددون ${until}`} active={filter === 'paid'} onClick={() => onPick('paid')} />
+        note={until} active={filter === 'paid'} onClick={() => onPick('paid')} />
       <Card tone="unpaid" icon={<CircleX size={18} />} label="غير المسددين" value={counts?.unpaid ?? null}
-        note={until && `عليهم شهر أو أكثر ${until}`} active={filter === 'unpaid'} onClick={() => onPick('unpaid')} />
+        note={until} active={filter === 'unpaid'} onClick={() => onPick('unpaid')} />
       <Card tone="late" icon={<AlarmClock size={18} />} label="المتأخرون" value={counts?.overdue ?? null}
-        note="4 أشهر أو أكثر بلا تسديد" active={filter === 'overdue'} onClick={() => onPick('overdue')} />
+        note="4 أشهر بلا تسديد" active={filter === 'overdue'} onClick={() => onPick('overdue')} />
       {children}
     </div>
   );
