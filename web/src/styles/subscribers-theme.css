@@ -707,3 +707,18 @@ div.list-card { cursor: default; }
   .reg-select select { padding: 0 8px 0 24px; font-size: .76rem; }
   .reg-select svg { inset-inline-end: 7px; }
 }
+
+/* Phone pager: one centred row — a round arrow, the page numbers, a round arrow. No text, no bar. */
+@media (max-width: 767.98px) {
+  :root:root .stage .register .reg-pager {
+    flex-wrap: nowrap; justify-content: center; gap: 8px;
+    padding: 14px 0 6px; border: 0; background: transparent;
+  }
+  .register .reg-pager .pager-text { display: none; }
+  .register .reg-pager .pager-btn {
+    width: 40px; min-height: 40px; padding: 0; justify-content: center; border-radius: 50%;
+  }
+  .register .reg-pager .pager-btn:disabled { opacity: .4; }
+  .register .reg-pager .pager-pages { gap: 6px; }
+  .register .reg-pager .pager-num { min-width: 38px; min-height: 38px; border-radius: 12px; }
+}

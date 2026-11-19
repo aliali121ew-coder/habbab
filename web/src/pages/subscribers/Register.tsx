@@ -414,11 +414,12 @@ export function Register({
           <button
             type="button"
             className="pager-btn"
+            aria-label="الصفحة السابقة"
             disabled={safePage === 0 || phase === 'more'}
             onClick={() => goToPage(safePage - 1)}
           >
             <ChevronRight size={16} aria-hidden />
-            السابق
+            <span className="pager-text">السابق</span>
           </button>
 
           <div className="pager-pages">
@@ -439,10 +440,11 @@ export function Register({
           <button
             type="button"
             className="pager-btn"
+            aria-label="الصفحة التالية"
             disabled={(safePage >= loadedPages - 1 && next === null) || phase === 'more'}
             onClick={() => goToPage(safePage + 1)}
           >
-            {phase === 'more' ? 'جارٍ التحميل…' : 'التالي'}
+            <span className="pager-text">{phase === 'more' ? 'جارٍ التحميل…' : 'التالي'}</span>
             <ChevronLeft size={16} aria-hidden />
           </button>
         </nav>
