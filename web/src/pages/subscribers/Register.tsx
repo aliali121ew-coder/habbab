@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
-import { ChevronLeft, ChevronRight, Printer, Search } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Printer, Search } from 'lucide-react';
 import { api, type GridRow, type Me, type Overview, type Page } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { formatNumber, initialOf, today } from '../../format';
@@ -12,6 +12,7 @@ import {
 } from './SubscriberModal';
 import { PrintSheetModal } from './PrintSheetModal';
 import { WhatsAppButton } from './WhatsAppButton';
+import { useIsPhone } from '../../useIsPhone';
 
 const ROWS_PER_PAGE = 10;
 
@@ -132,6 +133,7 @@ export function Register({
   const payFilter = filter ?? ownFilter;
   const setPayFilter = (value: PayFilter) => (onFilterChange ? onFilterChange(value) : setOwnFilter(value));
   const preview = limit !== undefined;
+  const isPhone = useIsPhone();
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [rows, setRows] = useState<GridRow[]>([]);
@@ -290,6 +292,36 @@ export function Register({
           </h2>
         </div>
 
+        {/* Phone: one row — a sliding alive/deceased pill, the pay filter as a dropdown, search. */}
+        {isPhone && !preview ? (
+          <div className="reg-bar">
+            <div className="reg-pill" role="group" aria-label="حالة المشترك" data-on={status}>
+              <span className="reg-pill-thumb" aria-hidden />
+              <button type="button" aria-pressed={status === 'alive'} onClick={() => setStatus('alive')}>أحياء</button>
+              <button type="button" aria-pressed={status === 'deceased'} onClick={() => setStatus('deceased')}>أموات</button>
+            </div>
+            <label className="reg-select">
+              <select value={payFilter} onChange={(event) => setPayFilter(event.target.value as PayFilter)} aria-label="فلتر حالة التسديد">
+                <option value="all">الكل</option>
+                <option value="unpaid">غير مسدد</option>
+                <option value="overdue">المتأخرون</option>
+                <option value="paid">مسدد</option>
+              </select>
+              <ChevronDown size={15} aria-hidden />
+            </label>
+            <label className="reg-search">
+              <Search size={16} aria-hidden />
+              <input
+                type="search"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder="بحث…"
+                aria-label="بحث ببداية الاسم أو الهاتف، 3 أحرف على الأقل"
+                autoComplete="off"
+              />
+            </label>
+          </div>
+        ) : (
         <div className="seg" role="group" aria-label="حالة المشترك">
           <button type="button" aria-pressed={status === 'alive'} onClick={() => setStatus('alive')}>
             أحياء
@@ -298,8 +330,9 @@ export function Register({
             أموات
           </button>
         </div>
+        )}
 
-        {!preview && <div className="register-filters">
+        {!preview && !isPhone && <div className="register-filters">
           <div className="seg filter-seg" role="group" aria-label="فلتر حالة التسديد">
             <button type="button" aria-pressed={payFilter === 'all'} onClick={() => setPayFilter('all')}>الكل</button>
             <button type="button" aria-pressed={payFilter === 'unpaid'} onClick={() => setPayFilter('unpaid')}>

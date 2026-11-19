@@ -657,3 +657,53 @@ div.list-card { cursor: default; }
   .page-head.reg-head .page-actions.page-actions-two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .page-head.reg-head .page-actions-two a.btn { text-decoration: none; }
 }
+
+/* Phone register toolbar: one row. A sliding alive/deceased pill, the pay filter as a compact
+   dropdown, and search taking the rest of the row. */
+.reg-bar { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 6px; width: 100%; }
+.reg-pill {
+  position: relative; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; height: 40px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2);
+}
+.reg-pill button {
+  position: relative; z-index: 1; min-width: 46px; padding: 0 10px; border: 0; border-radius: 999px;
+  background: none; color: var(--ink-2); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer;
+  transition: color .2s ease;
+}
+.reg-pill button[aria-pressed="true"] { color: #fff; }
+.reg-pill-thumb {
+  position: absolute; top: 3px; bottom: 3px; inset-inline-start: 3px; width: calc(50% - 3px);
+  border-radius: 999px; background: var(--bar-active);
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--bar-active) 70%, transparent);
+  transition: transform .25s cubic-bezier(.3, .7, .2, 1);
+}
+/* RTL: the second option sits to the left, so the thumb slides the negative way. */
+.reg-pill[data-on="deceased"] .reg-pill-thumb { transform: translateX(-100%); }
+:root[dir="ltr"] .reg-pill[data-on="deceased"] .reg-pill-thumb { transform: translateX(100%); }
+@media (prefers-reduced-motion: reduce) { .reg-pill-thumb, .reg-pill button { transition: none; } }
+
+.reg-select { position: relative; display: block; }
+.reg-select select {
+  height: 40px; padding: 0 10px 0 28px; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--surface-2); color: var(--ink); font: inherit; font-size: .8rem; font-weight: 700;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.reg-select svg { position: absolute; inset-inline-end: 9px; top: 50%; translate: 0 -50%; color: var(--ink-3); pointer-events: none; }
+
+.reg-search {
+  display: flex; align-items: center; gap: 6px; height: 40px; min-width: 0; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-3);
+}
+.reg-search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: .84rem; outline: none; }
+.reg-search:focus-within { border-color: var(--bar-active); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bar-active) 18%, transparent); }
+
+/* Phone: the register head is just that one row, with tight margins. */
+@media (max-width: 767.98px) {
+  .register .register-head:has(.reg-bar) { padding: 0 0 10px; gap: 0; }
+}
+/* Narrow phones: tighter pill and dropdown so search keeps a usable width. */
+@media (max-width: 360px) {
+  .reg-pill button { min-width: 40px; padding: 0 8px; font-size: .76rem; }
+  .reg-select select { padding: 0 8px 0 24px; font-size: .76rem; }
+  .reg-select svg { inset-inline-end: 7px; }
+}
