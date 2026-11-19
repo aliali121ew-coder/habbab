@@ -252,12 +252,15 @@ const TEXT_VARIANTS = {
   }),
 };
 
-// "توزيع السلات الغذائية للعوائل" → ["توزيع السلات", "الغذائية للعوائل"]
-function pairWords(text: string): string[] {
+// Phone title: 3 words, then a smaller line of up to 6; anything past that shows on desktop only.
+// "توزيع السلات الغذائية للعوائل" → head "توزيع السلات الغذائية", rest "للعوائل"
+function splitTitle(text: string) {
   const words = text.trim().split(/\s+/);
-  const pairs: string[] = [];
-  for (let i = 0; i < words.length; i += 2) pairs.push(words.slice(i, i + 2).join(' '));
-  return pairs;
+  return {
+    head: words.slice(0, 3).join(' '),
+    rest: words.slice(3, 9).join(' '),
+    overflow: words.slice(9).join(' '),
+  };
 }
 
 export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
@@ -526,10 +529,22 @@ export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
               className="max-w-2xl"
             >
               <h2 className="text-lg font-bold leading-snug tracking-tight text-white sm:text-2xl">
-                {/* Phone: two words per line. From sm up the pairs run on as one free line. */}
-                {pairWords(slide.title).map((pair, index) => (
-                  <span key={index} className="block sm:inline">{index > 0 && <span className="hidden sm:inline"> </span>}{pair}</span>
-                ))}
+                {/* Phone: the first three words large, then up to six more on a smaller second
+                    line. From sm up it is one free line at the full title size. */}
+                {(() => {
+                  const { head, rest, overflow } = splitTitle(slide.title);
+                  return (
+                    <>
+                      {head}
+                      {rest && (
+                        <span className="mt-1 block text-sm font-semibold text-white/85 sm:mt-0 sm:inline sm:text-2xl sm:font-bold sm:text-white">
+                          <span className="hidden sm:inline"> </span>{rest}
+                        </span>
+                      )}
+                      {overflow && <span className="hidden sm:inline"> {overflow}</span>}
+                    </>
+                  );
+                })()}
               </h2>
 
               <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5">
