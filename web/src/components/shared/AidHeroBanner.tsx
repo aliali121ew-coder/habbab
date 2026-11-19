@@ -252,15 +252,11 @@ const TEXT_VARIANTS = {
   }),
 };
 
-// Phone title: 3 words, then a smaller line of up to 6; anything past that shows on desktop only.
-// "توزيع السلات الغذائية للعوائل" → head "توزيع السلات الغذائية", rest "للعوائل"
-function splitTitle(text: string) {
+// The first `count` words, and whatever is left (shown on desktop, or replaced by "…").
+// splitWords("توزيع السلات الغذائية للعوائل", 3) → head "توزيع السلات الغذائية", rest "للعوائل"
+function splitWords(text: string, count: number) {
   const words = text.trim().split(/\s+/);
-  return {
-    head: words.slice(0, 3).join(' '),
-    rest: words.slice(3, 9).join(' '),
-    overflow: words.slice(9).join(' '),
-  };
+  return { head: words.slice(0, count).join(' '), rest: words.slice(count).join(' ') };
 }
 
 export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
@@ -529,23 +525,17 @@ export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
               className="max-w-2xl"
             >
               <h2 className="text-lg font-bold leading-snug tracking-tight text-white sm:text-2xl">
-                {/* Phone: the first three words large, then up to six more on a smaller second
-                    line. From sm up it is one free line at the full title size. */}
+                {/* Phone: the first three words only; from sm up the whole title on one line. */}
                 {(() => {
-                  const { head, rest, overflow } = splitTitle(slide.title);
-                  return (
-                    <>
-                      {head}
-                      {rest && (
-                        <span className="mt-1 block text-sm font-semibold text-white/85 sm:mt-0 sm:inline sm:text-2xl sm:font-bold sm:text-white">
-                          <span className="hidden sm:inline"> </span>{rest}
-                        </span>
-                      )}
-                      {overflow && <span className="hidden sm:inline"> {overflow}</span>}
-                    </>
-                  );
+                  const { head, rest } = splitWords(slide.title, 3);
+                  return <>{head}{rest && <span className="hidden sm:inline"> {rest}</span>}</>;
                 })()}
               </h2>
+              {/* Phone only: the short details under the title, up to six words. */}
+              {slide.subtitle && (() => {
+                const { head, rest } = splitWords(slide.subtitle, 6);
+                return <p className="mt-1 text-sm font-medium leading-snug text-white/85 sm:hidden">{head}{rest && '…'}</p>;
+              })()}
 
               <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5">
                 <a
