@@ -519,3 +519,11 @@
       color-mix(in srgb, var(--tone) 13%, transparent) 100%) !important;
   }
 }
+/* Phone header: the full "سجل <delegate>" title on one line, never cut; the type scales with
+   the screen so the longest register name still fits on a 320px phone. */
+@media (max-width: 767.98px) {
+  .page-head.reg-head h1 { font-size: clamp(.86rem, 4.4vw, 1.15rem); text-overflow: clip; }
+}
+@media (max-width: 767.98px) {
+  :root:root .stage .page-head.reg-head h1 { font-size: clamp(.8rem, 4vw, 1.15rem) !important; text-overflow: clip; }
+}
