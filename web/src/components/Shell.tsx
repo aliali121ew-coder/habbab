@@ -8,6 +8,7 @@ import { useRoute } from '../route';
 import { SOON_PAGES } from '../soonPages';
 import { Breadcrumbs, type Crumb } from './Breadcrumbs';
 import { useTheme, type Palette } from '../theme';
+import { queuedPayments } from '../paymentQueue';
 
 interface NavItem {
   id: string;
@@ -126,6 +127,13 @@ export function Shell({ me, onSignedOut, children }: Props) {
   const route = useRoute();
 
   const signOut = async () => {
+    // Payments recorded offline are kept on this device through sign-out (they are money already
+    // taken); say so before leaving, so nobody assumes they were sent.
+    const waiting = queuedPayments(me.id).length;
+    if (waiting && !window.confirm(`لديك ${waiting} ${waiting === 1 ? 'تسديد لم يُرسل' : 'تسديدات لم تُرسل'} بعد.
+ستبقى محفوظة على هذا الجهاز وتُرسل عند دخولك بنفس الحساب مع وجود اتصال.
+
+هل تريد تسجيل الخروج؟`)) return;
     await api('/auth/logout', { method: 'POST' }).catch(() => {});
     onSignedOut();
   };

@@ -62,12 +62,13 @@ app.notFound((c) => c.json({ error: 'غير موجود' }, 404));
 app.onError((error, c) => {
   if (error instanceof HTTPException) return c.json({ error: error.message }, error.status);
   const message = error instanceof Error ? error.message : '';
-  if (message.includes('MONTH_CLOSED')) return c.json({ error: 'هذا الشهر مقفل ولا يقبل التعديل' }, 409);
+  // The codes let a client tell these apart without reading the Arabic message (offline sync).
+  if (message.includes('MONTH_CLOSED')) return c.json({ error: 'هذا الشهر مقفل ولا يقبل التعديل', code: 'month_closed' }, 409);
   if (message.includes('UNIQUE constraint failed: subscribers.national_id_bidx')) {
     return c.json({ error: 'رقم الهوية مسجل لمشترك آخر' }, 409);
   }
   if (message.includes('UNIQUE constraint failed: transactions.subscriber_id')) {
-    return c.json({ error: 'هذا الشهر مسدد مسبقاً' }, 409);
+    return c.json({ error: 'هذا الشهر مسدد مسبقاً', code: 'already_paid' }, 409);
   }
   if (message.includes('UNIQUE constraint failed: subscriber_programs')) {
     return c.json({ error: 'المشترك مسجل في هذا البرنامج' }, 409);

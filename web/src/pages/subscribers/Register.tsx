@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, Printer, Search } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Clock, Printer, Search } from 'lucide-react';
 import { api, type GridRow, type Me, type Overview, type Page } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { formatNumber, initialOf, today } from '../../format';
@@ -13,6 +13,7 @@ import {
 import { PrintSheetModal } from './PrintSheetModal';
 import { WhatsAppButton } from './WhatsAppButton';
 import { useIsPhone } from '../../useIsPhone';
+import { onQueueChange, queuedPayments } from '../../paymentQueue';
 
 const ROWS_PER_PAGE = 10;
 
@@ -28,9 +29,11 @@ interface RowProps {
   onPrintRow: (row: GridRow) => void;
   // WhatsApp receipts are sent by the administration only.
   canMessage: boolean;
+  /** A payment for this subscriber recorded offline and not yet sent. */
+  pending?: boolean;
 }
 
-const Row = memo(function Row({ row, year, currentMonth, currency, delegateName, onSelectRow, onPrintRow, canMessage }: RowProps) {
+const Row = memo(function Row({ row, year, currentMonth, currency, delegateName, onSelectRow, onPrintRow, canMessage, pending = false }: RowProps) {
   const unpaid = formatUnpaidSummary(row.paid_mask, currentMonth);
   const lastDate = formatDateSlash(row.last_paid_date);
 
@@ -56,6 +59,7 @@ const Row = memo(function Row({ row, year, currentMonth, currency, delegateName,
         <div className="sub-cell">
           <span className="sub-avatar" aria-hidden>{initialOf(row.full_name)}</span>
           <strong className="sub-name">{row.full_name}</strong>
+          {pending && <span className="sub-pending" title="سُجّل بدون اتصال وسيُرسل عند عودته"><Clock size={12} aria-hidden /> بانتظار الإرسال</span>}
         </div>
       </th>
 
@@ -144,6 +148,27 @@ export function Register({
   const [selectedRowId, setSelectedRowId] = useState<number | null>(null);
   const [printRow, setPrintRow] = useState<GridRow | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Payments recorded offline: shown as paid here until they are sent (paymentQueue.ts).
+  const [pending, setPending] = useState(() => queuedPayments());
+  useEffect(() => onQueueChange(() => setPending(queuedPayments())), []);
+  const pendingIds = useMemo(() => new Set(pending.map((item) => item.subscriberId)), [pending]);
+  const withPending = useCallback((items: GridRow[]) => {
+    const own = queuedPayments().filter((item) => item.period.startsWith(`${year}-`));
+    if (!own.length) return items;
+    return items.map((item) => {
+      let mask = item.paid_mask;
+      for (const payment of own) if (payment.subscriberId === item.id) mask |= 1 << (Number(payment.period.slice(5, 7)) - 1);
+      return mask === item.paid_mask ? item : { ...item, paid_mask: mask };
+    });
+  }, [year]);
+  // Once waiting payments have gone out, the list is read again from the server.
+  useEffect(() => {
+    const synced = (event: Event) => {
+      if ((event as CustomEvent<{ sent?: number }>).detail?.sent) { setAttempt((value) => value + 1); onPaymentChanged(); }
+    };
+    window.addEventListener('ahbab:queue', synced);
+    return () => window.removeEventListener('ahbab:queue', synced);
+  }, [onPaymentChanged]);
 
   const now = new Date();
   const currentMonth = year === now.getUTCFullYear() ? now.getUTCMonth() : year > now.getUTCFullYear() ? -1 : null;
@@ -188,7 +213,7 @@ export function Register({
     setPageIndex(0);
     fetchPage(null, controller.signal)
       .then((page) => {
-        setRows(page.items);
+        setRows(withPending(page.items));
         setNext(page.next);
         setPhase('ready');
       })
@@ -239,7 +264,7 @@ export function Register({
     setPhase('more');
     fetchPage(next)
       .then((page) => {
-        setRows((current) => [...current, ...page.items]);
+        setRows((current) => [...current, ...withPending(page.items)]);
         setNext(page.next);
         setPhase('ready');
         setPageIndex(targetPage);
@@ -391,6 +416,7 @@ export function Register({
                 onSelectRow={(picked) => setSelectedRowId(picked.id)}
                 onPrintRow={(picked) => setPrintRow(picked)}
                 canMessage={me.role === 'admin'}
+                pending={pendingIds.has(row.id)}
               />
             ))}
           </tbody>

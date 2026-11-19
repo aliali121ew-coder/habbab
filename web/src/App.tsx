@@ -3,6 +3,7 @@ import { api, ApiError, setSessionLostHandler, type Me } from './api';
 import { Shell } from './components/Shell';
 import { StateMessage } from './components/StateMessage';
 import { OfflineBar } from './components/OfflineBar';
+import { queuedPayments, syncPayments } from './paymentQueue';
 import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
 import { useRoute } from './route';
@@ -51,6 +52,18 @@ export function App() {
   // Once signed in and the first page is up, bring the other pages onto the device.
   useEffect(() => { if (status === 'ready') prefetchPages(); }, [status]);
 
+  // Payments recorded offline go out when the app opens, when the connection returns, and every
+  // 30 seconds while some are still waiting (paymentQueue.ts).
+  const userId = status === 'ready' ? me?.id ?? null : null;
+  useEffect(() => {
+    if (userId === null) return;
+    const send = () => { if (navigator.onLine && queuedPayments(userId).length) void syncPayments(userId); };
+    send();
+    window.addEventListener('online', send);
+    const timer = window.setInterval(send, 30_000);
+    return () => { window.removeEventListener('online', send); window.clearInterval(timer); };
+  }, [userId]);
+
   const load = useCallback(async () => {
     setStatus('loading');
     try {
@@ -90,7 +103,7 @@ export function App() {
 
   return (
     <Shell me={me} onSignedOut={() => { clearLocalRecords(); setMe(null); setStatus('login'); }}>
-      <OfflineBar />
+      <OfflineBar userId={me.id} currency={me.currency} />
       <Suspense fallback={<div className="page-loading" aria-busy="true"><span className="boot-star" /></div>}>
       {route === 'soon:reports' && me.role === 'admin'
         ? <ReportsPage me={me} />

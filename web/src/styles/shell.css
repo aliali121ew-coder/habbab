@@ -614,3 +614,31 @@
   font-size: .8rem; font-weight: 600; line-height: 1.4;
 }
 .offline-bar svg { flex: none; color: #d97706; }
+
+/* Offline notices stack at the top of the page: amber (offline), blue (waiting to send),
+   green (just sent), red (refused, with each payment's reason). */
+.offline-stack { position: sticky; top: 8px; z-index: 30; display: grid; gap: 6px; margin-bottom: 10px; }
+.offline-stack .offline-bar { position: static; margin: 0; }
+.offline-bar.sync-waiting { border-color: color-mix(in srgb, var(--bar-active) 45%, transparent); background: color-mix(in srgb, var(--bar-active) 12%, var(--surface)); }
+.offline-bar.sync-waiting svg { color: var(--bar-active); }
+.offline-bar .sync-now { margin-inline-start: auto; flex: none; min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--bar-active); color: #fff; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.offline-bar .sync-now:disabled { opacity: .6; }
+.offline-bar.sync-done { border-color: color-mix(in srgb, #10b981 45%, transparent); background: color-mix(in srgb, #10b981 12%, var(--surface)); }
+.offline-bar.sync-done svg { color: #059669; }
+.offline-bar.sync-failed { align-items: flex-start; border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
+.offline-bar.sync-failed > svg { color: var(--danger); margin-top: 2px; }
+.sync-failed-body { display: grid; gap: 6px; min-width: 0; flex: 1; }
+.sync-failed-body ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.sync-failed-body li { display: flex; align-items: flex-start; gap: 6px; padding: 6px 8px; border-radius: 10px; background: var(--surface); }
+.sync-failed-body li > span { flex: 1; min-width: 0; }
+.sync-failed-body li small { display: block; color: var(--danger); font-weight: 600; }
+.sync-failed-body li.is-info small { color: var(--ink-2); }
+.sync-failed-body li button { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
+
+/* A subscriber with a payment recorded offline and not yet sent. */
+.sub-pending { display: inline-flex; align-items: center; gap: 3px; margin-inline-start: 6px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--bar-active) 14%, transparent); color: var(--bar-active); font-size: .68rem; font-weight: 700; white-space: nowrap; }
+/* Phone cards: the marker sits in the card's top corner, so the name keeps its full width. */
+@media (max-width: 767.98px) {
+  .register .reg-table tbody tr { position: relative; }
+  .register .sub-pending { position: absolute; top: 10px; inset-inline-end: 12px; margin: 0; }
+}

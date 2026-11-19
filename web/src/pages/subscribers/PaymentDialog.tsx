@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { api, type GridRow, type Me } from '../../api';
+import { api, ApiError, type GridRow, type Me } from '../../api';
+import { queuePayment } from '../../paymentQueue';
 import { Modal } from '../../components/Modal';
 import { MONTH_NAMES, formatNumber, today } from '../../format';
 
@@ -39,12 +40,21 @@ export function PaymentDialog({ me, year, target, onClose, onDone }: Props) {
     }
   };
 
+  // Without a connection the payment is kept on this device and sent when the connection returns
+  // (paymentQueue.ts); the month shows as paid meanwhile, marked as waiting to be sent.
   const pay = (event: FormEvent) => {
     event.preventDefault();
-    void run(() => api('/collections/pay', {
-      method: 'POST',
-      body: { subscriber_id: row.id, period, amount: Number(amount), tx_date: date },
-    }), true);
+    void run(async () => {
+      try {
+        await api('/collections/pay', {
+          method: 'POST',
+          body: { subscriber_id: row.id, period, amount: Number(amount), tx_date: date },
+        });
+      } catch (failure) {
+        if (!(failure instanceof ApiError) || failure.status !== 0) throw failure;
+        queuePayment({ userId: me.id, subscriberId: row.id, name: row.full_name, period, amount: Number(amount), txDate: date });
+      }
+    }, true);
   };
 
   const undo = () => run(() => api('/collections/undo', {
