@@ -648,9 +648,6 @@ a.whatsapp-row-btn { text-decoration: none; }
 .list-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 @media (min-width: 768px) { .list-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; } }
 .list-card { --tone: var(--brand); display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 10px; min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
-.list-card.paid { --tone: var(--paid, #16a34a); }
-.list-card.unpaid { --tone: var(--danger); }
-.list-card.late { --tone: #d97706; }
 .list-card-icon { grid-row: span 2; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: color-mix(in srgb, var(--tone) 14%, transparent); color: var(--tone); }
 .list-card-label { color: var(--ink-2); font-size: .8rem; font-weight: 600; }
 .list-card-value { font-size: 1.4rem; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }

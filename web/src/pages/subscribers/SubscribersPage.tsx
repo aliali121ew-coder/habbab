@@ -65,7 +65,7 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
 
   return (
     <>
-      <div className="page-head">
+      <div className="page-head reg-head">
         <span className="page-icon" aria-hidden><Users size={24} /></span>
         <div>
           {/* The path stops at the parent: the heading below names this page. A delegate has only this page. */}
@@ -83,10 +83,12 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
           <button type="button" className="btn" aria-label="طباعة السجل" onClick={() => setPrinting(true)}>
             <Printer size={18} aria-hidden />
             <span className="btn-label">طباعة السجل</span>
+            <span className="btn-short" aria-hidden>طباعة</span>
           </button>
           <button type="button" className="btn primary" aria-label="إضافة مشترك" onClick={() => setAdding(true)}>
             <UserPlus size={18} aria-hidden />
             <span className="btn-label">إضافة مشترك</span>
+            <span className="btn-short" aria-hidden>إضافة</span>
           </button>
         </div>
       </div>
