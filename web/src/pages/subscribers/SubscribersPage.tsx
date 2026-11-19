@@ -74,7 +74,7 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
             : me.role !== 'delegate' && <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'المندوبون', href: '#/delegates' }]} />}
           <h1>
             {fullList
-              ? `مشتركو ${overview?.delegate?.full_name ?? ''}`
+              ? 'سجل المشتركين'
               : overview?.delegate ? `سجل ${overview.delegate.full_name}` : 'سجل كل المشتركين'}
           </h1>
         </div>

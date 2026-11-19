@@ -326,3 +326,8 @@
   .page-head.reg-head .page-actions .btn-short { display: inline; }
   .page-head.reg-head .page-actions .dp-trigger { overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* Phone: the register's own title repeats the page header just above it. */
+@media (max-width: 767.98px) {
+  .register-head .register-title { display: none; }
+}
