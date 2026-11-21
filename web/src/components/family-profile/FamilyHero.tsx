@@ -1,6 +1,6 @@
 import { Copy, Home, MapPin, Phone, UserCheck, Users } from 'lucide-react';
 import { WhatsAppMark } from '../../pages/subscribers/WhatsAppButton';
-import { formatIQDParts, formatIQDText } from '../../mock/family';
+import { formatIQDParts } from '../../mock/family';
 import type { CaseOfficer, FamilyDetail, FamilyPriority } from '../../types/family';
 import { CaseOfficerCard } from './CaseOfficerCard';
 
@@ -21,10 +21,11 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
   const prio = PRIORITY_META[family.priority];
   const rentFormatted = formatIQDParts(family.rentAmount);
 
-  const due = family.internalAid.reduce((sum, a) => sum + a.monthlyAmount, 0);
-  const paid = family.paidThisMonth;
-  const pct = due > 0 ? Math.min(100, Math.round((paid / due) * 100)) : 0;
-  const late = family.arrears > 0;
+  // Phone summary: how many aids the family received, their total, and the most recent one.
+  const aidCount = family.payments.length;
+  const totalParts = formatIQDParts(family.payments.reduce((sum, p) => sum + p.amount, 0));
+  const last = family.payments.reduce<typeof family.payments[number] | null>((latest, p) => (!latest || p.date > latest.date ? p : latest), null);
+  const lastDate = last ? last.date.slice(0, 10).split('-').map(Number).join('/') : '';
   // WhatsApp opens the user's own app on the delegate's chat (no business account).
   const officerDigits = family.officer.phone.replace(/\D/g, '');
   const officerWa = `https://wa.me/${officerDigits.startsWith('0') ? `964${officerDigits.slice(1)}` : officerDigits}`;
@@ -87,30 +88,30 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
         </ul>
       </div>
 
-      {/* This month: the one thing the file must answer at a glance */}
-      <div className="mx-4 rounded-2xl p-3.5" style={{ backgroundColor: 'var(--fp-muted)' }}>
-        <div className="flex items-center justify-between text-xs font-semibold" style={{ color: 'var(--fp-ink-3)' }}>
-          <span>حالة {family.monthLabel}</span>
-          <span className="tabular-nums" style={{ color: late ? 'var(--fp-rose)' : 'var(--fp-emerald)' }}>{pct}%</span>
+      {/* Three joined cards, split by a thin line: how many aids, their total, and the last one. */}
+      <dl className="mx-4 grid grid-cols-3 overflow-hidden rounded-2xl text-center tabular-nums" style={{ backgroundColor: 'var(--fp-muted)' }}>
+        <div className="min-w-0 px-2 py-3">
+          <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>عدد المساعدات</dt>
+          <dd className="mt-1 text-[17px] font-extrabold leading-none" style={{ color: 'var(--fp-ink)' }}><bdi>{aidCount}</bdi></dd>
+          <dd className="mt-1 text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>مساعدة</dd>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--fp-muted-2)' }} aria-hidden>
-          <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: late ? 'var(--fp-rose)' : 'var(--fp-emerald)' }} />
+        <div className="min-w-0 border-s px-2 py-3" style={{ borderColor: 'var(--fp-border)' }}>
+          <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>المبلغ الكلي</dt>
+          <dd className="mt-1 whitespace-nowrap text-[clamp(13px,4.2vw,17px)] font-extrabold leading-none" style={{ color: 'var(--fp-emerald)' }}><bdi>{totalParts.value}</bdi></dd>
+          <dd className="mt-1 text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>{totalParts.currency}</dd>
         </div>
-        <dl className="mt-3 grid grid-cols-3 gap-2 text-center tabular-nums">
-          <div>
-            <dt className="text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>المستحق</dt>
-            <dd className="mt-0.5 text-[13px] font-bold" style={{ color: 'var(--fp-ink)' }}>{formatIQDText(due)}</dd>
-          </div>
-          <div>
-            <dt className="text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>المصروف</dt>
-            <dd className="mt-0.5 text-[13px] font-bold" style={{ color: 'var(--fp-emerald)' }}>{formatIQDText(paid)}</dd>
-          </div>
-          <div>
-            <dt className="text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>المتأخر</dt>
-            <dd className="mt-0.5 text-[13px] font-bold" style={{ color: late ? 'var(--fp-rose)' : 'var(--fp-ink-3)' }}>{late ? formatIQDText(family.arrears) : 'لا يوجد'}</dd>
-          </div>
-        </dl>
-      </div>
+        <div className="min-w-0 border-s px-2 py-3" style={{ borderColor: 'var(--fp-border)' }}>
+          <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>آخر مساعدة</dt>
+          {last ? (
+            <>
+              <dd className="mt-1 whitespace-nowrap text-[clamp(12px,3.8vw,14px)] font-extrabold leading-none" style={{ color: 'var(--fp-ink)' }}><bdi dir="ltr">{lastDate}</bdi></dd>
+              <dd className="mt-1 truncate text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>{last.typeLabel}</dd>
+            </>
+          ) : (
+            <dd className="mt-1 text-[12px]" style={{ color: 'var(--fp-ink-3)' }}>لا يوجد</dd>
+          )}
+        </div>
+      </dl>
 
       <div className="h-4" aria-hidden />
     </section>
