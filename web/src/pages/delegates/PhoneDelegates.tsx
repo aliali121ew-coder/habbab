@@ -48,7 +48,6 @@ export function PhoneSummary({ overview, currency }: { overview: Overview; curre
           <span><bdi>{formatNumber(month.paid_count)}</bdi> من <bdi>{formatNumber(overview.alive)}</bdi> سدّدوا</span>
           <b>{Math.round(rate)}%</b>
         </div>
-        <div className="pd-bar" aria-hidden><span style={{ width: `${Math.min(100, rate)}%` }} /></div>
       </div>
     <div className="pd-sum-tiles">
       <div className="pd-sum-tile t-del"><span className="pd-sum-ico i-del"><UsersRound size={18} aria-hidden /></span><b>{formatNumber(overview.delegates.length)}</b><span>المندوبون</span></div>

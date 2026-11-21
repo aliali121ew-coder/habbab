@@ -683,3 +683,21 @@
   border: 1px solid color-mix(in srgb, var(--bar-active) 28%, rgb(255 255 255 / 8%)) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%), 0 12px 26px -12px rgb(0 0 0 / 70%) !important;
 }
+
+/* The delegates page's main card («تسديد …», the parent of the delegate cards): a soft gradient
+   in the theme colour, strongest at the top corner and fading into the card, in light and dark.
+   Placed here and this specific so it wins over the glass background (same layer, !important). */
+:root:root:root .stage .pd-summary.pd-summary.pd-summary {
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--bar-active) 22%, transparent) 0%, transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 12%, var(--surface)) 0%, var(--surface) 75%) !important;
+  border: 1px solid color-mix(in srgb, var(--bar-active) 24%, var(--line)) !important;
+  box-shadow: inset 0 1px 0 var(--glass-edge, rgb(255 255 255 / 70%)), 0 12px 26px -14px color-mix(in srgb, var(--bar-active) 45%, rgb(16 24 40 / 40%)) !important;
+}
+:root:root:root[data-theme="dark"] .stage .pd-summary.pd-summary.pd-summary {
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--bar-active) 30%, transparent) 0%, transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 16%, var(--surface)) 0%, var(--surface) 75%) !important;
+  border: 1px solid color-mix(in srgb, var(--bar-active) 30%, rgb(255 255 255 / 8%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%), 0 14px 30px -14px rgb(0 0 0 / 70%) !important;
+}
