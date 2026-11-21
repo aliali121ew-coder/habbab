@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronDown, ChevronLeft, HeartHandshake, Plus, Printer } from 'lucide-react';
 import { AVAILABLE_MONTHS } from '../../data/families';
+import { CalendarButton, FamiliesCalendar } from './FamiliesCalendar';
 
-export function PageHeader({ selectedMonth, onMonthChange, onPrint, onAddFamily }) {
+export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrint, onAddFamily }) {
   const [monthMenuOpen, setMonthMenuOpen] = useState(false);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const menuRef = useRef(null);
   const desktopMenuRef = useRef(null);
 
@@ -54,7 +56,7 @@ export function PageHeader({ selectedMonth, onMonthChange, onPrint, onAddFamily 
 
   return (
     <>
-    {/* Phone: one compact row (title + month under it, print icon), then the add button */}
+    {/* Phone: one compact row (title + month under it, today's date for the calendar), then the add button */}
     <header className="md:hidden" ref={menuRef}>
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-bl from-blue-600 to-indigo-600 text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.65)]">
@@ -76,14 +78,8 @@ export function PageHeader({ selectedMonth, onMonthChange, onPrint, onAddFamily 
           </button>
           {monthMenuOpen && monthMenu('start-0')}
         </div>
-        <button
-          type="button"
-          onClick={onPrint}
-          aria-label="طباعة السجل"
-          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200/80 bg-white text-slate-600 shadow-[0_1px_2px_rgba(16,24,40,.04)]"
-        >
-          <Printer className="h-5 w-5" aria-hidden />
-        </button>
+        {/* Today's date in place of the print icon: it opens the visits and aid calendar. */}
+        <CalendarButton onClick={() => setCalendarOpen(true)} />
       </div>
 
       {/* The add button sits at the top with the month (it used to float over the list). */}
@@ -95,6 +91,7 @@ export function PageHeader({ selectedMonth, onMonthChange, onPrint, onAddFamily 
         <Plus className="h-5 w-5" aria-hidden />
         <span>إضافة عائلة</span>
       </button>
+      <FamiliesCalendar families={families} open={calendarOpen} onClose={() => setCalendarOpen(false)} />
     </header>
 
     <header className="hidden flex-col gap-4 md:flex md:flex-row md:items-center md:justify-between">

@@ -140,6 +140,7 @@ export function FamiliesPage() {
     >
       <div className="mx-auto flex max-w-[1560px] flex-col gap-6">
         <PageHeader
+          families={families}
           selectedMonth={selectedMonth}
           onMonthChange={setSelectedMonth}
           onPrint={() => setPrintingList(filtered)}
