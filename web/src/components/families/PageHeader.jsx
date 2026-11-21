@@ -56,7 +56,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
 
   return (
     <>
-    {/* Phone: one compact row (title + month under it, today's date for the calendar), then the add button */}
+    {/* Phone: one compact row (title, today's date for the calendar; no month menu), then the add button */}
     <header className="md:hidden" ref={menuRef}>
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl fam-theme-fill text-white">
@@ -64,25 +64,12 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
         </div>
         <div className="relative min-w-0 flex-1">
           <h1 className="whitespace-nowrap text-[clamp(18px,6vw,22px)] font-extrabold leading-tight text-slate-900">العوائل المتعففة</h1>
-          <button
-            type="button"
-            onClick={() => setMonthMenuOpen((prev) => !prev)}
-            aria-expanded={monthMenuOpen}
-            aria-haspopup="menu"
-            aria-label={`الشهر: ${activeMonth.label}`}
-            className="-ms-1 mt-0.5 inline-flex min-h-[32px] items-center gap-1 rounded-lg px-1 text-[13px] font-semibold text-[var(--bar-active)]"
-          >
-            <Calendar className="h-4 w-4" aria-hidden />
-            <span>{activeMonth.label}</span>
-            <ChevronDown className={`h-4 w-4 transition ${monthMenuOpen ? 'rotate-180' : ''}`} aria-hidden />
-          </button>
-          {monthMenuOpen && monthMenu('start-0')}
         </div>
         {/* Today's date in place of the print icon: it opens the visits and aid calendar. */}
         <CalendarButton onClick={() => setCalendarOpen(true)} />
       </div>
 
-      {/* The add button sits at the top with the month (it used to float over the list). */}
+      {/* The add button sits at the top (it used to float over the list). */}
       <button
         type="button"
         onClick={onAddFamily}
