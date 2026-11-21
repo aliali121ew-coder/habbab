@@ -54,7 +54,7 @@ export function PageHeader({ selectedMonth, onMonthChange, onPrint, onAddFamily 
 
   return (
     <>
-    {/* Phone: one compact row (title + month under it, print icon) and a floating add button */}
+    {/* Phone: one compact row (title + month under it, print icon), then the add button */}
     <header className="md:hidden" ref={menuRef}>
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-bl from-blue-600 to-indigo-600 text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.65)]">
@@ -86,11 +86,11 @@ export function PageHeader({ selectedMonth, onMonthChange, onPrint, onAddFamily 
         </button>
       </div>
 
+      {/* The add button sits at the top with the month (it used to float over the list). */}
       <button
         type="button"
         onClick={onAddFamily}
-        aria-label="إضافة عائلة"
-        className="fam-fab fixed bottom-[calc(20px+env(safe-area-inset-bottom))] end-5 z-30 inline-flex h-14 items-center gap-2 rounded-full bg-gradient-to-l from-blue-600 to-indigo-600 ps-4 pe-5 text-sm font-bold text-white shadow-[0_12px_28px_-8px_rgba(37,99,235,0.7)] active:scale-95"
+        className="fam-add-top mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-indigo-600 text-sm font-bold text-white shadow-[0_10px_22px_-10px_rgba(37,99,235,0.7)] active:scale-[.98]"
       >
         <Plus className="h-5 w-5" aria-hidden />
         <span>إضافة عائلة</span>
