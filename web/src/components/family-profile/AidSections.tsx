@@ -1,27 +1,14 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft, Building2, HeartHandshake, Info, MessageCircle, Phone, Repeat } from 'lucide-react';
+import { Building2, ChevronLeft, HandCoins, HeartHandshake, Info, MessageCircle, Phone, Pill, Repeat, Stethoscope, Wallet } from 'lucide-react';
 import { formatIQDParts, formatIQDText } from '../../mock/family';
 import type { AidSource, AidSourceStatus } from '../../types/family';
-import { SheetFacts, SheetSection, SideSheet } from './SideSheet';
+import { SideSheet } from './SideSheet';
 
 export const AID_STATUS: Record<AidSourceStatus, { label: string; bg: string; color: string }> = {
   active: { label: 'منتظم', bg: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)' },
   late: { label: 'متأخر', bg: 'var(--fp-rose-soft)', color: 'var(--fp-rose)' },
   paused: { label: 'متوقف', bg: 'var(--fp-muted-2)', color: 'var(--fp-ink-3)' },
 };
-
-function StatusChip({ status }: { status: AidSourceStatus }) {
-  const meta = AID_STATUS[status];
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-      style={{ backgroundColor: meta.bg, color: meta.color }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: meta.color }} aria-hidden />
-      {meta.label}
-    </span>
-  );
-}
 
 export const FOUNDATION_NAME = 'مؤسسة أحباب الحسين الثقافية الخيرية';
 
@@ -55,6 +42,14 @@ export function OrgLogo({ name, size = 'md' }: { name: string; size?: 'sm' | 'md
 const countPrograms = (n: number) => (n === 1 ? 'برنامج واحد' : n === 2 ? 'برنامجان' : `${n} برامج`);
 
 /** The foundation's own file: every program it runs for this family. */
+// Each of the foundation's programs gets an icon that says what it pays for.
+const programIcon = (name: string) => (/راتب/.test(name) ? Wallet : /دوي|دواء/.test(name) ? Pill : /كشف/.test(name) ? Stethoscope : HandCoins);
+
+/**
+ * The foundation's own aid for a family: a header (logo, name, programs, overall state), this
+ * month's progress with due / paid / left as joined facts, then one card per program with its
+ * icon, status, amount and a slim bar; a card opens that program.
+ */
 export function FoundationSheet({ programs, onOpenProgram, onClose }: {
   programs: AidSource[];
   onOpenProgram: (program: AidSource) => void;
@@ -62,50 +57,101 @@ export function FoundationSheet({ programs, onOpenProgram, onClose }: {
 }) {
   const due = programs.reduce((sum, a) => sum + a.monthlyAmount, 0);
   const paid = programs.reduce((sum, a) => sum + (a.paidThisMonth ?? 0), 0);
+  const left = Math.max(0, due - paid);
+  const pct = due > 0 ? Math.min(100, Math.round((paid / due) * 100)) : 0;
+  const late = programs.filter((p) => p.status === 'late').length;
+  const tone = 'var(--fp-primary)';
+  const facts: [string, string, string][] = [
+    ['المستحق', formatIQDText(due), 'var(--fp-ink)'],
+    ['المصروف', formatIQDText(paid), 'var(--fp-emerald)'],
+    ['المتبقي', left ? formatIQDText(left) : 'لا شيء', left ? 'var(--fp-rose)' : 'var(--fp-ink-3)'],
+  ];
+
   return (
-    <SideSheet title={FOUNDATION_NAME} subtitle={`${countPrograms(programs.length)} لهذه العائلة`} onClose={onClose}>
-      <SheetFacts
-        items={[
-          { label: 'المستحق الشهري', value: formatIQDText(due) },
-          { label: 'المصروف هذا الشهر', value: formatIQDText(paid) },
-        ]}
-      />
-      <SheetSection title="البرامج">
-        <ul className="space-y-2">
-          {programs.map((program) => {
-            const done = program.paidThisMonth ?? 0;
-            const pct = program.monthlyAmount > 0 ? Math.min(100, Math.round((done / program.monthlyAmount) * 100)) : 0;
-            return (
-              <li key={program.id}>
-                <button
-                  type="button"
-                  onClick={() => onOpenProgram(program)}
-                  className="fp-aid-card flex w-full items-center gap-3 rounded-xl border p-3.5"
-                  style={{ borderColor: 'var(--fp-border)' }}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>{program.name}</span>
-                      <StatusChip status={program.status} />
+    <SideSheet title={FOUNDATION_NAME} onClose={onClose} bare>
+      {/* Header */}
+      <div className="px-6 pb-5 pt-10 text-center" style={{ backgroundImage: `linear-gradient(180deg, color-mix(in srgb, ${tone} 15%, transparent) 0%, transparent 100%)` }}>
+        <img
+          src="/logo.jpg"
+          alt=""
+          className="mx-auto h-[72px] w-[72px] rounded-full object-cover"
+          style={{ boxShadow: `0 12px 26px -12px ${tone}, 0 0 0 4px var(--fp-card)` }}
+        />
+        <h2 className="mt-3 text-lg font-extrabold leading-snug" style={{ color: 'var(--fp-ink)' }}>{FOUNDATION_NAME}</h2>
+        <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+          <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}>{countPrograms(programs.length)}</span>
+          {late > 0
+            ? <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: 'var(--fp-rose-soft)', color: 'var(--fp-rose)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--fp-rose)' }} aria-hidden /><bdi>{late}</bdi> متأخر</span>
+            : <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)' }}><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--fp-emerald)' }} aria-hidden />كلها منتظمة</span>}
+        </div>
+      </div>
+
+      <div className="space-y-4 px-5 pb-6">
+        {/* This month */}
+        <section className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}>
+          <div className="px-4 pb-3 pt-4" style={{ backgroundImage: `linear-gradient(135deg, color-mix(in srgb, ${tone} 12%, var(--fp-card)), var(--fp-card))` }}>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>المصروف هذا الشهر</p>
+              <p className="text-sm font-extrabold tabular-nums" style={{ color: pct >= 100 ? 'var(--fp-emerald)' : late ? 'var(--fp-rose)' : tone }}><bdi>{pct}%</bdi></p>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--fp-muted-2)' }} aria-hidden>
+              <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundImage: `linear-gradient(90deg, var(--fp-emerald), color-mix(in srgb, var(--fp-emerald) 70%, ${tone}))` }} />
+            </div>
+          </div>
+          <dl className="grid grid-cols-3 border-t text-center" style={{ borderColor: 'var(--fp-border)' }}>
+            {facts.map(([label, value, color], i) => (
+              <div key={label} className={`min-w-0 px-2 py-3${i ? ' border-s' : ''}`} style={{ borderColor: 'var(--fp-border)' }}>
+                <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{label}</dt>
+                <dd className="mt-1 whitespace-nowrap text-[clamp(11.5px,3.4vw,13px)] font-extrabold tabular-nums" style={{ color }}>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        {/* Programs */}
+        <section>
+          <h3 className="mb-2 text-xs font-bold" style={{ color: 'var(--fp-ink-3)' }}>البرامج</h3>
+          <ul className="space-y-2.5">
+            {programs.map((program) => {
+              const done = program.paidThisMonth ?? 0;
+              const p = program.monthlyAmount > 0 ? Math.min(100, Math.round((done / program.monthlyAmount) * 100)) : 0;
+              const st = AID_STATUS[program.status];
+              const bar = program.status === 'late' ? 'var(--fp-rose)' : 'var(--fp-emerald)';
+              const Icon = programIcon(program.name);
+              return (
+                <li key={program.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpenProgram(program)}
+                    className="fp-aid-card flex w-full items-center gap-3 rounded-2xl border p-3.5 text-start transition hover:brightness-[.98]"
+                    style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}
+                  >
+                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in srgb, ${bar} 13%, transparent)`, color: bar }}>
+                      <Icon className="h-5 w-5" aria-hidden />
                     </span>
-                    <span className="mt-1 flex justify-between text-[11px] tabular-nums" style={{ color: 'var(--fp-ink-3)' }}>
-                      <span>{formatIQDText(done)} من {formatIQDText(program.monthlyAmount)}</span>
-                      <span>{pct}%</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-extrabold" style={{ color: 'var(--fp-ink)' }}>{program.name}</span>
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ backgroundColor: st.bg, color: st.color }}>
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: st.color }} aria-hidden />{st.label}
+                        </span>
+                      </span>
+                      <span className="mt-1 flex items-baseline justify-between gap-2 text-[11px] tabular-nums" style={{ color: 'var(--fp-ink-3)' }}>
+                        <span><b style={{ color: 'var(--fp-ink-2)' }}>{formatIQDText(done)}</b> من {formatIQDText(program.monthlyAmount)}</span>
+                        <span className="font-bold" style={{ color: bar }}><bdi>{p}%</bdi></span>
+                      </span>
+                      <span className="mt-1.5 block h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--fp-muted-2)' }} aria-hidden>
+                        <span className="block h-full rounded-full" style={{ width: `${p}%`, backgroundColor: bar }} />
+                      </span>
                     </span>
-                    <span className="mt-1.5 block h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--fp-muted-2)' }}>
-                      <span
-                        className="block h-full rounded-full"
-                        style={{ width: `${pct}%`, backgroundColor: program.status === 'late' ? 'var(--fp-rose)' : 'var(--fp-emerald)' }}
-                      />
-                    </span>
-                  </span>
-                  <ArrowLeft className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </SheetSection>
+                    <ChevronLeft className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      </div>
     </SideSheet>
   );
 }
