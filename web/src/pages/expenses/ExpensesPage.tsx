@@ -389,7 +389,6 @@ export function ExpensesPage({ me }: { me: Me }) {
 
   const markedDays = useMemo(() => new Set(sheet?.items.map((item) => item.spent_on.slice(0, 10)) ?? []), [sheet]);
   const filtered = rows.length !== (sheet?.items.length ?? 0);
-  const shownTotal = rows.reduce((sum, item) => sum + item.amount, 0);
   const pages = grouped ? 1 : Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
   const pageRows = grouped ? rows : rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   const groupTotals = useMemo(() => {
@@ -401,7 +400,6 @@ export function ExpensesPage({ me }: { me: Me }) {
     return totals;
   }, [rows]);
 
-  const money = (value: number) => <><bdi>{formatNumber(value)}</bdi> <small>{me.currency}</small></>;
   const sortBy = (key: SortKey, label: string) => {
     const nextDesc = sort.key === key ? !sort.desc : key !== 'beneficiary' && key !== 'category';
     setSort({ key, desc: nextDesc });
@@ -557,13 +555,6 @@ export function ExpensesPage({ me }: { me: Me }) {
                       ];
                     })}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <th scope="row" className="col-cat">{filtered ? 'مجموع القيود المعروضة' : (isMonth ? `المجموع الكلي لشهر ${MONTH_NAMES[month]}` : 'المجموع الكلي للمدة')}</th>
-                      <td className="col-amount">{money(shownTotal)}</td>
-                      <td colSpan={6}>{filtered && <small>من أصل <bdi>{formatNumber(figures.total)}</bdi></small>}</td>
-                    </tr>
-                  </tfoot>
                 </table>
               </div>
             )}
