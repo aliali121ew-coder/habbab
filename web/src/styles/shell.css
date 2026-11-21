@@ -669,3 +669,17 @@
   table th button, .tap { position: relative; }
   table th button::after, .tap::after { content: ''; position: absolute; inset: -8px -2px; }
 }
+
+/* Delegate cards: a clear edge (a light tint of the theme colour, not the near-invisible grey)
+   and a simple soft shadow behind each card, so the cards stand apart from the page. The glass
+   style forces its own border and shadow (!important, in this file's layer), so these sit here
+   beside it and win by being more specific (the glass list's longest entry counts for the whole
+   list, hence the repeated selectors); its top shine is kept. */
+:root:root:root .stage .pd-card.pd-card.pd-card {
+  border: 1px solid color-mix(in srgb, var(--bar-active) 22%, var(--line)) !important;
+  box-shadow: inset 0 1px 0 var(--glass-edge, rgb(255 255 255 / 70%)), 0 1px 2px rgb(16 24 40 / 6%), 0 10px 22px -12px color-mix(in srgb, var(--bar-active) 35%, rgb(16 24 40 / 40%)) !important;
+}
+:root:root:root[data-theme="dark"] .stage .pd-card.pd-card.pd-card {
+  border: 1px solid color-mix(in srgb, var(--bar-active) 28%, rgb(255 255 255 / 8%)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%), 0 12px 26px -12px rgb(0 0 0 / 70%) !important;
+}
