@@ -1219,3 +1219,30 @@
 .profile-photo-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .profile-hero.has-photo .profile-photo-actions { margin-bottom: 8px; }
 .profile-hero.has-photo .profile-photo-actions .profile-photo-btn { margin-bottom: 0; }
+
+/* The four tiles on narrow phones, done the standard way: the label never spills out of its
+   tile ("نسبة التسديد" did) and is never cut with "…" — it may take a second line, centred,
+   and the tiles in a row stay the same height. The number shrinks a little between two limits;
+   the label keeps a readable size. Below 360px the tiles go two by two. */
+@media (max-width: 767.98px) {
+  .pd-trio > div { justify-content: center; }
+  .pd-trio dt {
+    width: 100%; font-size: clamp(10px, 2.9vw, 10.5px); line-height: 1.25;
+    white-space: normal; overflow: visible; text-overflow: clip; text-wrap: balance; overflow-wrap: anywhere;
+  }
+  .pd-trio dd { font-size: clamp(16px, 4.8vw, 20px); }
+}
+@media (max-width: 359.98px) {
+  .pd-trio { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* The line under a delegate's name ("29 مشترك · 100,000 د.ع هذا الشهر") was clipped on narrow
+   phones. Below 400px the amount takes its own line instead, so the whole line always shows;
+   wider phones keep it on one line and may wrap rather than clip. */
+@media (max-width: 767.98px) {
+  .pd-card .pd-card-info p { flex-wrap: wrap; row-gap: 1px; white-space: normal; overflow: visible; }
+}
+@media (max-width: 399.98px) {
+  .pd-sub-amount { flex-basis: 100%; }
+  .pd-sub-amount::before { content: none; }
+}
