@@ -85,6 +85,8 @@ export interface FamilyDetail {
   priority: FamilyPriority;
   socialStatus: string;
   address: string;
+  /** The family's own phone (head of the family); empty when none was recorded. */
+  phone?: string;
   region: string;
   housing: string;
   rentAmount: number;

@@ -309,6 +309,7 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
     priority: raw.category,
     socialStatus: raw.socialStatus,
     address: raw.address,
+    phone: raw.phone ?? '',
     region: raw.region,
     housing: raw.housing,
     rentAmount: raw.rent,

@@ -1,4 +1,5 @@
-import { Copy, Home, MapPin, Users } from 'lucide-react';
+import { Copy, Home, MapPin, Phone, UserCheck, Users } from 'lucide-react';
+import { WhatsAppMark } from '../../pages/subscribers/WhatsAppButton';
 import { formatIQDParts, formatIQDText } from '../../mock/family';
 import type { CaseOfficer, FamilyDetail, FamilyPriority } from '../../types/family';
 import { CaseOfficerCard } from './CaseOfficerCard';
@@ -24,6 +25,9 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
   const paid = family.paidThisMonth;
   const pct = due > 0 ? Math.min(100, Math.round((paid / due) * 100)) : 0;
   const late = family.arrears > 0;
+  // WhatsApp opens the user's own app on the delegate's chat (no business account).
+  const officerDigits = family.officer.phone.replace(/\D/g, '');
+  const officerWa = `https://wa.me/${officerDigits.startsWith('0') ? `964${officerDigits.slice(1)}` : officerDigits}`;
 
   return (
     <>
@@ -56,14 +60,32 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
           {family.name}
         </h1>
 
-        <ul className="mt-2.5 grid gap-1.5 text-[13px]" style={{ color: 'var(--fp-ink-2)' }}>
+        {/* Under the name: address, members, the family's phone, and the delegate in charge with
+            a WhatsApp button beside the name (the delegate card is not shown on the phone). */}
+        <ul className="mt-2.5 grid gap-2 text-[13px]" style={{ color: 'var(--fp-ink-2)' }}>
           <li className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />{family.address}</li>
-          <li className="flex items-center gap-2 tabular-nums">
-            <Home className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
-            {family.housing}{family.rentAmount > 0 ? ` · ${rentFormatted.value} ${rentFormatted.currency}` : ''}
-            <span style={{ color: 'var(--fp-border)' }}>|</span>
-            <Users className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
-            {family.members.length} أفراد
+          <li className="flex items-center gap-2"><Users className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden /><span><bdi>{family.members.length}</bdi> أفراد</span></li>
+          <li className="flex items-center gap-2">
+            <Phone className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
+            {family.phone
+              ? <a href={`tel:${family.phone.replace(/\s/g, '')}`} className="tap font-semibold tabular-nums" style={{ color: 'var(--fp-ink)' }} dir="ltr">{family.phone}</a>
+              : <span style={{ color: 'var(--fp-ink-3)' }}>لم يُسجَّل رقم</span>}
+          </li>
+          <li className="flex items-center gap-2">
+            <UserCheck className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
+            <span className="min-w-0">
+              <span style={{ color: 'var(--fp-ink-3)' }}>المندوب: </span>
+              <a href={`#/delegates/${family.officer.id}`} className="tap font-bold" style={{ color: 'var(--fp-ink)' }}>{family.officer.name}</a>
+            </span>
+            <a
+              href={officerWa}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`مراسلة ${family.officer.name} على واتساب`}
+              className="fam-wa-btn"
+            >
+              <WhatsAppMark />
+            </a>
           </li>
         </ul>
       </div>
@@ -93,14 +115,7 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
         </dl>
       </div>
 
-      <div className="p-4">
-        <CaseOfficerCard
-          officer={family.officer}
-          officers={officers}
-          onChangeOfficer={onChangeOfficer}
-          onCopyPhone={(phone) => onCopy(phone, 'رقم الهاتف')}
-        />
-      </div>
+      <div className="h-4" aria-hidden />
     </section>
 
     <section className="fp-card hidden p-6 md:block">

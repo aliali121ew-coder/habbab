@@ -23,6 +23,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
   const [headName, setHeadName] = useState('');
   const [region, setRegion] = useState('الكاظمية');
   const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const [housing, setHousing] = useState('إيجار');
   const [rent, setRent] = useState('250000');
   const [category, setCategory] = useState('intensive');
@@ -58,6 +59,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
       socialStatus,
       region: region.trim(),
       address: address.trim() || `بغداد – ${region.trim()}`,
+      phone: phone.trim(),
       housing,
       rent: housing === 'إيجار' || housing === 'سكن مشترك' ? Math.max(0, Number(rent) || 0) : 0,
       income: 'مسجل حديثاً قيد المراجعة',
@@ -80,6 +82,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
     setName('');
     setHeadName('');
     setAddress('');
+    setPhone('');
     setNotes('');
     onClose();
   };
@@ -199,6 +202,19 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
                 <option value="سكن مشترك">سكن مشترك</option>
                 <option value="تجاوز / كرفان">تجاوز / كرفان</option>
               </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">رقم الهاتف</span>
+              <input
+                type="tel"
+                inputMode="tel"
+                dir="ltr"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="07xx xxx xxxx"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-bold tabular-nums"
+              />
             </label>
 
             <label className="block">

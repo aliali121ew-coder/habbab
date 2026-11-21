@@ -2150,3 +2150,13 @@ button.fam-ref-initials:active { transform: scale(.96); }
    shrinks, and below 360px the two halves of the panel are equal so both fit. */
 .fam-ref-stats .is-month strong { flex: none; }
 @media (max-width: 359.98px) { .fam-ref-stats { grid-template-columns: 1fr 1fr; } }
+
+/* Family file (phone): the WhatsApp button beside the delegate's name — WhatsApp green, round,
+   with a finger-sized tap area. */
+.fam-wa-btn {
+  flex: none; position: relative; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  background: color-mix(in srgb, #25d366 14%, transparent); color: #1fa855;
+}
+.fam-wa-btn::after { content: ''; position: absolute; inset: -6px; }
+.fam-wa-btn svg { width: 17px; height: 17px; }
+:root[data-theme="dark"] .fam-wa-btn { background: color-mix(in srgb, #25d366 20%, transparent); color: #4ade80; }
