@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowDown, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, Download, Layers, Minus, Paperclip, Pencil,
-  Plus, Printer, Receipt, Search, Sheet, TrendingDown, TrendingUp, Trophy,
+  Plus, Printer, Receipt, Search, Sheet, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X,
 } from 'lucide-react';
+import { BackToClose } from '../../components/useBackToClose';
+import { useIsPhone } from '../../useIsPhone';
 import { api, type Me, type Overview } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
@@ -73,6 +76,54 @@ function Delta({ change }: { change: number | null | undefined }) {
       {up ? <ArrowUp size={15} strokeWidth={2.5} aria-label="ارتفاع" /> : <ArrowDown size={15} strokeWidth={2.5} aria-label="انخفاض" />}
       <bdi>{formatPercent(Math.abs(change))}</bdi>
     </span>
+  );
+}
+
+/**
+ * One entry's details in a centred window (phones): the heading with its icon and the amount in
+ * large type, then beneficiary, date, details, the heading's change on last month and the
+ * attachments; «تعديل القيد» opens the entry for editing.
+ */
+function ExpenseView({ item, change, currency, onEdit, onClose }: {
+  item: ExpenseItem;
+  change: number | null | undefined;
+  currency: string;
+  onEdit: () => void;
+  onClose: () => void;
+}) {
+  const Icon = CATEGORY_BY_ID.get(item.category)?.icon;
+  const rows: [typeof User, string, React.ReactNode][] = [
+    [User, 'المستفيد', item.beneficiary_name ?? <span className="exp-missing">غير محدد</span>],
+    [CalendarDays, 'التاريخ', <bdi key="d" dir="ltr">{shortDate(item.spent_on)}</bdi>],
+    [FileText, 'التفاصيل', item.details || <span className="exp-missing">غير محدد</span>],
+    [BarChart3, 'مقارنة بالشهر السابق', <Delta key="c" change={change} />],
+  ];
+  if (item.files > 0) rows.push([Paperclip, 'المرفقات', <bdi key="f">{formatNumber(item.files)}</bdi>]);
+  return createPortal(
+    <div className="exp-view-layer" role="presentation" onClick={onClose}>
+      <BackToClose onClose={onClose} />
+      <section className="exp-view" data-tone={TONE[item.category]} role="dialog" aria-modal="true" aria-label={`تفاصيل القيد: ${categoryLabel(item.category)}`} onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="exp-view-close" aria-label="إغلاق" onClick={onClose}><X size={18} aria-hidden /></button>
+        <header className="exp-view-head">
+          <span className="exp-view-icon" aria-hidden>{Icon && <Icon size={26} />}</span>
+          <p className="exp-view-cat">{categoryLabel(item.category)}</p>
+          <p className="exp-view-amount"><bdi>{formatNumber(item.amount)}</bdi> <small>{currency}</small></p>
+        </header>
+        <dl className="exp-view-rows">
+          {rows.map(([RowIcon, label, value]) => (
+            <div key={label}>
+              <dt><RowIcon size={15} aria-hidden />{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <footer className="exp-view-foot">
+          <button type="button" className="btn primary" onClick={onEdit}><Pencil size={16} aria-hidden /> تعديل القيد</button>
+          <button type="button" className="btn" onClick={onClose}>إغلاق</button>
+        </footer>
+      </section>
+    </div>,
+    document.body,
   );
 }
 
@@ -199,6 +250,9 @@ export function ExpensesPage({ me }: { me: Me }) {
   const [flow, setFlow] = useState<Flow | null>(null);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState<{ entry: ExpenseItem | null } | null>(null);
+  // Phones: a tapped entry opens its details first (the window has «تعديل القيد»).
+  const [viewing, setViewing] = useState<ExpenseItem | null>(null);
+  const isPhone = useIsPhone();
   const [printing, setPrinting] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<ExpenseCategory | ''>('');
@@ -446,7 +500,7 @@ export function ExpensesPage({ me }: { me: Me }) {
                             <td />
                           </tr>
                         ),
-                        <tr key={item.id} className="exp-row" onClick={() => setDialog({ entry: item })}>
+                        <tr key={item.id} className="exp-row" onClick={() => (isPhone ? setViewing(item) : setDialog({ entry: item }))}>
                           <td className="col-cat"><span className="exp-type" data-tone={TONE[item.category]}><span className="exp-type-icon" aria-hidden>{Icon && <Icon size={16} />}</span>{categoryLabel(item.category)}</span></td>
                           <td className="col-amount"><bdi>{formatNumber(item.amount)}</bdi></td>
                           <td className="col-person">
@@ -500,6 +554,16 @@ export function ExpensesPage({ me }: { me: Me }) {
           filterNote={[category && `نوع الصرف: ${categoryLabel(category)}`, query.trim() && `بحث: ${query.trim()}`].filter(Boolean).join(' · ')}
           currency={me.currency}
           onClose={() => setPrinting(false)}
+        />
+      )}
+
+      {viewing && (
+        <ExpenseView
+          item={viewing}
+          change={changeOf(viewing.category)}
+          currency={me.currency}
+          onEdit={() => { const entry = viewing; setViewing(null); setDialog({ entry }); }}
+          onClose={() => setViewing(null)}
         />
       )}
 
