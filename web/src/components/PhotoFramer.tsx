@@ -18,11 +18,44 @@ interface Props {
 
 interface Point { x: number; y: number }
 
+const WORK_SIDE = 1600;
+
+// The photo, turned upright (camera orientation) and scaled so its longest side is at most
+// WORK_SIDE; a photo already that small is returned unchanged.
+async function workingCopy(file: Blob): Promise<Blob> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const longest = Math.max(bitmap.width, bitmap.height);
+  if (longest <= WORK_SIDE) { bitmap.close(); return file; }
+  const ratio = WORK_SIDE / longest;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * ratio);
+  canvas.height = Math.round(bitmap.height * ratio);
+  const context = canvas.getContext('2d')!;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+  if (!blob) throw new Error('encode');
+  return blob;
+}
+
 // Frame a photo before it is saved: drag to move it (finger or mouse), pinch, slide or scroll to
 // zoom. The picture always covers the whole square, so no empty edge can be saved.
 export function PhotoFramer({ source, onCancel, onDone, container }: Props) {
-  const url = useMemo(() => URL.createObjectURL(source), [source]);
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
+  // A phone photo can be 8000px or more. Moving and scaling that on screen made some phones
+  // flicker and freeze, so the framer works on a copy at most WORK_SIDE px (the saved avatar is
+  // 320px, so nothing is lost). Smaller photos are used as they are.
+  const [working, setWorking] = useState<Blob | null>(null);
+  useEffect(() => {
+    let live = true;
+    setWorking(null);
+    workingCopy(source)
+      .then((blob) => { if (live) setWorking(blob); })
+      .catch(() => { if (live) setError('تعذّر قراءة الصورة، جرّب صورة أخرى'); });
+    return () => { live = false; };
+  }, [source]);
+  const url = useMemo(() => (working ? URL.createObjectURL(working) : ''), [working]);
+  useEffect(() => () => { if (url) URL.revokeObjectURL(url); }, [url]);
 
   const [natural, setNatural] = useState<{ w: number; h: number } | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -100,7 +133,7 @@ export function PhotoFramer({ source, onCancel, onDone, container }: Props) {
       const side = FRAME / scale;
       const sx = Math.max(0, Math.min(natural.w - side, -left / scale));
       const sy = Math.max(0, Math.min(natural.h - side, -top / scale));
-      await onDone(await cropAvatar(source, { sx, sy, side }));
+      await onDone(await cropAvatar(working ?? source, { sx, sy, side }));
     } catch (failure) {
       setError((failure as Error).message);
       setBusy(false);
@@ -131,7 +164,7 @@ export function PhotoFramer({ source, onCancel, onDone, container }: Props) {
           onWheel={(event) => applyZoom(zoom - event.deltaY * 0.0015)}
           onKeyDown={keys}
         >
-          <img
+          {url && <img
             src={url}
             alt=""
             draggable={false}
@@ -141,7 +174,7 @@ export function PhotoFramer({ source, onCancel, onDone, container }: Props) {
               height: natural.h * scale,
               transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
             } : { opacity: 0 }}
-          />
+          />}
           <span className="framer-grid" aria-hidden />
         </div>
 
