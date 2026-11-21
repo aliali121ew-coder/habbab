@@ -95,14 +95,17 @@
 span.exp-status-badge { cursor: default; }
 
 /* Status segmented picker inside ExpenseDialog */
-.exp-status-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 4px; }
+.exp-status-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; margin-top: 2px; }
 .exp-status-opt {
   --st: #64748b;
-  min-height: 36px; padding: 6px 10px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-height: 32px; padding: 4px 6px; border-radius: 8px;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
-  font-size: .84rem; font-weight: 700; cursor: pointer;
+  font-size: .8rem; font-weight: 700; cursor: pointer;
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
+.exp-status-opt::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--st); opacity: .55; flex: none; }
+.exp-status-opt.on::before { opacity: 1; }
 .exp-status-opt.critical { --st: #e11d48; }
 .exp-status-opt.medium { --st: #d97706; }
 .exp-status-opt.good { --st: #10b981; }
@@ -158,9 +161,34 @@ span.exp-status-badge { cursor: default; }
 
 .exp-pager { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px; border-top: 1px solid var(--line); color: var(--ink-2); font-size: .86rem; }
 
-/* Entry dialog. */
-.exp-dialog { width: min(640px, calc(100vw - 24px)); }
-.exp-dialog .add-field > select { min-height: 40px; border: 0; padding-inline: 0; background-color: transparent; font-weight: 500; color: var(--ink); }
+/* Entry dialog — compact two-column layout so all fields fit cleanly without vertical scroll. */
+.exp-dialog { width: min(680px, calc(100vw - 24px)); }
+.exp-dialog .add-head { padding: 12px 18px; gap: 10px; }
+.exp-dialog .add-badge { width: 38px; height: 38px; border-radius: 11px; }
+.exp-dialog .add-head h2 { font-size: 1.02rem; }
+.exp-dialog .add-head p { font-size: .76rem; margin-top: 1px; }
+.exp-dialog .exp-dlg-body { padding: 12px 16px; gap: 8px; }
+.exp-dialog .exp-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.exp-dialog .exp-grid-person { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 8px; }
+.exp-dialog .add-field { padding: 7px 11px; gap: 3px; border-radius: 12px; }
+.exp-dialog .add-field-label { font-size: .78rem; gap: 5px; }
+.exp-dialog .add-field-label small { font-size: .72rem; }
+.exp-dialog .add-field > input,
+.exp-dialog .add-field > select { min-height: 32px; height: 32px; padding-block: 0; border: 0; padding-inline: 0; background-color: transparent; font-size: .92rem; font-weight: 600; color: var(--ink); }
+.exp-dialog .exp-attach-field { padding: 7px 11px; }
+.exp-dialog .exp-attach-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.exp-dialog .exp-attach-bar .add-field-label { flex: 1 1 auto; }
+.exp-dialog .exp-file-pick { min-height: 30px; padding: 0 11px; border-radius: 8px; font-size: .8rem; font-weight: 600; }
+.exp-dialog .exp-files { margin-top: 6px; gap: 4px; }
+.exp-dialog .exp-files li { padding: 4px 8px; border-radius: 8px; font-size: .8rem; }
+.exp-dialog .exp-history { border-radius: 12px; }
+.exp-dialog .exp-history summary { padding: 8px 12px; font-size: .82rem; }
+.exp-dialog .add-actions { padding: 10px 16px; gap: 8px; }
+.exp-dialog .add-actions .btn { min-height: 38px; padding-block: 0; font-size: .88rem; }
+@media (max-width: 600px) {
+  .exp-dialog .exp-grid-2,
+  .exp-dialog .exp-grid-person { grid-template-columns: 1fr; }
+}
 .exp-amount-words { color: var(--ink-2); font-size: .78rem; }
 .add-actions.with-delete { grid-template-columns: auto auto 1fr; }
 .exp-delete { color: var(--danger); }

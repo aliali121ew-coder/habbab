@@ -192,10 +192,10 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
           <button type="button" className="add-close" aria-label="إغلاق" onClick={() => void closeTopLayer(ref.current)}><X size={18} aria-hidden /></button>
         </header>
 
-        <div className="add-body">
-          <div className="add-grid">
+        <div className="add-body exp-dlg-body">
+          <div className="exp-grid-2">
             <label className="add-field">
-              <span className="add-field-label"><span aria-hidden><Receipt size={15} /></span>نوع الصرف</span>
+              <span className="add-field-label"><span aria-hidden><Receipt size={14} /></span>نوع الصرف</span>
               <select
                 className="exp-select"
                 value={category}
@@ -210,106 +210,116 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
               </select>
             </label>
             <label className="add-field">
-              <span className="add-field-label"><span aria-hidden><CalendarDays size={15} /></span>تاريخ الصرف</span>
+              <span className="add-field-label"><span aria-hidden><CalendarDays size={14} /></span>تاريخ الصرف</span>
               <input type="date" dir="ltr" value={date} max={today()} onChange={(event) => setDate(event.target.value)} data-error="exp-date-error" required />
               <span id="exp-date-error" className="exp-field-error">يرجى اختيار تاريخ صحيح لا يتجاوز اليوم.</span>
             </label>
           </div>
 
-          <div className="add-field exp-person">
-            <span className="add-field-label">
-              <span aria-hidden><UserRound size={15} /></span>المستفيد
-              <small>{personId !== null ? 'من سجل المشتركين' : 'اكتب الاسم، أو اختر مشتركاً من السجل'}</small>
-            </span>
-            <input
-              value={name}
-              onChange={(event) => { setName(event.target.value); setPersonId(null); }}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape' && matches.length > 0) {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setMatches([]);
-                }
-              }}
-              placeholder="اسم المستفيد أو الجهة"
-              required
-              minLength={2}
-              maxLength={120}
-              autoComplete="off"
-              aria-label="المستفيد"
-              data-error="exp-person-error"
-            />
-            <span id="exp-person-error" className="exp-field-error">يرجى إدخال اسم المستفيد (حرفان على الأقل).</span>
-            {matches.length > 0 && (
-              <ul className="exp-matches" role="listbox" aria-label="مشتركون مطابقون">
-                {matches.map((person) => (
-                  <li key={person.id}>
-                    <button type="button" role="option" aria-selected={false} onClick={() => { setName(person.full_name); setPersonId(person.id); setMatches([]); }}>
-                      {person.full_name}<small>#{person.id}</small>
+          <div className="exp-grid-person">
+            <div className="add-field exp-person">
+              <span className="add-field-label">
+                <span aria-hidden><UserRound size={14} /></span>المستفيد
+                <small>{personId !== null ? 'من سجل المشتركين' : 'من السجل أو اسم جديد'}</small>
+              </span>
+              <input
+                value={name}
+                onChange={(event) => { setName(event.target.value); setPersonId(null); }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape' && matches.length > 0) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setMatches([]);
+                  }
+                }}
+                placeholder="اسم المستفيد أو الجهة"
+                required
+                minLength={2}
+                maxLength={120}
+                autoComplete="off"
+                aria-label="المستفيد"
+                data-error="exp-person-error"
+              />
+              <span id="exp-person-error" className="exp-field-error">يرجى إدخال اسم المستفيد (حرفان على الأقل).</span>
+              {matches.length > 0 && (
+                <ul className="exp-matches" role="listbox" aria-label="مشتركون مطابقون">
+                  {matches.map((person) => (
+                    <li key={person.id}>
+                      <button type="button" role="option" aria-selected={false} onClick={() => { setName(person.full_name); setPersonId(person.id); setMatches([]); }}>
+                        {person.full_name}<small>#{person.id}</small>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <label className="add-field">
+              <span className="add-field-label">
+                <span aria-hidden><Wallet size={14} /></span>المبلغ
+                <small>{value > 0 ? `${formatNumber(value)} ${currency}` : currency}</small>
+              </span>
+              <input type="number" inputMode="numeric" dir="ltr" min={1} step={1} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" required aria-label="المبلغ" data-error="exp-amount-error" />
+              <span id="exp-amount-error" className="exp-field-error">يرجى إدخال مبلغ صحيح أكبر من صفر.</span>
+            </label>
+          </div>
+
+          <div className="exp-grid-2">
+            <div className="add-field">
+              <span className="add-field-label"><span aria-hidden><HeartPulse size={14} /></span>حالة المستفيد</span>
+              <div className="exp-status-picker" role="radiogroup" aria-label="حالة المستفيد">
+                {BENEFICIARY_STATUSES.map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={status === opt.id}
+                    className={`exp-status-opt ${opt.id}${status === opt.id ? ' on' : ''}`}
+                    onClick={() => { setStatus(opt.id); setStatusTouched(true); }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="add-field">
+              <span className="add-field-label"><span aria-hidden><FileText size={14} /></span>الوصف</span>
+              <input value={details} onChange={(event) => setDetails(event.target.value)} placeholder="مثال: علاج شهري، مساعدة غذائية…" required minLength={2} maxLength={300} autoComplete="off" aria-label="الوصف" data-error="exp-details-error" />
+              <span id="exp-details-error" className="exp-field-error">يرجى إدخال وصف للصرف (حرفان على الأقل).</span>
+            </label>
+          </div>
+
+          <div className="add-field exp-attach-field">
+            <div className="exp-attach-bar">
+              <span className="add-field-label"><span aria-hidden><Paperclip size={14} /></span>المرفقات<small>صورة أو PDF حتى 2 ميغابايت</small></span>
+              <label className="exp-file-pick">
+                <Paperclip size={14} aria-hidden /> إرفاق ملف
+                <input type="file" accept="image/*,application/pdf" multiple onChange={addFiles} disabled={busy} hidden />
+              </label>
+            </div>
+            {((detail?.files.length ?? 0) > 0 || queued.length > 0) && (
+              <ul className="exp-files">
+                {detail?.files.map((file) => (
+                  <li key={file.id}>
+                    <a href={file.url} target="_blank" rel="noopener">{file.name}</a>
+                    <small>{Math.max(1, Math.round(file.size / 1024))} ك.ب</small>
+                    <button type="button" aria-label={`حذف ${file.name}`} disabled={busy} onClick={() => void run(() => api(`/expenses/${entry!.id}/files/${file.id}`, { method: 'DELETE' }), false)}>
+                      <Trash2 size={14} aria-hidden />
+                    </button>
+                  </li>
+                ))}
+                {queued.map((file, index) => (
+                  <li key={`${file.name}-${index}`} className="queued">
+                    <span>{file.name}</span>
+                    <small>يُرفع عند الحفظ</small>
+                    <button type="button" aria-label={`إزالة ${file.name}`} onClick={() => setQueued((current) => current.filter((_, at) => at !== index))}>
+                      <X size={14} aria-hidden />
                     </button>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
-
-          <div className="add-field">
-            <span className="add-field-label"><span aria-hidden><HeartPulse size={15} /></span>حالة المستفيد</span>
-            <div className="exp-status-picker" role="radiogroup" aria-label="حالة المستفيد">
-              {BENEFICIARY_STATUSES.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={status === opt.id}
-                  className={`exp-status-opt ${opt.id}${status === opt.id ? ' on' : ''}`}
-                  onClick={() => { setStatus(opt.id); setStatusTouched(true); }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <label className="add-field">
-            <span className="add-field-label"><span aria-hidden><FileText size={15} /></span>الوصف</span>
-            <input value={details} onChange={(event) => setDetails(event.target.value)} placeholder="مثال: علاج شهري، شراء ثلاجة لعائلة…" required minLength={2} maxLength={300} autoComplete="off" aria-label="الوصف" data-error="exp-details-error" />
-            <span id="exp-details-error" className="exp-field-error">يرجى إدخال وصف للصرف (حرفان على الأقل).</span>
-          </label>
-
-          <label className="add-field">
-            <span className="add-field-label"><span aria-hidden><Wallet size={15} /></span>المبلغ<small>{currency}</small></span>
-            <input type="number" inputMode="numeric" dir="ltr" min={1} step={1} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" required aria-label="المبلغ" data-error="exp-amount-error" />
-            <span id="exp-amount-error" className="exp-field-error">يرجى إدخال مبلغ صحيح أكبر من صفر.</span>
-            {value > 0 && <small className="exp-amount-words"><bdi>{formatNumber(value)}</bdi> {currency}</small>}
-          </label>
-
-          <div className="add-field">
-            <span className="add-field-label"><span aria-hidden><Paperclip size={15} /></span>المرفقات<small>صورة الوصل أو الفاتورة · صورة أو PDF حتى 2 ميغابايت</small></span>
-            <ul className="exp-files">
-              {detail?.files.map((file) => (
-                <li key={file.id}>
-                  <a href={file.url} target="_blank" rel="noopener">{file.name}</a>
-                  <small>{Math.max(1, Math.round(file.size / 1024))} ك.ب</small>
-                  <button type="button" aria-label={`حذف ${file.name}`} disabled={busy} onClick={() => void run(() => api(`/expenses/${entry!.id}/files/${file.id}`, { method: 'DELETE' }), false)}>
-                    <Trash2 size={14} aria-hidden />
-                  </button>
-                </li>
-              ))}
-              {queued.map((file, index) => (
-                <li key={`${file.name}-${index}`} className="queued">
-                  <span>{file.name}</span>
-                  <small>يُرفع عند الحفظ</small>
-                  <button type="button" aria-label={`إزالة ${file.name}`} onClick={() => setQueued((current) => current.filter((_, at) => at !== index))}>
-                    <X size={14} aria-hidden />
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <label className="exp-file-pick">
-              <Paperclip size={15} aria-hidden /> إرفاق ملف
-              <input type="file" accept="image/*,application/pdf" multiple onChange={addFiles} disabled={busy} hidden />
-            </label>
           </div>
 
           {entry && detail && detail.history.length > 0 && (
