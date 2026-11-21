@@ -25,7 +25,7 @@ const NAV: NavItem[] = [
   // A delegate's own register; the manager reaches each delegate's register from the delegates page.
   { id: 'subscribers', label: 'سجل المشتركين', icon: Users, href: '#/', roles: ['delegate'], group: 'main' },
   { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin'], group: 'main' },
-  { id: 'expenses', label: 'الصرفيات', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records' },
+  { id: 'expenses', label: 'الحركات المالية', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records' },
   { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health'], group: 'records' },
 ];
 

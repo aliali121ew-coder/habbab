@@ -154,7 +154,7 @@ export function HomePage({ me }: { me: Me }) {
       note: `${formatNumber(families.filter((f) => f.arrears > 0).length)} متأخرات`, alert: families.some((f) => f.arrears > 0),
     },
     { href: '#/patients', icon: HeartPulse, label: 'المرضى', value: formatNumber(PATIENTS.length), note: 'ملف مريض' },
-    { href: '#/expenses', icon: Receipt, label: 'الصرفيات', value: sheet ? formatNumber(sheet.items.length) : '—', note: 'هذا الشهر' },
+    { href: '#/expenses', icon: Receipt, label: 'الحركات المالية', value: sheet ? formatNumber(sheet.items.length) : '—', note: 'هذا الشهر' },
   ];
 
   const kpis: { label: string; icon: LucideIcon; tone: string; soft: string; value: string; unit?: string; valueColor?: string; foot: ReactNode; href?: string }[] = [
@@ -198,9 +198,9 @@ export function HomePage({ me }: { me: Me }) {
       note: 'للعوائل المتعففة', href: '#/families',
     },
     {
-      key: 'expenses', label: 'الصرفيات', icon: WORK_ICONS.expenses, tone: 'var(--fp-amber)', soft: 'var(--fp-amber-soft)',
+      key: 'expenses', label: 'الحركات المالية', icon: WORK_ICONS.expenses, tone: 'var(--fp-amber)', soft: 'var(--fp-amber-soft)',
       count: sheet?.items.length ?? 0, countUnit: 'قيد', amount: sheet ? spentNow : undefined,
-      note: sheet ? 'مسجّلة في سجل الصرف' : 'تعذّر تحميل الصرفيات', href: '#/expenses',
+      note: sheet ? 'مسجّلة في الحركات المالية' : 'تعذّر تحميل الحركات المالية', href: '#/expenses',
     },
     {
       key: 'visits', label: 'الزيارات', icon: WORK_ICONS.visits, tone: 'var(--fp-rose)', soft: 'var(--fp-rose-soft)',

@@ -104,8 +104,8 @@ export function ExpensesLedgerPage({ me }: { me: Me }) {
       <div className="page-head exp-head">
         <span className="page-icon" aria-hidden><Sheet size={24} /></span>
         <div>
-          <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'الصرفيات', href: '#/expenses' }]} />
-          <h1>سجل الصرفيات السنوي</h1>
+          <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'الحركات المالية', href: '#/expenses' }]} />
+          <h1>سجل الحركات المالية السنوي</h1>
         </div>
         <div className="page-actions">
           <div className="lg-year" role="group" aria-label="السنة">
@@ -121,9 +121,9 @@ export function ExpensesLedgerPage({ me }: { me: Me }) {
             <Download size={18} aria-hidden />
             <span className="btn-label">تصدير Excel</span>
           </button>
-          <a className="btn" href="#/expenses" aria-label="رجوع إلى الصرفيات">
+          <a className="btn" href="#/expenses" aria-label="رجوع إلى الحركات المالية">
             <ArrowRight size={18} aria-hidden />
-            <span className="btn-label">الصرفيات</span>
+            <span className="btn-label">الحركات المالية</span>
           </a>
         </div>
       </div>

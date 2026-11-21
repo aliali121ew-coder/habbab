@@ -44,7 +44,7 @@ const PRESET_IMAGES = [
 
 const CTA_TARGETS = [
   { label: 'سجل العوائل المستفيدة', href: '#/families', secLabel: 'متابعة المندوبين', secHref: '#/delegates' },
-  { label: 'ملفات المرضى', href: '#/patients', secLabel: 'سجل الصرفيات', secHref: '#/expenses' },
+  { label: 'ملفات المرضى', href: '#/patients', secLabel: 'سجل الحركات المالية', secHref: '#/expenses' },
   { label: 'تفاصيل الصرف والتوزيع', href: '#/expenses', secLabel: 'قائمة العوائل', secHref: '#/families' },
   { label: 'سجل المندوبين', href: '#/delegates', secLabel: 'سجل العوائل', secHref: '#/families' },
 ];
@@ -77,7 +77,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
     metric: 'دعم علاجي عاجل',
     ctaLabel: 'ملفات المرضى',
     ctaHref: '#/patients',
-    secondaryLabel: 'سجل الصرفيات',
+    secondaryLabel: 'سجل الحركات المالية',
     secondaryHref: '#/expenses',
     image: slideMedical,
     imageAlt: 'مبادرة توفير الأدوية والكشفيات الطبية للمرضى',
@@ -109,7 +109,7 @@ const DEFAULT_SLIDES: HeroSlide[] = [
     metric: '12 ملف مريض نشط',
     ctaLabel: 'ملفات المرضى',
     ctaHref: '#/patients',
-    secondaryLabel: 'سجل الصرفيات',
+    secondaryLabel: 'سجل الحركات المالية',
     secondaryHref: '#/expenses',
     image: slideMedical,
     imageAlt: 'دعم العمليات الجراحية العاجلة',

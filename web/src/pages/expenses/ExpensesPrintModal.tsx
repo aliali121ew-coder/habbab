@@ -66,7 +66,7 @@ export function ExpensesPrintModal({ title, isMonth, items, filterNote, currency
         { title: 'عدد القيود', value: formatNumber(items.length) },
         { title: 'الأبواب المستخدمة', value: `${formatNumber(used)} من 17` },
         { title: 'الأعلى استهلاكاً', value: top.label },
-        { title: 'مجموع الصرفيات', value: `${formatNumber(total)} ${currency}`, strong: true },
+        { title: 'مجموع الحركات المالية', value: `${formatNumber(total)} ${currency}`, strong: true },
       ],
     };
   }, [items, currency]);
@@ -91,7 +91,7 @@ export function ExpensesPrintModal({ title, isMonth, items, filterNote, currency
       <div className="print-modal-container reg-print exp-print">
         <header className="print-modal-toolbar">
           <div className="pmt-title">
-            <strong>طباعة سجل الصرفيات</strong>
+            <strong>طباعة سجل الحركات المالية</strong>
             <span>{isMonth ? 'شهر' : 'المدة'} <bdi>{monthTitle}</bdi> • القيود: <bdi>{formatNumber(items.length)}</bdi>{filterNote && <> • {filterNote}</>} • صفحة واحدة</span>
           </div>
           <div className="pmt-actions">
@@ -119,7 +119,7 @@ export function ExpensesPrintModal({ title, isMonth, items, filterNote, currency
                     </div>
                   </div>
                   <div className="reg-title">
-                    <h2>سجل الصرفيات</h2>
+                    <h2>سجل الحركات المالية</h2>
                     <p>{lead} <b><bdi>{monthTitle}</bdi></b></p>
                     {filterNote && <p className="exp-filter-note">{filterNote}</p>}
                   </div>

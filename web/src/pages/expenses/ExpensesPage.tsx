@@ -145,26 +145,11 @@ function Signed({ value }: { value: number }) {
   return <bdi dir="ltr">{formatNumber(Math.abs(value))}</bdi>;
 }
 
-// The month's money in five cards, read right to left: the balance it opened with, what came in,
-// what went out, how both moved against the month before, and the balance it ends with.
-function BalanceCards({ flow, year, month, currency }: { flow: Flow | null; year: number; month: number; currency: string }) {
-  // Dates in figures (2026-11, 2026-10-31), the style of the printed sheets.
-  const thisMonth = `${year}-${month + 1}`;
-  const lastDay = new Date(Date.UTC(year, month, 0));
-  const openedOn = `${lastDay.getUTCFullYear()}-${lastDay.getUTCMonth() + 1}-${lastDay.getUTCDate()}`;
+// The month's money in five cards across both phone and desktop: spending, income (each with its
+// change on last month), charity boxes, cash donations, and the current balance.
+function BalanceCards({ flow, currency }: { flow: Flow | null; year?: number; month?: number; currency: string }) {
   const closing = flow ? flow.opening + flow.income - flow.spent : 0;
-  const delta = (label: string, value: number | null, goodUp: boolean) => {
-    if (value === null) return <div className="bal-delta"><span>{label}</span><b className="flat">—</b></div>;
-    const up = value >= 0;
-    const tone = Math.abs(value) < 0.05 ? 'flat' : up === goodUp ? 'good' : 'bad';
-    return (
-      <div className="bal-delta">
-        <span>{label}</span>
-        <b className={tone}>{up ? <ArrowUp size={15} strokeWidth={2.5} aria-label="ارتفاع" /> : <ArrowDown size={15} strokeWidth={2.5} aria-label="انخفاض" />}<bdi>{formatPercent(Math.abs(value))}</bdi></b>
-      </div>
-    );
-  };
-  // Phone tiles: a small change pill under the figure (green when it moved the good way).
+  // Change pill under the figure (green when it moved the good way).
   const pill = (value: number | null, goodUp: boolean) => {
     if (value === null) return <span className="bal-pill flat" title="مقارنة بالشهر السابق">— عن السابق</span>;
     const up = value >= 0;
@@ -181,33 +166,6 @@ function BalanceCards({ flow, year, month, currency }: { flow: Flow | null; year
     : '—');
   return (
     <section className="bal" aria-label="الرصيد والوارد والمصروف">
-      <article className="bal-card">
-        <h2>الرصيد السابق</h2>
-        <p className={`bal-value${flow && flow.opening < 0 ? ' neg' : ''}`}>{amount(flow?.opening, true)}</p>
-        <span className="bal-note">حتى <bdi dir="ltr">{openedOn}</bdi></span>
-      </article>
-      <article className="bal-card">
-        <h2>الوارد</h2>
-        <p className="bal-value">{amount(flow?.income)}</p>
-        <span className="bal-note">تسديدات المشتركين <bdi dir="ltr">{thisMonth}</bdi></span>
-      </article>
-      <article className="bal-card">
-        <h2>المصروف</h2>
-        <p className="bal-value">{amount(flow?.spent)}</p>
-        <span className="bal-note">صرفيات <bdi dir="ltr">{thisMonth}</bdi></span>
-      </article>
-      <article className="bal-card">
-        <h2>عن الشهر السابق</h2>
-        <div className="bal-deltas">
-          {delta('الوارد', flow ? change(flow.prevIncome, flow.income) : null, true)}
-          {delta('المصروف', flow ? change(flow.prevSpent, flow.spent) : null, false)}
-        </div>
-      </article>
-      <article className={`bal-card bal-now${flow && closing < 0 ? ' neg' : ''}`}>
-        <h2>الرصيد الحالي</h2>
-        <p className="bal-value">{amount(flow ? closing : undefined, true)}</p>      </article>
-      {/* Phones: four tiles instead of the ones above — spending and income each with its change
-          on last month, charity boxes and cash donations. */}
       <article className="bal-card bal-phone">
         <h2><TrendingDown size={14} aria-hidden /> المصروف</h2>
         <p className="bal-value">{amount(flow?.spent)}</p>
@@ -229,6 +187,10 @@ function BalanceCards({ flow, year, month, currency }: { flow: Flow | null; year
         {/* Sample figures (data/donations.ts) until the donations section exists, as on the home page. */}
         <p className="bal-value"><bdi>{formatNumber(SAMPLE_DONATIONS.cash)}</bdi> <small>{currency}</small></p>
         {pill(change(SAMPLE_DONATIONS.cashBefore, SAMPLE_DONATIONS.cash), true)}
+      </article>
+      <article className={`bal-card bal-now${flow && closing < 0 ? ' neg' : ''}`}>
+        <h2>الرصيد الحالي</h2>
+        <p className="bal-value">{amount(flow ? closing : undefined, true)}</p>
       </article>
     </section>
   );
@@ -440,10 +402,10 @@ export function ExpensesPage({ me }: { me: Me }) {
         <span className="page-icon" aria-hidden><Receipt size={24} /></span>
         <div>
           <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }]} />
-          <h1>الصرفيات</h1>
+          <h1>الحركات المالية</h1>
         </div>
         <div className="page-actions">
-          <DatePicker mode="range" presets label="مدة الصرفيات" value={range} onChange={setRange} marked={markedDays} />
+          <DatePicker mode="range" presets label="مدة الحركات المالية" value={range} onChange={setRange} marked={markedDays} />
           <a className="btn" href="#/expenses/ledger" aria-label="السجل السنوي">
             <Sheet size={18} aria-hidden />
             <span className="btn-label">السجل</span>
@@ -459,7 +421,7 @@ export function ExpensesPage({ me }: { me: Me }) {
         </div>
       </div>
 
-      {error && !sheet && <StateMessage kind="error" title="تعذّر تحميل الصرفيات" hint={error} onRetry={load} />}
+      {error && !sheet && <StateMessage kind="error" title="تعذّر تحميل الحركات المالية" hint={error} onRetry={load} />}
 
       {!figures && !error && (
         <div className="stats exp-stats" aria-busy="true">{[0, 1, 2].map((key) => <div key={key} className="stat skeleton" />)}</div>
