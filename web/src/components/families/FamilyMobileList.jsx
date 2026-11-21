@@ -8,8 +8,8 @@ const initials = (family) => {
 };
 
 
-// "2026-11-10" → "10/11": short enough to keep the line whole on a phone.
-const dayMonth = (date) => `${Number(date.slice(8, 10))}/${Number(date.slice(5, 7))}`;
+// "2026-11-10" → "10/11/2026": the full date, on its own line under the aid type.
+const dayMonth = (date) => `${Number(date.slice(8, 10))}/${Number(date.slice(5, 7))}/${date.slice(0, 4)}`;
 
 
 /**

@@ -2048,3 +2048,9 @@ button.fam-kpi:focus-visible { outline: 2px solid var(--brand); outline-offset: 
 :root[data-theme="dark"] .fam-ref-stats .is-month strong { color: color-mix(in srgb, var(--bar-active) 65%, #fff); }
 /* The last aid: its type on one line and the date under it, so long types stay whole. */
 .fam-ref-stats > div:first-child dd { flex-direction: column; align-items: flex-start; gap: 1px; }
+/* Quieter panel: smaller type so it reads as a detail, not a headline. */
+.fam-ref-stats > div { padding: 6px 9px; }
+.fam-ref-stats dt { font-size: .62rem; }
+.fam-ref-stats strong { font-size: .76rem; font-weight: 700; }
+.fam-ref-stats small { font-size: .64rem; font-weight: 600; }
+.fam-ref-stats .is-month strong { font-size: .92rem; font-weight: 800; }
