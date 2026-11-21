@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowDown, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, Download, HeartPulse, Layers, Minus, Paperclip, Pencil,
-  Plus, Printer, Receipt, Search, Sheet, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X, Archive, Gift,
+  ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ChevronLeft, ChevronRight, Download, HeartPulse, Layers, Minus, Paperclip, Pencil,
+  Plus, Printer, Receipt, Search, Sheet, Trash2, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X, Archive, Gift,
 } from 'lucide-react';
 import { BackToClose } from '../../components/useBackToClose';
 import { useIsPhone } from '../../useIsPhone';
@@ -69,24 +69,28 @@ function monthBefore(range: DateRange): DateRange {
   return { from: back(range.from), to: back(range.to) };
 }
 
-// A heading's spending against the month before: a red arrow up when more was spent, a green
-// arrow down when less, a dash when steady.
-function Delta({ change }: { change: number | null | undefined }) {
+// A heading's spending against the month before: a red bar + arrow up when more was spent,
+// a green bar + arrow down when less, a dash when steady.
+function Delta({ change, bar = false }: { change: number | null | undefined; bar?: boolean }) {
   if (change === undefined) return <span className="exp-delta muted">—</span>;
   if (change === null) {
     return (
       <span className="exp-delta up" title="زيادة عن الشهر السابق">
-        <ArrowUp size={15} strokeWidth={2.5} aria-label="زيادة" />
+        {bar && <span className="exp-delta-bar" aria-hidden><span style={{ width: '100%' }} /></span>}
         <bdi>100%</bdi>
+        <ArrowUp size={14} strokeWidth={2.5} aria-label="زيادة" />
       </span>
     );
   }
   if (Math.abs(change) < 0.05) return <span className="exp-delta flat"><Minus size={14} aria-hidden /><bdi>0%</bdi></span>;
   const up = change > 0;
+  const abs = Math.abs(change);
+  const fill = `${Math.min(100, Math.max(14, Math.round(abs)))}%`;
   return (
     <span className={`exp-delta ${up ? 'up' : 'down'}`} title={up ? 'زيادة عن الشهر السابق' : 'انخفاض عن الشهر السابق'}>
-      {up ? <ArrowUp size={15} strokeWidth={2.5} aria-label="زيادة" /> : <ArrowDown size={15} strokeWidth={2.5} aria-label="انخفاض" />}
-      <bdi>{formatPercent(Math.abs(change))}</bdi>
+      {bar && <span className="exp-delta-bar" aria-hidden><span style={{ width: fill }} /></span>}
+      <bdi>{formatPercent(abs)}</bdi>
+      {up ? <ArrowUp size={14} strokeWidth={2.5} aria-label="زيادة" /> : <ArrowDown size={14} strokeWidth={2.5} aria-label="انخفاض" />}
     </span>
   );
 }
@@ -110,7 +114,7 @@ function ExpenseView({ item, status, change, currency, onEdit, onClose }: {
     [HeartPulse, 'حالة المستفيد', <span key="s" className={`exp-status-badge ${status}`}>{STATUS_LABEL[status]}</span>],
     [CalendarDays, 'التاريخ', <bdi key="d" dir="ltr">{shortDate(item.spent_on)}</bdi>],
     [FileText, 'التفاصيل', item.details || <span className="exp-missing">غير محدد</span>],
-    [BarChart3, 'النسبة', <Delta key="c" change={change} />],
+    [BarChart3, 'نسبة الصرف', <Delta key="c" change={change} bar />],
   ];
   if (item.files > 0) rows.push([Paperclip, 'المرفقات', <bdi key="f">{formatNumber(item.files)}</bdi>]);
   return createPortal(
@@ -285,6 +289,17 @@ export function ExpensesPage({ me }: { me: Me }) {
     setStatusMap(setExpenseStatus(item.id, nextStatus(current)));
   };
 
+  const removeEntry = async (item: ExpenseItem) => {
+    const target = item.beneficiary_name || categoryLabel(item.category);
+    if (!window.confirm(`هل تريد حذف قيد «${target}» بمبلغ ${formatNumber(item.amount)} ${me.currency}؟`)) return;
+    try {
+      await api(`/expenses/${item.id}`, { method: 'DELETE' });
+      void load();
+    } catch (failure) {
+      setError((failure as Error).message);
+    }
+  };
+
   // The year card and the month comparison follow the month the period ends in.
   const year = Number(range.to.slice(0, 4));
   const month = Number(range.to.slice(5, 7)) - 1;
@@ -407,13 +422,13 @@ export function ExpensesPage({ me }: { me: Me }) {
   };
   const clearFilters = () => { setQuery(''); setCategory(''); };
 
-  const header = (key: SortKey, label: string, className: string, dataType: 'text' | 'number' | 'date' = 'text') => {
+  const header = (key: SortKey, label: string, className: string, dataType: 'text' | 'number' | 'date' = 'text', showIdleArrows = false) => {
     const active = sort.key === key;
     return (
       <th scope="col" className={className} data-type={dataType} aria-sort={active ? (sort.desc ? 'descending' : 'ascending') : undefined}>
         <button type="button" className={`exp-sort${active ? ' active' : ''}`} onClick={() => sortBy(key, label)}>
           {label}
-          {active && (sort.desc ? <ArrowDown size={13} aria-hidden /> : <ArrowUp size={13} aria-hidden />)}
+          {active ? (sort.desc ? <ArrowDown size={13} aria-hidden /> : <ArrowUp size={13} aria-hidden />) : (showIdleArrows && <ArrowUpDown size={13} className="exp-sort-idle" aria-hidden />)}
         </button>
       </th>
     );
@@ -496,12 +511,12 @@ export function ExpensesPage({ me }: { me: Me }) {
                   <thead>
                     <tr>
                       {header('category', 'نوع الصرف', 'col-cat', 'text')}
-                      {header('amount', 'المبلغ', 'col-amount', 'number')}
-                      {header('beneficiary', 'المستفيد', 'col-person', 'text')}
+                      {header('amount', 'المبلغ', 'col-amount', 'number', true)}
+                      {header('beneficiary', 'المستفيد ورقم الملف', 'col-person', 'text')}
                       {header('status', 'حالة المستفيد', 'col-status', 'text')}
                       <th scope="col" className="col-details">التفاصيل</th>
                       {header('spent_on', 'التاريخ', 'col-date', 'date')}
-                      <th scope="col" className="col-change" title="نسبة التغيّر عن الشهر السابق">النسبة</th>
+                      <th scope="col" className="col-change" title="نسبة الصرف مقارنة بالشهر السابق">نسبة الصرف</th>
                       <th scope="col" className="col-act">الإجراءات</th>
                     </tr>
                   </thead>
@@ -518,18 +533,20 @@ export function ExpensesPage({ me }: { me: Me }) {
                               {Icon && <Icon size={15} aria-hidden />} {categoryLabel(item.category)}
                               <span><bdi>{formatNumber(group.count)}</bdi> قيد</span>
                             </th>
-                            <td className="col-amount"><bdi>{formatNumber(group.total)}</bdi></td>
+                            <td className="col-amount"><bdi>{formatNumber(group.total)}</bdi> <small className="exp-cur">{me.currency}</small></td>
                             <td colSpan={4} className="exp-group-gap" />
-                            <td className="col-change"><Delta change={changeOf(item.category)} /></td>
+                            <td className="col-change"><Delta change={changeOf(item.category)} bar /></td>
                             <td />
                           </tr>
                         ),
                         <tr key={item.id} className="exp-row" onClick={() => (isPhone ? setViewing(item) : setDialog({ entry: item }))}>
-                          <td className="col-cat"><span className="exp-type" data-tone={TONE[item.category]}><span className="exp-type-icon" aria-hidden>{Icon && <Icon size={16} />}</span>{categoryLabel(item.category)}</span></td>
-                          <td className="col-amount"><bdi>{formatNumber(item.amount)}</bdi></td>
+                          <td className="col-cat"><span className="exp-type" data-tone={TONE[item.category]}><span className="exp-type-icon" aria-hidden>{Icon && <Icon size={17} />}</span>{categoryLabel(item.category)}</span></td>
+                          <td className="col-amount"><bdi>{formatNumber(item.amount)}</bdi> <small className="exp-cur">{me.currency}</small></td>
                           <td className="col-person">
-                            {item.beneficiary_name ?? <span className="exp-missing">غير محدد</span>}
-                            {item.beneficiary_id !== null && <small className="exp-linked" title="مرتبط بسجل المشتركين">#{item.beneficiary_id}</small>}
+                            <span className="exp-person-name">{item.beneficiary_name ?? <span className="exp-missing">غير محدد</span>}</span>
+                            {item.beneficiary_id !== null && (
+                              <span className="exp-file-no" title="مرتبط بسجل المشتركين">رقم الملف: <bdi>#{item.beneficiary_id}</bdi></span>
+                            )}
                           </td>
                           <td className="col-status">
                             <button
@@ -543,12 +560,20 @@ export function ExpensesPage({ me }: { me: Me }) {
                             </button>
                           </td>
                           <td className="col-details">{item.details || <span className="exp-missing">غير محدد</span>}</td>
-                          <td className="col-date"><bdi dir="ltr">{shortDate(item.spent_on)}</bdi></td>
-                          <td className="col-change"><Delta change={changeOf(item.category)} /></td>
+                          <td className="col-date">
+                            <span className="exp-date-pill">
+                              <CalendarDays size={13} aria-hidden />
+                              <bdi dir="ltr">{shortDate(item.spent_on)}</bdi>
+                            </span>
+                          </td>
+                          <td className="col-change"><Delta change={changeOf(item.category)} bar /></td>
                           <td className="col-act">
                             {item.files > 0 && <span className="exp-clip" title={`${formatNumber(item.files)} مرفق`}><Paperclip size={14} aria-hidden /><bdi>{item.files}</bdi></span>}
                             <button type="button" className="exp-row-edit" aria-label={`تعديل قيد ${item.beneficiary_name ?? item.id}`} onClick={(event) => { event.stopPropagation(); setDialog({ entry: item }); }}>
-                              <Pencil size={14} aria-hidden />
+                              <Pencil size={15} aria-hidden />
+                            </button>
+                            <button type="button" className="exp-row-del" aria-label={`حذف قيد ${item.beneficiary_name ?? item.id}`} onClick={(event) => { event.stopPropagation(); void removeEntry(item); }}>
+                              <Trash2 size={15} aria-hidden />
                             </button>
                           </td>
                         </tr>,
