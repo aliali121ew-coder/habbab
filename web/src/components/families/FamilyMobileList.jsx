@@ -8,8 +8,8 @@ const initials = (family) => {
 };
 
 
-// "2026-11-10" → "10/11/2026": the full date, on its own line under the aid type.
-const dayMonth = (date) => `${Number(date.slice(8, 10))}/${Number(date.slice(5, 7))}/${date.slice(0, 4)}`;
+// "2026-11-10" → "2026/11/10": the full date, year first, on its own line under the aid type.
+const dayMonth = (date) => `${date.slice(0, 4)}/${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 
 
 /**
