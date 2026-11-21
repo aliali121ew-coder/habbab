@@ -397,7 +397,7 @@ export function ExpensesPage({ me }: { me: Me }) {
             <div className="exp-filters" role="search">
               <label className="exp-search">
                 <Search size={16} aria-hidden />
-                <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="بحث بالمستفيد أو الوصف" aria-label="بحث" />
+                <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="بحث بالاسم" aria-label="بحث" />
               </label>
               <select className="exp-select" value={category} onChange={(event) => setCategory(event.target.value as ExpenseCategory | '')} aria-label="نوع الصرف">
                 <option value="">كل أنواع الصرف</option>

@@ -338,3 +338,64 @@ dialog.exp-dialog::backdrop {
   /* "سجل صرفيات تشرين الثاني 2026" stays on one line at a size that fits. */
   #exp-board-title { white-space: nowrap; font-size: clamp(.92rem, 4.5vw, 1.1rem); }
 }
+
+/* ══ Expenses on phones: a compact, professional layout ══════════════════════════════════════
+   Header: title, then one row (dates · ledger · print · add). Summary: the current balance leads
+   as a theme-coloured card; previous balance, income, spending and the month-on-month change
+   follow as four small tiles without footnotes. Register: compact tools and filters on one row;
+   each entry is one short card — name and amount, heading and date, details and change. */
+@media (max-width: 767.98px) {
+  /* Header actions on one row: the date range takes the room, the three icons stay square. */
+  .page-head.exp-head .page-actions { flex: 1 1 100%; flex-wrap: nowrap; gap: 6px; }
+  .page-head.exp-head .page-actions > :first-child { flex: 1 1 auto; min-width: 0; }
+  .page-head.exp-head .page-actions > .btn { flex: none; width: 42px; min-width: 42px; padding: 0; justify-content: center; }
+
+  /* Summary */
+  .bal { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .bal-card { padding: 10px 12px; gap: 4px; border-radius: 14px; }
+  .bal-card h2 { font-size: .72rem; font-weight: 600; }
+  .bal-value { margin: 0; font-size: clamp(.92rem, 4.2vw, 1.08rem); }
+  .bal-value small { font-size: .66rem; }
+  .bal-note { display: none; }
+  .bal-deltas { gap: 4px; margin-top: 2px; }
+  .bal-delta { font-size: .72rem; }
+  .bal-delta b { font-size: .92rem; }
+  .bal-delta + .bal-delta { padding-top: 4px; }
+  .bal-now { order: -1; grid-column: 1 / -1; padding: 14px 16px; border-radius: 18px; flex-direction: row; align-items: center; justify-content: space-between; }
+  .bal-now h2 { font-size: .82rem; }
+  .bal-now .bal-value { margin: 0; font-size: clamp(1.25rem, 6.4vw, 1.6rem); text-align: end; }
+
+  /* Register head: title and count, the two tools as small chips beside them. */
+  .exp-board-head { flex-wrap: wrap; align-items: center; padding: 12px; gap: 8px; }
+  .exp-board-head > div:first-child { flex: 1 1 100%; min-width: 0; }
+  .exp-tools { flex-wrap: nowrap; gap: 6px; }
+  .exp-tool { min-height: 34px; padding: 0 9px; gap: 5px; font-size: .74rem; border-radius: 9px; white-space: nowrap; }
+
+  /* Search and heading filter on one row. */
+  .exp-filters { flex-wrap: nowrap; padding: 10px 12px; gap: 6px; }
+  .exp-search { flex: 1 1 auto; min-width: 0; min-height: 38px; }
+  .exp-filters > select { flex: 0 0 42%; min-width: 0; width: 42%; font-size: .8rem; }
+}
+
+@container (width < 720px) {
+  /* One short card per entry:  name ············ amount
+                                [icon] heading ···· date
+                                details ··········· change     (tap the card to edit) */
+  .exp-flat .exp-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "person amount" "cat date" "details change";
+    gap: 4px 12px; padding: 12px; align-items: center;
+  }
+  .exp-flat .exp-row .col-person { grid-area: person; font-size: .95rem; line-height: 1.35; }
+  .exp-flat .exp-row .col-amount { grid-area: amount; text-align: end; font-size: 1rem; }
+  .exp-flat .exp-row .col-cat { grid-area: cat; }
+  .exp-flat .exp-row .col-date { grid-area: date; text-align: end; font-size: .72rem; color: var(--ink-3); }
+  .exp-flat .exp-row .col-details { grid-area: details; font-size: .8rem; color: var(--ink-3); line-height: 1.4; }
+  .exp-flat .exp-row .col-change { grid-area: change; justify-self: end; font-size: .78rem; }
+  .exp-flat .exp-row .exp-type { gap: 6px; font-size: .78rem; color: var(--ink-2); }
+  .exp-flat .exp-row .exp-type-icon { width: 24px; height: 24px; border-radius: 7px; }
+  .exp-flat .exp-row .exp-type-icon svg { width: 13px; height: 13px; }
+  /* The whole card opens the entry, so the separate pencil row goes; a file clip stays visible. */
+  .exp-flat .exp-row .col-act { display: none; }
+  .exp-flat .exp-row:active { background: color-mix(in srgb, var(--brand) 6%, transparent) !important; }
+}

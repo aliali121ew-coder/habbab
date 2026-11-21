@@ -704,3 +704,17 @@
   border: 1px solid color-mix(in srgb, var(--bar-active) 30%, rgb(255 255 255 / 8%)) !important;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%), 0 14px 30px -14px rgb(0 0 0 / 70%) !important;
 }
+
+/* Expenses: the current-balance card in the theme colour with white text (the glass style washed
+   it out to white on white). Same layer as the glass rule, more specific so it wins. */
+:root:root:root .stage .bal-card.bal-now.bal-now {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--bar-active) 88%, #fff) 0%, var(--bar-active) 55%, color-mix(in srgb, var(--bar-active) 78%, #000) 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 12px 26px -14px var(--bar-active) !important;
+}
+:root:root:root .stage .bal-card.bal-now.bal-now :is(h2, .bal-value, .bal-value small, .bal-note) { color: #fff; }
+:root:root:root[data-theme="dark"] .stage .bal-card.bal-now.bal-now.bal-now {
+  background: linear-gradient(150deg, color-mix(in srgb, var(--bar-active) 80%, #fff) 0%, var(--bar-active) 55%, color-mix(in srgb, var(--bar-active) 70%, #000) 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 14px 30px -14px rgb(0 0 0 / 70%) !important;
+}
