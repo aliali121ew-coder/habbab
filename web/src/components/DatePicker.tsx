@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { MONTH_NAMES, today } from '../format';
 
@@ -60,13 +61,37 @@ export function DatePicker({ mode, value, onChange, label, marked, presets = fal
   const [view, setView] = useState(() => monthOf(value.to));
   const [start, setStart] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const popRef = useRef<HTMLDivElement>(null);
   const now = today();
+
+  useLayoutEffect(() => {
+    if (!open) return undefined;
+    const place = () => {
+      const rect = rootRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const popWidth = popRef.current?.offsetWidth || 340;
+      const maxLeft = Math.max(12, window.innerWidth - popWidth - 12);
+      // In RTL, align the popover's left edge with the trigger's left edge, clamped inside the viewport.
+      const left = Math.min(maxLeft, Math.max(12, rect.left));
+      const top = rect.bottom + 10;
+      setPos({ top, left });
+    };
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return undefined;
     const onPointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!rootRef.current?.contains(target) && !popRef.current?.contains(target)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
     document.addEventListener('pointerdown', onPointer);
@@ -127,8 +152,14 @@ export function DatePicker({ mode, value, onChange, label, marked, presets = fal
         <span>التاريخ</span>
       </button>
 
-      {open && (
-        <div className="dp-pop" role="dialog" aria-label={label}>
+      {open && createPortal(
+        <div
+          ref={popRef}
+          className="dp-pop"
+          role="dialog"
+          aria-label={label}
+          style={pos ? { top: `${pos.top}px`, left: `${pos.left}px` } : undefined}
+        >
           {presets && mode === 'range' && (
             <div className="dp-presets">
               {PRESETS.map((preset) => (
@@ -184,7 +215,8 @@ export function DatePicker({ mode, value, onChange, label, marked, presets = fal
               {mode === 'range' ? 'هذا الشهر' : 'اليوم'}
             </button>
           </footer>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

@@ -18,10 +18,8 @@
 .dp-icon { flex: none; color: var(--brand); }
 
 .dp-pop {
-  position: absolute;
-  z-index: 40;
-  top: calc(100% + 10px);
-  inset-inline-end: 0;
+  position: fixed;
+  z-index: 1200;
   width: 340px;
   padding: 14px;
   border: 1px solid var(--line);
@@ -85,10 +83,11 @@
   .dp-trigger { width: 100%; justify-content: center; }
   .dp-pop {
     position: fixed;
-    z-index: 60;
-    top: auto;
+    z-index: 1200;
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
     bottom: 8px;
-    inset-inline: 8px;
     width: auto;
     max-height: calc(100dvh - 16px);
     overflow-y: auto;
