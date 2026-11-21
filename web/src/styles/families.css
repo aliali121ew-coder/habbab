@@ -2160,3 +2160,21 @@ button.fam-ref-initials:active { transform: scale(.96); }
 .fam-wa-btn::after { content: ''; position: absolute; inset: -6px; }
 .fam-wa-btn svg { width: 17px; height: 17px; }
 :root[data-theme="dark"] .fam-wa-btn { background: color-mix(in srgb, #25d366 20%, transparent); color: #4ade80; }
+
+/* Band with a family photo: the photo's own colours, heavily blurred, glow behind the circle;
+   the theme colour stays on top (about 55%), so cards still look alike and the badge stays clear.
+   Without a photo nothing changes. */
+.fam-ref-band { position: relative; overflow: hidden; isolation: isolate; }
+.fam-ref-band > :not(.fam-ref-band-glow) { position: relative; z-index: 1; }
+.fam-ref-band-glow {
+  position: absolute; inset: -24px; z-index: 0; width: calc(100% + 48px); height: calc(100% + 48px);
+  object-fit: cover; filter: blur(18px) saturate(1.35); transform: scale(1.1); pointer-events: none;
+}
+.fam-ref-band.has-photo::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(160deg,
+    color-mix(in srgb, var(--bar-active) 45%, transparent) 0%,
+    color-mix(in srgb, var(--bar-active) 60%, transparent) 55%,
+    color-mix(in srgb, var(--bar-active) 78%, #000 10%) 100%);
+}
+@media (prefers-reduced-transparency: reduce) { .fam-ref-band-glow { display: none; } }

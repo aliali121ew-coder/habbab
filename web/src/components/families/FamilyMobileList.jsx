@@ -58,7 +58,9 @@ export function FamilyMobileList({ families, loading, onOpenFullFile, onPhoto })
         const thisMonth = payments.filter((payment) => payment.date.startsWith(month)).length;
         return (
           <li key={family.id} className="fam-ref-card">
-            <div className="fam-ref-band">
+            <div className={`fam-ref-band${family.photo ? ' has-photo' : ''}`}>
+              {/* With a photo: a soft, blurred wash of its colours behind the circle, under the theme colour. */}
+              {family.photo && <img className="fam-ref-band-glow" src={family.photo} alt="" aria-hidden />}
               {/* The family's photo, or its initials; tapping it chooses a new photo. */}
               <button type="button" className="fam-ref-initials" onClick={() => pickFor(family)}
                 aria-label={family.photo ? `تغيير صورة ${family.name}` : `إضافة صورة لـ ${family.name}`}>
