@@ -334,9 +334,9 @@ export function FamiliesPage({ me }: { me: Me }) {
           <div className="fam-priority-pills" role="group" aria-label="تصفية حسب الأولوية">
             {([
               ['all', 'الكل'],
-              ['urgent', 'أولوية قصوى'],
-              ['high', 'رعاية مكثفة'],
-              ['stable', 'مستقرة'],
+              ['urgent', 'حرجة'],
+              ['high', 'متوسطة'],
+              ['stable', 'جيدة'],
             ] as const).map(([key, label]) => (
               <button
                 key={key}

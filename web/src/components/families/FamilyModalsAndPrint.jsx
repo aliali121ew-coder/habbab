@@ -129,9 +129,9 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
               <span className="mb-1.5 block text-xs font-semibold text-slate-600">درجة الأولوية</span>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { key: 'critical', label: 'أولوية قصوى', active: 'border-rose-500 bg-rose-500/10 text-rose-700' },
-                  { key: 'intensive', label: 'رعاية مكثفة', active: 'border-amber-500 bg-amber-500/10 text-amber-700' },
-                  { key: 'stable', label: 'مستقرة', active: 'border-emerald-500 bg-emerald-500/10 text-emerald-700' },
+                  { key: 'critical', label: 'حرجة', active: 'border-rose-500 bg-rose-500/10 text-rose-700' },
+                  { key: 'intensive', label: 'متوسطة', active: 'border-amber-500 bg-amber-500/10 text-amber-700' },
+                  { key: 'stable', label: 'جيدة', active: 'border-emerald-500 bg-emerald-500/10 text-emerald-700' },
                 ].map((opt) => (
                   <button
                     key={opt.key}

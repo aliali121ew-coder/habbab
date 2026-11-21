@@ -7,9 +7,9 @@ import { DelegateAvatar } from './DelegateChip';
 
 const SEGMENT_ITEMS = [
   { key: 'all', label: 'الكل' },
-  { key: 'critical', label: 'أولوية قصوى' },
-  { key: 'intensive', label: 'رعاية مكثفة' },
-  { key: 'stable', label: 'مستقرة' },
+  { key: 'critical', label: 'حرجة' },
+  { key: 'intensive', label: 'متوسطة' },
+  { key: 'stable', label: 'جيدة' },
 ];
 
 export function FiltersToolbar({

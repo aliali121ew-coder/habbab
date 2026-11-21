@@ -11,9 +11,9 @@ interface Props {
 }
 
 const PRIORITY_META: Record<FamilyPriority, { label: string; bg: string; color: string; dot: string }> = {
-  critical: { label: 'أولوية قصوى', bg: 'var(--fp-rose-soft)', color: 'var(--fp-rose)', dot: 'var(--fp-rose)' },
-  intensive: { label: 'رعاية مكثفة', bg: 'var(--fp-amber-soft)', color: 'var(--fp-amber)', dot: 'var(--fp-amber)' },
-  stable: { label: 'مستقرة', bg: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)', dot: 'var(--fp-emerald)' },
+  critical: { label: 'حرجة', bg: 'var(--fp-rose-soft)', color: 'var(--fp-rose)', dot: 'var(--fp-rose)' },
+  intensive: { label: 'متوسطة', bg: 'var(--fp-amber-soft)', color: 'var(--fp-amber)', dot: 'var(--fp-amber)' },
+  stable: { label: 'جيدة', bg: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)', dot: 'var(--fp-emerald)' },
 };
 
 export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props) {

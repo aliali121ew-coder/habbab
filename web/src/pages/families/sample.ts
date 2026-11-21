@@ -100,9 +100,9 @@ export const HOUSING_LABELS: Record<HousingType, string> = {
 };
 
 export const PRIORITY_LABELS: Record<PriorityLevel, string> = {
-  urgent: 'أولوية قصوى',
-  high: 'رعاية مكثفة',
-  stable: 'مستقرة',
+  urgent: 'حرجة',
+  high: 'متوسطة',
+  stable: 'جيدة',
 };
 
 export const CATEGORY_LABELS: Record<FamilyCategory, string> = {

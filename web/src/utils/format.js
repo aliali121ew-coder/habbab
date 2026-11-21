@@ -65,7 +65,7 @@ export function whatsappUrl(phone) {
 export const CATEGORY_CONFIG = {
   critical: {
     key: 'critical',
-    label: 'أولوية قصوى',
+    label: 'حرجة',
     barClass: 'bg-rose-500',
     dotClass: 'bg-rose-500',
     badgeClass: 'bg-rose-500/10 text-rose-700',
@@ -73,7 +73,7 @@ export const CATEGORY_CONFIG = {
   },
   intensive: {
     key: 'intensive',
-    label: 'رعاية مكثفة',
+    label: 'متوسطة',
     barClass: 'bg-amber-500',
     dotClass: 'bg-amber-500',
     badgeClass: 'bg-amber-500/10 text-amber-700',
@@ -81,7 +81,7 @@ export const CATEGORY_CONFIG = {
   },
   stable: {
     key: 'stable',
-    label: 'مستقرة',
+    label: 'جيدة',
     barClass: 'bg-emerald-500',
     dotClass: 'bg-emerald-500',
     badgeClass: 'bg-emerald-500/10 text-emerald-700',
