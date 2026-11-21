@@ -10,6 +10,9 @@ export interface NewMember {
   age: number;
   status: string;
   chronic?: string;
+  /** Parents lost: father, mother or both. */
+  lostFather?: boolean;
+  lostMother?: boolean;
   phone?: string;
   notes?: string;
 }
@@ -64,7 +67,7 @@ const inputStyle = { backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-
 const inputClass = 'h-11 w-full rounded-xl border px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--fp-primary)]/30';
 
 /**
- * Add a member to a family: name, gender, relation (with an orphan mark), age, study or work
+ * Add a member to a family: name, gender, relation (for children: lost father and/or lost mother), age, study or work
  * (with the school stage for students), health, an optional phone and a note. On a phone it rises
  * from the bottom as a sheet; on a computer it is a centred dialog.
  */
@@ -72,7 +75,8 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'ذكر' | 'أنثى'>('ذكر');
   const [relation, setRelation] = useState<string>('ابن');
-  const [orphan, setOrphan] = useState(false);
+  const [lostFather, setLostFather] = useState(false);
+  const [lostMother, setLostMother] = useState(false);
   const [age, setAge] = useState('10');
   const [work, setWork] = useState<(typeof WORK)[number]>('طالب');
   const [stage, setStage] = useState<(typeof STAGES)[number]>('ابتدائي');
@@ -100,12 +104,20 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    const orphanWord = gender === 'ذكر' ? 'يتيم' : 'يتيمة';
+    // The relation reads as it is said: «ابنة يتيمة الأب», «ابن فقيد الأم», «ابنة يتيمة الأبوين».
+    const female = gender === 'أنثى';
+    const loss = !child ? ''
+      : lostFather && lostMother ? (female ? ' يتيمة الأبوين' : ' يتيم الأبوين')
+      : lostFather ? (female ? ' يتيمة الأب' : ' يتيم الأب')
+      : lostMother ? (female ? ' فقيدة الأم' : ' فقيد الأم')
+      : '';
     const studentWord = gender === 'ذكر' ? 'طالب' : 'طالبة';
     onSave({
       name: name.trim(),
       gender,
-      relation: orphan && child ? `${relation} ${orphanWord}` : relation,
+      relation: `${relation}${loss}`,
+      lostFather: child && lostFather ? true : undefined,
+      lostMother: child && lostMother ? true : undefined,
       age: Math.min(120, Math.max(0, Number(age) || 0)),
       status: work === 'طالب' ? `${studentWord} ${stage}` : work,
       chronic: health === 'سليم' ? undefined : (healthNote.trim() ? `${health}: ${healthNote.trim()}` : health),
@@ -153,10 +165,17 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
           <Field label="صلة القرابة">
             <Chips label="صلة القرابة" value={relation} options={RELATIONS[gender] as readonly string[]} onChange={setRelation} />
             {child && (
-              <label className="mt-2.5 inline-flex cursor-pointer items-center gap-2 text-xs font-semibold" style={{ color: 'var(--fp-ink-2)' }}>
-                <input type="checkbox" checked={orphan} onChange={(e) => setOrphan(e.target.checked)} className="h-4 w-4 accent-[var(--fp-primary)]" />
-                {gender === 'ذكر' ? 'يتيم' : 'يتيمة'} (فقد الأب)
-              </label>
+              <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2">
+                {[
+                  { on: lostFather, set: setLostFather, text: gender === 'ذكر' ? 'فقيد الأب' : 'فقيدة الأب' },
+                  { on: lostMother, set: setLostMother, text: gender === 'ذكر' ? 'فقيد الأم' : 'فقيدة الأم' },
+                ].map((item) => (
+                  <label key={item.text} className="inline-flex min-h-[32px] cursor-pointer items-center gap-2 text-xs font-semibold" style={{ color: 'var(--fp-ink-2)' }}>
+                    <input type="checkbox" checked={item.on} onChange={(e) => item.set(e.target.checked)} className="h-4 w-4 accent-[var(--fp-primary)]" />
+                    {item.text}
+                  </label>
+                ))}
+              </div>
             )}
           </Field>
 
