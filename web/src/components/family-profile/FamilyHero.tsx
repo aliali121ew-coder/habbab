@@ -40,9 +40,6 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
               <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: prio.dot }} aria-hidden />
               {prio.label}
             </span>
-            <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--fp-card)', color: 'var(--fp-ink-2)' }}>
-              {family.socialStatus}
-            </span>
           </span>
           <button
             type="button"
