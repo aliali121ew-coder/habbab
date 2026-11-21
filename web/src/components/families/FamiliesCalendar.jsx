@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { formatIQD } from '../../utils/format';
+import { BackToClose } from '../useBackToClose';
 
 const MONTHS = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
 // The week starts on Saturday, as in Iraq.
@@ -75,6 +76,8 @@ export function FamiliesCalendar({ families, open, onClose }) {
 
   return createPortal(
     <div className="fam-cal-layer" role="presentation" onClick={onClose}>
+      {/* The phone's back button closes the calendar rather than leaving the page. */}
+      <BackToClose onClose={onClose} />
       <section className="fam-cal-sheet" role="dialog" aria-modal="true" aria-label="تقويم الزيارات والمساعدات" onClick={(event) => event.stopPropagation()}>
         <header className="fam-cal-head">
           <button type="button" className="fam-cal-nav" aria-label="الشهر السابق" onClick={() => shift(-1)}><ChevronRight aria-hidden /></button>

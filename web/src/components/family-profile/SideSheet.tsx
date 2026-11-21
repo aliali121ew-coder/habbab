@@ -1,3 +1,4 @@
+import { useBackToClose } from '../useBackToClose';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
@@ -15,6 +16,8 @@ export function SideSheet({ title, subtitle, badge, onClose, children, bare = fa
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  // The phone's back button closes the panel rather than leaving the page.
+  useBackToClose(() => closeRef.current());
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;

@@ -1,3 +1,4 @@
+import { useBackToClose } from '../useBackToClose';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, HeartPulse, Pencil, Phone, StickyNote, UserPlus, X } from 'lucide-react';
@@ -136,6 +137,9 @@ export function AddMemberDialog({ familyName, member: editing, onClose, onSave }
   const [notes, setNotes] = useState(start.notes);
   // After saving, a check mark draws itself for a moment, then the dialog closes.
   const [savedName, setSavedName] = useState<string | null>(null);
+
+  // The phone's back button closes the dialog rather than leaving the page.
+  useBackToClose(onClose);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
