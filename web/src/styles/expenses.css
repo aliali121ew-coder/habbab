@@ -128,6 +128,14 @@
      line above and squeezed each cell to a sliver inside the card, breaking names letter by letter
      ("يوس ف حميد"). These reset them in the card. */
   .exp-flat .exp-row > td, .exp-flat .exp-group-row > :is(td, th), .exp-flat tfoot tr > :is(td, th) { width: auto; }
+  /* Totals row: its label is a .col-cat cell too and kept the desktop 20% width (28px on a phone),
+     breaking «المجموع الكلي لشهر …» letter by letter. Label and total side by side, the note under. */
+  .exp-flat tfoot .col-cat, .exp-flat tfoot .col-amount { width: auto; }
+  .exp-flat tfoot .col-cat { grid-column: 1; grid-row: 1; }
+  .exp-flat tfoot .col-amount { grid-column: 2; grid-row: 1; white-space: nowrap; }
+  .exp-flat tfoot td[colspan] { grid-column: 1 / -1; grid-row: 2; }
+  .exp-flat tfoot tr { border-top: 2px solid color-mix(in srgb, var(--brand) 35%, var(--line)); }
+  .exp-flat tfoot tr > * { border-top: 0; }
   /* Category header (grouped view): icon, name and count on one line, the total opposite. */
   .exp-flat .exp-group-row .col-cat { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 800; }
   .exp-flat .exp-group-row .col-cat span { color: var(--ink-3); font-size: .78rem; font-weight: 600; }
