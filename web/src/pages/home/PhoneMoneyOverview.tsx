@@ -86,6 +86,8 @@ function ChartTip({ label, income, spend, currency }: { label: string; income: n
   );
 }
 
+// Short labels ("الوارد" / "المصروف"): the longer ones wrapped beside the icon on every phone;
+// the line under the figure already says which period it is.
 function MoneyCard({ label, icon: Icon, tone, value, unit, delta, since }: { label: string; icon: LucideIcon; tone: string; value: string; unit: string; delta: React.ReactNode; since: string }) {
   return (
     <article className="fp-card min-w-0 p-3.5" style={{ borderTop: `3px solid ${tone}`, borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
@@ -93,9 +95,9 @@ function MoneyCard({ label, icon: Icon, tone, value, unit, delta, since }: { lab
         <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}>
           <Icon size={17} aria-hidden />
         </span>
-        <h3 className="min-w-0 text-sm font-extrabold leading-tight" style={{ color: 'var(--fp-ink)' }}>{label}</h3>
+        <h3 className="min-w-0 whitespace-nowrap text-sm font-extrabold leading-tight" style={{ color: 'var(--fp-ink)' }}>{label}</h3>
       </div>
-      <p className="mt-3 whitespace-nowrap text-lg font-extrabold leading-none tabular-nums" style={{ color: 'var(--fp-ink)' }}>
+      <p className="mt-3 whitespace-nowrap text-[clamp(15px,4.8vw,18px)] font-extrabold leading-none tabular-nums" style={{ color: 'var(--fp-ink)' }}>
         <bdi dir="ltr">{value}</bdi><small className="ms-1 text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>{unit}</small>
       </p>
       {delta && (
@@ -161,10 +163,10 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
   return (
     <div className="grid gap-3">
       <div className="grid grid-cols-2 gap-3">
-        <MoneyCard since={sinceLabel} label="الوارد الشهري" icon={Wallet} tone={INCOME} value={formatNumber(inNow)} unit={currency} delta={<Delta value={change(inNow, inBefore)} goodWhenUp />} />
+        <MoneyCard since={sinceLabel} label="الوارد" icon={Wallet} tone={INCOME} value={formatNumber(inNow)} unit={currency} delta={<Delta value={change(inNow, inBefore)} goodWhenUp />} />
         <MoneyCard
           since={sinceLabel}
-          label="المصروف الشهري" icon={Receipt} tone={SPEND}
+          label="المصروف" icon={Receipt} tone={SPEND}
           value={spent ? formatNumber(outNow) : '—'} unit={spent ? currency : ''}
           delta={spent ? <Delta value={change(outNow, outBefore)} goodWhenUp={false} /> : null}
         />
@@ -173,7 +175,7 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
       <section className="fp-card p-4" aria-label="الوارد والمصروف">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="text-sm font-extrabold" style={{ color: 'var(--fp-ink)' }}>الوارد والمصروف</h3>
+            <h3 className="whitespace-nowrap text-sm font-extrabold" style={{ color: 'var(--fp-ink)' }}>الوارد والمصروف</h3>
             <span className="text-xs" style={{ color: 'var(--fp-ink-3)' }}>{caption}</span>
           </div>
           <div className="inline-flex shrink-0 rounded-full p-1" style={{ backgroundColor: 'var(--fp-muted)' }} role="tablist" aria-label="مدة الرسم">
@@ -184,7 +186,7 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
                 role="tab"
                 aria-selected={range === r.id}
                 onClick={() => setRange(r.id)}
-                className="min-h-[34px] rounded-full px-3 text-xs font-bold transition"
+                className="min-h-[34px] rounded-full px-2.5 text-xs font-bold transition min-[360px]:px-3"
                 style={range === r.id
                   ? { backgroundColor: 'var(--fp-primary)', color: 'var(--fp-card)' }
                   : { color: 'var(--fp-ink-2)' }}

@@ -32,9 +32,10 @@ export function WorkSummaryCard({ rows, currency, monthName, previousTotal, prev
   return (
     <section className="fp-card overflow-hidden" aria-label="ملخص أعمال الشهر">
       <div className="px-4 pt-4">
-        <div className="flex items-end justify-between gap-3">
+        {/* On narrow phones the comparison box drops under the title rather than squeeze it. */}
+        <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-          <h2 className="text-base font-extrabold" style={{ color: 'var(--fp-ink)' }}>ملخص أعمال {monthName}</h2>
+          <h2 className="whitespace-nowrap text-[clamp(13px,4vw,16px)] font-extrabold" style={{ color: 'var(--fp-ink)' }}>ملخص أعمال {monthName}</h2>
         <p className="mt-2 tabular-nums" style={{ color: 'var(--fp-ink)' }}>
           <span className="text-[28px] font-extrabold leading-none">{formatNumber(total)}</span>
           <span className="ms-1.5 text-sm font-semibold" style={{ color: 'var(--fp-ink-3)' }}>عملية مسجّلة</span>
@@ -67,7 +68,8 @@ export function WorkSummaryCard({ rows, currency, monthName, previousTotal, prev
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>{r.label}</span>
-                <span className="block truncate text-xs" style={{ color: 'var(--fp-ink-3)' }}>{r.note}</span>
+                {/* The note may take a second line rather than be cut ("مسجّلة في سجل الصرف" was, on small phones). */}
+                <span className="block text-xs leading-snug" style={{ color: 'var(--fp-ink-3)' }}>{r.note}</span>
               </span>
               <span className="shrink-0 text-end tabular-nums">
                 <b className="block text-[15px] font-extrabold" style={{ color: 'var(--fp-ink)' }}>

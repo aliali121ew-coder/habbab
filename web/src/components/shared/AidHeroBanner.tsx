@@ -571,7 +571,7 @@ export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
                     aria-selected={active}
                     aria-label={item.title}
                     onClick={() => goToSlide(idx)}
-                    className="group inline-flex h-11 min-w-[26px] items-center justify-center px-1.5"
+                    className="group inline-flex h-11 min-w-[30px] items-center justify-center px-1 min-[380px]:min-w-[36px] min-[380px]:px-1.5"
                   >
                     <span className={`relative block h-2 overflow-hidden rounded-full transition-all ${
                       active ? 'w-9 bg-white/35' : 'w-2.5 bg-white/40 group-hover:bg-white/70'
@@ -592,7 +592,8 @@ export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="shrink-0 whitespace-nowrap rounded-full bg-black/30 px-2.5 py-0.5 text-xs font-bold tabular-nums text-white/90 backdrop-blur-xs" dir="ltr">
+              {/* Under 380px the dots already show the position, so the "1 / 7" counter steps aside to leave room. */}
+              <span className="shrink-0 whitespace-nowrap rounded-full bg-black/30 px-2.5 py-0.5 text-xs font-bold tabular-nums text-white/90 backdrop-blur-xs max-[379px]:hidden" dir="ltr">
                 {safeIndex + 1} / {slides.length}
               </span>
               <button

@@ -2144,3 +2144,9 @@ button.fam-ref-initials:active { transform: scale(.96); }
   background: var(--accent-grad);
   box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--bar-active) 70%, transparent);
 }
+/* This month's count is short; it is never clipped (on 320px phones it was). */
+.fam-ref-stats .is-month strong { overflow: visible; }
+/* On 320px phones the month's count was squeezed to nothing beside its word: the number never
+   shrinks, and below 360px the two halves of the panel are equal so both fit. */
+.fam-ref-stats .is-month strong { flex: none; }
+@media (max-width: 359.98px) { .fam-ref-stats { grid-template-columns: 1fr 1fr; } }

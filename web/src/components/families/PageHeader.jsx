@@ -63,7 +63,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
           <HeartHandshake className="h-6 w-6" aria-hidden />
         </div>
         <div className="relative min-w-0 flex-1">
-          <h1 className="text-[22px] font-extrabold leading-tight text-slate-900">العوائل المتعففة</h1>
+          <h1 className="whitespace-nowrap text-[clamp(18px,6vw,22px)] font-extrabold leading-tight text-slate-900">العوائل المتعففة</h1>
           <button
             type="button"
             onClick={() => setMonthMenuOpen((prev) => !prev)}
