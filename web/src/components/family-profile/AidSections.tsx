@@ -46,9 +46,10 @@ const countPrograms = (n: number) => (n === 1 ? 'برنامج واحد' : n === 
 const programIcon = (name: string) => (/راتب/.test(name) ? Wallet : /دوي|دواء/.test(name) ? Pill : /كشف/.test(name) ? Stethoscope : HandCoins);
 
 /**
- * The foundation's own aid for a family: a header (logo, name, programs, overall state), this
- * month's progress with due / paid / left as joined facts, then one card per program with its
- * icon, status, amount and a slim bar; a card opens that program.
+ * The foundation's own aid for a family, laid out like an outside provider's panel: a header
+ * (logo, name, programs, overall state), the monthly amount in large type, number of aids / last
+ * receipt / total as joined facts, a note, one card per program (opens it), and every program's
+ * receipts as one timeline with their total.
  */
 export function FoundationSheet({ programs, onOpenProgram, onClose }: {
   programs: AidSource[];
@@ -56,15 +57,20 @@ export function FoundationSheet({ programs, onOpenProgram, onClose }: {
   onClose: () => void;
 }) {
   const due = programs.reduce((sum, a) => sum + a.monthlyAmount, 0);
-  const paid = programs.reduce((sum, a) => sum + (a.paidThisMonth ?? 0), 0);
-  const left = Math.max(0, due - paid);
-  const pct = due > 0 ? Math.min(100, Math.round((paid / due) * 100)) : 0;
+  const dueParts = formatIQDParts(due);
   const late = programs.filter((p) => p.status === 'late').length;
   const tone = 'var(--fp-primary)';
-  const facts: [string, string, string][] = [
-    ['المستحق', formatIQDText(due), 'var(--fp-ink)'],
-    ['المصروف', formatIQDText(paid), 'var(--fp-emerald)'],
-    ['المتبقي', left ? formatIQDText(left) : 'لا شيء', left ? 'var(--fp-rose)' : 'var(--fp-ink-3)'],
+  // Every receipt from every program, newest first, each labelled with its program.
+  const receipts = programs
+    .flatMap((program) => program.history.map((record) => ({ ...record, program: program.name })))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  const received = receipts.reduce((sum, r) => sum + r.amount, 0);
+  const lastReceived = receipts[0]?.date ?? null;
+  // Same three joined facts as an outside provider: how many aids, the last receipt, the total.
+  const facts: [string, ReactNode][] = [
+    ['عدد المساعدات', `${receipts.length}`],
+    ['آخر استلام', <bdi key="l" dir="ltr">{lastReceived ?? '—'}</bdi>],
+    ['المبلغ الكلي', formatIQDText(received)],
   ];
 
   return (
@@ -87,26 +93,35 @@ export function FoundationSheet({ programs, onOpenProgram, onClose }: {
       </div>
 
       <div className="space-y-4 px-5 pb-6">
-        {/* This month */}
-        <section className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}>
-          <div className="px-4 pb-3 pt-4" style={{ backgroundImage: `linear-gradient(135deg, color-mix(in srgb, ${tone} 12%, var(--fp-card)), var(--fp-card))` }}>
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>المصروف هذا الشهر</p>
-              <p className="text-sm font-extrabold tabular-nums" style={{ color: pct >= 100 ? 'var(--fp-emerald)' : late ? 'var(--fp-rose)' : tone }}><bdi>{pct}%</bdi></p>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--fp-muted-2)' }} aria-hidden>
-              <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundImage: `linear-gradient(90deg, var(--fp-emerald), color-mix(in srgb, var(--fp-emerald) 70%, ${tone}))` }} />
-            </div>
+        {/* The monthly amount, large, as on an outside provider's panel */}
+        <div className="flex items-center justify-between gap-3 rounded-2xl px-4 py-4" style={{ backgroundImage: `linear-gradient(135deg, color-mix(in srgb, ${tone} 16%, var(--fp-card)), var(--fp-card))`, border: `1px solid color-mix(in srgb, ${tone} 25%, transparent)` }}>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>المستحق الشهري</p>
+            <p className="mt-1 whitespace-nowrap tabular-nums" style={{ color: 'var(--fp-ink)' }}>
+              <span className="text-[26px] font-extrabold leading-none"><bdi>{dueParts.value}</bdi></span>
+              <span className="ms-1.5 text-xs font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{dueParts.currency}</span>
+            </p>
           </div>
-          <dl className="grid grid-cols-3 border-t text-center" style={{ borderColor: 'var(--fp-border)' }}>
-            {facts.map(([label, value, color], i) => (
-              <div key={label} className={`min-w-0 px-2 py-3${i ? ' border-s' : ''}`} style={{ borderColor: 'var(--fp-border)' }}>
-                <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{label}</dt>
-                <dd className="mt-1 whitespace-nowrap text-[clamp(11.5px,3.4vw,13px)] font-extrabold tabular-nums" style={{ color }}>{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: 'var(--fp-card)', color: tone, boxShadow: '0 1px 2px rgb(0 0 0 / 8%)' }}>
+            <Repeat className="h-3.5 w-3.5" aria-hidden /> شهري
+          </span>
+        </div>
+
+        {/* Joined facts */}
+        <dl className="grid grid-cols-3 overflow-hidden rounded-2xl border text-center" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-muted)' }}>
+          {facts.map(([label, value], i) => (
+            <div key={label} className={`min-w-0 px-2 py-3${i ? ' border-s' : ''}`} style={{ borderColor: 'var(--fp-border)' }}>
+              <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{label}</dt>
+              <dd className="mt-1 whitespace-nowrap text-[clamp(11.5px,3.4vw,13px)] font-extrabold tabular-nums" style={{ color: 'var(--fp-ink)' }}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {/* Note */}
+        <p className="flex gap-2.5 rounded-2xl px-4 py-3 text-xs leading-relaxed" style={{ backgroundColor: 'color-mix(in srgb, var(--fp-amber) 10%, transparent)', color: 'var(--fp-ink-2)' }}>
+          <Info className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--fp-amber)' }} aria-hidden />
+          <span>تُصرف من المؤسسة مباشرة عبر المندوب المسؤول، وتُسجَّل كل دفعة عند استلامها.</span>
+        </p>
 
         {/* Programs */}
         <section>
@@ -150,6 +165,31 @@ export function FoundationSheet({ programs, onOpenProgram, onClose }: {
               );
             })}
           </ul>
+        </section>
+
+        {/* Receipts from all programs, as a timeline */}
+        <section>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h3 className="text-xs font-bold" style={{ color: 'var(--fp-ink-3)' }}>سجل الاستلام · <bdi>{receipts.length}</bdi> دفعات</h3>
+            {received > 0 && <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--fp-emerald)' }}>المجموع {formatIQDText(received)}</span>}
+          </div>
+          {receipts.length === 0 ? (
+            <p className="rounded-2xl px-4 py-5 text-center text-xs" style={{ backgroundColor: 'var(--fp-muted)', color: 'var(--fp-ink-3)' }}>لا توجد دفعات مسجلة بعد.</p>
+          ) : (
+            <ol className="rounded-2xl border px-4 py-1" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}>
+              {receipts.map((record, i) => (
+                <li key={`${record.program}-${record.id}`} className="relative flex items-center gap-3 py-3 ps-6">
+                  {i < receipts.length - 1 && <span className="absolute start-[7px] top-1/2 h-full w-px" style={{ backgroundColor: 'var(--fp-border)' }} aria-hidden />}
+                  <span className="absolute start-0 top-1/2 h-[15px] w-[15px] -translate-y-1/2 rounded-full border-[3px]" style={{ borderColor: i === 0 ? 'var(--fp-emerald)' : 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }} aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold tabular-nums" style={{ color: 'var(--fp-ink)' }}><bdi dir="ltr">{record.date}</bdi></p>
+                    <p className="text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>{record.program}</p>
+                  </div>
+                  <b className="shrink-0 rounded-lg px-2 py-1 text-[13px] tabular-nums" style={{ backgroundColor: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)' }}>{formatIQDText(record.amount)}</b>
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
       </div>
     </SideSheet>
