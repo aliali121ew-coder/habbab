@@ -475,14 +475,6 @@ export function ExpensesPage({ me }: { me: Me }) {
                 <h2 id="exp-board-title">سجل صرفيات <bdi>{label}</bdi></h2>
                 <p>{filtered ? `يعرض ${formatNumber(rows.length)} من ${formatNumber(sheet.items.length)} قيداً` : `${formatNumber(sheet.items.length)} قيداً`}</p>
               </div>
-              <div className="exp-tools">
-                <button type="button" className={`exp-tool${grouped ? ' on' : ''}`} aria-pressed={grouped} onClick={() => setGrouped((value) => !value)}>
-                  <Layers size={15} aria-hidden /> تجميع حسب الباب
-                </button>
-                <button type="button" className="exp-tool" disabled={!rows.length} onClick={() => exportCsv(rows, period, statusMap)}>
-                  <Download size={15} aria-hidden /> تصدير Excel
-                </button>
-              </div>
             </header>
 
             <div className="exp-filters" role="search">
