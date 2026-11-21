@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { ArrowLeft, Briefcase, ChevronLeft, GraduationCap, HeartPulse, MessageCircle, Phone, ShieldCheck, StickyNote, Trash2, UserPlus, UserRound, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Briefcase, ChevronLeft, GraduationCap, HeartPulse, MessageCircle, Phone, ShieldCheck, Pencil, StickyNote, Trash2, UserPlus, UserRound, type LucideIcon } from 'lucide-react';
 import { formatIQDText } from '../../mock/family';
 import type { FamilyMember, FamilyPatientRecord } from '../../types/family';
 import { InitialsAvatar } from '../shared/InitialsAvatar';
@@ -159,7 +159,7 @@ function InfoRow({ icon: Icon, tone, label, children }: { icon: LucideIcon; tone
  * facts (age, gender, health), then study or work, health, phone (call and WhatsApp) and notes as
  * rows with tinted icons; the health file follows when the member is on the patients registry.
  */
-export function MemberSheet({ member, patient, onClose, onRemove }: { member: FamilyMember; patient?: FamilyPatientRecord; onClose: () => void; onRemove?: (member: FamilyMember) => void }) {
+export function MemberSheet({ member, patient, onClose, onRemove, onEdit }: { member: FamilyMember; patient?: FamilyPatientRecord; onClose: () => void; onRemove?: (member: FamilyMember) => void; onEdit?: (member: FamilyMember) => void }) {
   // Removing asks once more inside the card before anything is deleted.
   const [confirming, setConfirming] = useState(false);
   const female = member.gender ? member.gender === 'أنثى' : /(^|\s)(الأم|ابنة|أخت|الجدة|الزوجة|حفيدة)/.test(member.relation);
@@ -274,9 +274,16 @@ export function MemberSheet({ member, patient, onClose, onRemove }: { member: Fa
               </div>
             </div>
           ) : (
-            <button type="button" onClick={() => setConfirming(true)} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold transition hover:opacity-90" style={{ borderColor: 'color-mix(in srgb, var(--fp-rose) 35%, transparent)', color: 'var(--fp-rose)' }}>
-              <Trash2 className="h-4 w-4" aria-hidden /> إزالة من العائلة
-            </button>
+            <div className="flex gap-2">
+              {onEdit && (
+                <button type="button" onClick={() => onEdit(member)} className="inline-flex h-11 flex-[2] items-center justify-center gap-2 rounded-2xl text-sm font-bold text-white transition hover:opacity-90" style={{ backgroundColor: 'var(--fp-primary)' }}>
+                  <Pencil className="h-4 w-4" aria-hidden /> تعديل البيانات
+                </button>
+              )}
+              <button type="button" onClick={() => setConfirming(true)} className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl border text-sm font-bold transition hover:opacity-90" style={{ borderColor: 'color-mix(in srgb, var(--fp-rose) 35%, transparent)', color: 'var(--fp-rose)' }}>
+                <Trash2 className="h-4 w-4" aria-hidden /> إزالة
+              </button>
+            </div>
           )
         )}
       </div>

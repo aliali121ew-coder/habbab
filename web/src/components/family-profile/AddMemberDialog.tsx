@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, HeartPulse, Phone, StickyNote, UserPlus, X } from 'lucide-react';
+import { Check, HeartPulse, Pencil, Phone, StickyNote, UserPlus, X } from 'lucide-react';
 
 /** What is stored for a new member (the family store keeps plain records). */
 export interface NewMember {
@@ -11,6 +11,20 @@ export interface NewMember {
   status: string;
   chronic?: string;
   /** Parents lost: father, mother or both. */
+  lostFather?: boolean;
+  lostMother?: boolean;
+  phone?: string;
+  notes?: string;
+}
+
+/** A member as stored, for editing (older members may lack the newer fields). */
+export interface EditableMember {
+  name: string;
+  relation: string;
+  age: number;
+  status: string;
+  chronic?: string;
+  gender?: 'ذكر' | 'أنثى';
   lostFather?: boolean;
   lostMother?: boolean;
   phone?: string;
@@ -67,23 +81,59 @@ const inputStyle = { backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-
 const inputClass = 'h-11 w-full rounded-xl border px-3 text-sm outline-none focus:ring-2 focus:ring-[var(--fp-primary)]/30';
 
 /**
- * Add a member to a family: name, gender, relation (for children: lost father and/or lost mother), age, study or work
+ * Add a member to a family (or edit one: pass `member` and the form starts from its data): name, gender, relation (for children: lost father and/or lost mother), age, study or work
  * (with the school stage for students), health, an optional phone and a note. On a phone it rises
  * from the bottom as a sheet; on a computer it is a centred dialog.
  */
-export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: string; onClose: () => void; onSave: (member: NewMember) => void }) {
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<'ذكر' | 'أنثى'>('ذكر');
-  const [relation, setRelation] = useState<string>('ابن');
-  const [lostFather, setLostFather] = useState(false);
-  const [lostMother, setLostMother] = useState(false);
-  const [age, setAge] = useState('10');
-  const [work, setWork] = useState<(typeof WORK)[number]>('طالب');
-  const [stage, setStage] = useState<(typeof STAGES)[number]>('ابتدائي');
-  const [health, setHealth] = useState<(typeof HEALTH)[number]>('سليم');
-  const [healthNote, setHealthNote] = useState('');
-  const [phone, setPhone] = useState('');
-  const [notes, setNotes] = useState('');
+/** The fields of the form, read back from a stored member when editing. */
+function fromMember(m?: EditableMember) {
+  if (!m) {
+    return { name: '', gender: 'ذكر' as const, relation: 'ابن', lostFather: false, lostMother: false, age: '10', work: 'طالب', stage: 'ابتدائي' as (typeof STAGES)[number], health: 'سليم' as (typeof HEALTH)[number], healthNote: '', phone: '', notes: '' };
+  }
+  // «ابنة يتيمة الأب» → relation «ابنة», lost father; «فقيد الأم» → lost mother; «الأبوين» → both.
+  const base = m.relation.replace(/\s+(يتيم|يتيمة|فقيد|فقيدة)(\s.*)?$/, '');
+  const loss = m.relation.slice(base.length);
+  const both = loss.includes('الأبوين');
+  const lostFather = m.lostFather ?? (both || /يتيم/.test(loss));
+  const lostMother = m.lostMother ?? (both || loss.includes('الأم'));
+  const female = m.gender ? m.gender === 'أنثى' : /(^|\s)(الأم|ابنة|أخت|الجدة|الزوجة|حفيدة)/.test(m.relation);
+  // «طالبة إعدادية» → studying, stage إعدادي; anything else is kept as written.
+  const studying = /^طالب/.test(m.status);
+  const stage = STAGES.find((s) => m.status.includes(s)) ?? 'ابتدائي';
+  // «مرض مزمن: سكري» / «إعاقة: …»; an older free text («سرطان الثدي») counts as a chronic illness.
+  const chronic = m.chronic ?? '';
+  const kind = chronic.startsWith('إعاقة') ? 'إعاقة' : chronic ? 'مرض مزمن' : 'سليم';
+  const note = chronic.replace(/^(مرض مزمن|إعاقة)\s*:?\s*/, '');
+  return {
+    name: m.name,
+    gender: (female ? 'أنثى' : 'ذكر') as 'ذكر' | 'أنثى',
+    relation: base,
+    lostFather,
+    lostMother,
+    age: String(m.age),
+    work: studying ? 'طالب' : m.status,
+    stage,
+    health: kind as (typeof HEALTH)[number],
+    healthNote: note,
+    phone: m.phone ?? '',
+    notes: m.notes ?? '',
+  };
+}
+
+export function AddMemberDialog({ familyName, member: editing, onClose, onSave }: { familyName: string; member?: EditableMember; onClose: () => void; onSave: (member: NewMember) => void }) {
+  const start = fromMember(editing);
+  const [name, setName] = useState(start.name);
+  const [gender, setGender] = useState<'ذكر' | 'أنثى'>(start.gender);
+  const [relation, setRelation] = useState<string>(start.relation);
+  const [lostFather, setLostFather] = useState(start.lostFather);
+  const [lostMother, setLostMother] = useState(start.lostMother);
+  const [age, setAge] = useState(start.age);
+  const [work, setWork] = useState<string>(start.work);
+  const [stage, setStage] = useState<(typeof STAGES)[number]>(start.stage);
+  const [health, setHealth] = useState<(typeof HEALTH)[number]>(start.health);
+  const [healthNote, setHealthNote] = useState(start.healthNote);
+  const [phone, setPhone] = useState(start.phone);
+  const [notes, setNotes] = useState(start.notes);
   // After saving, a check mark draws itself for a moment, then the dialog closes.
   const [savedName, setSavedName] = useState<string | null>(null);
 
@@ -100,7 +150,10 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
     setRelation(RELATIONS[g][Math.max(0, index)]);
     if (work === 'ربة منزل' && g === 'ذكر') setWork('يعمل');
   };
-  const workOptions = WORK.filter((w) => !(w === 'ربة منزل' && gender === 'ذكر'));
+  const baseWork: string[] = WORK.filter((w) => !(w === 'ربة منزل' && gender === 'ذكر'));
+  // A study/work or relation from an older record that is not in the lists stays as a choice.
+  const workOptions = baseWork.includes(start.work) ? baseWork : [...baseWork, start.work];
+  const relationOptions: string[] = (RELATIONS[gender] as readonly string[]).includes(start.relation) ? [...RELATIONS[gender]] : [...RELATIONS[gender], start.relation];
   const child = ['ابن', 'ابنة', 'حفيد', 'حفيدة'].includes(relation);
 
   const submit = (e: FormEvent) => {
@@ -147,15 +200,15 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
               <circle cx="26" cy="26" r="23" />
               <path d="M15 27.5l7.5 7.5L37.5 19" />
             </svg>
-            <p className="member-saved-text">تمت إضافة {savedName}</p>
+            <p className="member-saved-text">{editing ? 'تم حفظ التعديلات' : `تمت إضافة ${savedName}`}</p>
           </div>
         )}
         <header className="flex items-center gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--fp-border)' }}>
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}>
-            <UserPlus className="h-5 w-5" aria-hidden />
+            {editing ? <Pencil className="h-5 w-5" aria-hidden /> : <UserPlus className="h-5 w-5" aria-hidden />}
           </span>
           <div className="min-w-0 flex-1">
-            <h2 id="add-member-title" className="text-[15px] font-extrabold" style={{ color: 'var(--fp-ink)' }}>إضافة فرد للعائلة</h2>
+            <h2 id="add-member-title" className="text-[15px] font-extrabold" style={{ color: 'var(--fp-ink)' }}>{editing ? 'تعديل بيانات الفرد' : 'إضافة فرد للعائلة'}</h2>
             <p className="truncate text-xs" style={{ color: 'var(--fp-ink-3)' }}>{familyName}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="إغلاق" className="inline-flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--fp-muted)', color: 'var(--fp-ink-3)' }}>
@@ -178,7 +231,7 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
           </div>
 
           <Field label="صلة القرابة">
-            <Chips label="صلة القرابة" value={relation} options={RELATIONS[gender] as readonly string[]} onChange={setRelation} />
+            <Chips label="صلة القرابة" value={relation} options={relationOptions} onChange={setRelation} />
             {child && (
               <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-2">
                 {[
@@ -231,7 +284,7 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
 
         <footer className="flex gap-2 border-t px-5 py-3.5" style={{ borderColor: 'var(--fp-border)', paddingBottom: 'calc(14px + env(safe-area-inset-bottom))' }}>
           <button type="submit" form="add-member-form" className="inline-flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: 'var(--fp-primary)' }}>
-            <Check className="h-4 w-4" aria-hidden /> حفظ الفرد
+            <Check className="h-4 w-4" aria-hidden /> {editing ? 'حفظ التعديلات' : 'حفظ الفرد'}
           </button>
           <button type="button" onClick={onClose} className="h-11 rounded-xl border px-5 text-sm font-semibold" style={{ borderColor: 'var(--fp-border)', color: 'var(--fp-ink-2)' }}>
             إلغاء

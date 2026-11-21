@@ -170,12 +170,11 @@ export function AidSourceSheet({ source, onClose }: { source: AidSource; onClose
   const digits = source.contact?.phone.replace(/\D/g, '') ?? '';
   const wa = digits ? `https://wa.me/${digits.startsWith('0') ? `964${digits.slice(1)}` : digits}` : '';
   const Icon = internal ? HeartHandshake : Building2;
+  // Three joined facts, read right to left: how many aids, the last receipt, the total received.
   const facts: [string, ReactNode][] = [
-    ['بداية الدعم', <bdi key="s" dir="ltr">{source.since}</bdi>],
+    ['عدد المساعدات', `${source.history.length}`],
     ['آخر استلام', <bdi key="l" dir="ltr">{source.lastReceived ?? '—'}</bdi>],
-    internal
-      ? ['المصروف هذا الشهر', formatIQDText(source.paidThisMonth ?? 0)]
-      : ['عدد الدفعات', `${source.history.length}`],
+    ['المبلغ الكلي', formatIQDText(received)],
   ];
 
   return (
@@ -219,7 +218,7 @@ export function AidSourceSheet({ source, onClose }: { source: AidSource; onClose
           {facts.map(([label, value], i) => (
             <div key={label} className={`min-w-0 px-2 py-3${i ? ' border-s' : ''}`} style={{ borderColor: 'var(--fp-border)' }}>
               <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{label}</dt>
-              <dd className="mt-1 whitespace-nowrap text-[13px] font-extrabold tabular-nums" style={{ color: 'var(--fp-ink)' }}>{value}</dd>
+              <dd className="mt-1 whitespace-nowrap text-[clamp(11.5px,3.4vw,13px)] font-extrabold tabular-nums" style={{ color: 'var(--fp-ink)' }}>{value}</dd>
             </div>
           ))}
         </dl>
@@ -236,10 +235,13 @@ export function AidSourceSheet({ source, onClose }: { source: AidSource; onClose
             <h3 className="mb-2 text-xs font-bold" style={{ color: 'var(--fp-ink-3)' }}>جهة الاتصال</h3>
             <div className="flex items-center gap-3 rounded-2xl border p-3" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}>
               <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-extrabold" style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }} aria-hidden>
-                {source.contact.person.replace(/^(أبو|أم|د\.|قسم)\s+/, '').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join(' ')}
+                {/* A department (قسم …) gets an icon; a person gets two initials. */}
+                {/^قسم\s/.test(source.contact.person)
+                  ? <Building2 className="h-5 w-5" />
+                  : source.contact.person.replace(/^(أبو|أم|د\.)\s+/, '').trim().split(/\s+/).filter((w) => /^[؀-ۿ]/.test(w)).slice(0, 2).map((w) => w.charAt(0)).join(' ')}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>{source.contact.person}</p>
+                <p className="text-sm font-bold leading-snug" style={{ color: 'var(--fp-ink)' }}>{source.contact.person}</p>
                 <p className="text-xs tabular-nums" style={{ color: 'var(--fp-ink-3)' }} dir="ltr">{source.contact.phone}</p>
               </div>
               <a href={`tel:${digits}`} aria-label={`اتصال بـ ${source.contact.person}`} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}>

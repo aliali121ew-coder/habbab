@@ -4,7 +4,7 @@ import { MotionConfig, motion } from 'framer-motion';
 import { ArrowRight, HandCoins, HeartHandshake } from 'lucide-react';
 import { printWhenReady } from '../components/printWhenReady';
 import { OfficialFamiliesPrintSheet, PaymentModal, VisitModal } from '../components/families/FamilyModalsAndPrint';
-import { AddMemberDialog, type NewMember } from '../components/family-profile/AddMemberDialog';
+import { AddMemberDialog, type EditableMember, type NewMember } from '../components/family-profile/AddMemberDialog';
 import { AidBoard } from '../components/family-profile/AidBoard';
 import { AidSourceSheet, FoundationSheet } from '../components/family-profile/AidSections';
 import { FamilyHero } from '../components/family-profile/FamilyHero';
@@ -30,6 +30,8 @@ export function FamilyDetailPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
+  // The member being edited (its index in the stored list), when the dialog edits rather than adds.
+  const [editingMember, setEditingMember] = useState<{ index: number; data: EditableMember } | null>(null);
   const [printing, setPrinting] = useState(false);
 
 
@@ -115,6 +117,19 @@ export function FamilyDetailPage() {
     setFamily(getFamilyDetailById(familyId));
     setAddMemberOpen(false);
     showToast(`تمت إضافة ${member.name} إلى أفراد العائلة`);
+  };
+
+  const handleEditMember = (member: NewMember) => {
+    if (!editingMember) return;
+    const { index } = editingMember;
+    const store = loadFamiliesStore();
+    const updated = store.map((f) => (f.id === familyId
+      ? { ...f, members: (f.members ?? []).map((m: EditableMember, i: number) => (i === index ? { ...m, ...member } : m)) }
+      : f));
+    saveFamiliesStore(updated);
+    setFamily(getFamilyDetailById(familyId));
+    setEditingMember(null);
+    showToast(`تم حفظ تعديلات ${member.name}`);
   };
 
   // Member ids are "mem-<family>-<index>", the index in the stored members list.
@@ -223,6 +238,13 @@ export function FamilyDetailPage() {
             patient={family.patients.find((p) => p.id === selectedMember.patientId)}
             onClose={() => setSelectedMember(null)}
             onRemove={handleRemoveMember}
+            onEdit={(member) => {
+              const index = Number(member.id.split('-').pop());
+              const stored = loadFamiliesStore().find((f) => f.id === familyId)?.members?.[index];
+              if (!stored) return;
+              setSelectedMember(null);
+              setEditingMember({ index, data: stored });
+            }}
           />
         )}
 
@@ -264,6 +286,9 @@ export function FamilyDetailPage() {
 
         {addMemberOpen && (
           <AddMemberDialog familyName={family.name} onClose={() => setAddMemberOpen(false)} onSave={handleAddMember} />
+        )}
+        {editingMember && (
+          <AddMemberDialog familyName={family.name} member={editingMember.data} onClose={() => setEditingMember(null)} onSave={handleEditMember} />
         )}
 
         {printing && rawStoreFamily && createPortal(
