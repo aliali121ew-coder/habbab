@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { ArrowLeft, Briefcase, ChevronLeft, GraduationCap, HeartPulse, MessageCircle, Phone, ShieldCheck, StickyNote, UserPlus, UserRound, type LucideIcon } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { ArrowLeft, Briefcase, ChevronLeft, GraduationCap, HeartPulse, MessageCircle, Phone, ShieldCheck, StickyNote, Trash2, UserPlus, UserRound, type LucideIcon } from 'lucide-react';
 import { formatIQDText } from '../../mock/family';
 import type { FamilyMember, FamilyPatientRecord } from '../../types/family';
 import { InitialsAvatar } from '../shared/InitialsAvatar';
@@ -159,7 +159,9 @@ function InfoRow({ icon: Icon, tone, label, children }: { icon: LucideIcon; tone
  * facts (age, gender, health), then study or work, health, phone (call and WhatsApp) and notes as
  * rows with tinted icons; the health file follows when the member is on the patients registry.
  */
-export function MemberSheet({ member, patient, onClose }: { member: FamilyMember; patient?: FamilyPatientRecord; onClose: () => void }) {
+export function MemberSheet({ member, patient, onClose, onRemove }: { member: FamilyMember; patient?: FamilyPatientRecord; onClose: () => void; onRemove?: (member: FamilyMember) => void }) {
+  // Removing asks once more inside the card before anything is deleted.
+  const [confirming, setConfirming] = useState(false);
   const female = member.gender ? member.gender === 'أنثى' : /(^|\s)(الأم|ابنة|أخت|الجدة|الزوجة|حفيدة)/.test(member.relation);
   const tone = female ? 'var(--fp-rose)' : 'var(--fp-primary)';
   const healthy = !member.chronic;
@@ -256,6 +258,27 @@ export function MemberSheet({ member, patient, onClose }: { member: FamilyMember
             <HeartPulse className="h-4 w-4 shrink-0" aria-hidden /> لديه حالة صحية ولم يُسجَّل بعد في سجل المرضى.
           </p>
         ) : null}
+
+        {onRemove && (
+          confirming ? (
+            <div className="rounded-2xl border p-4" role="alertdialog" aria-labelledby="remove-member-q" style={{ borderColor: 'color-mix(in srgb, var(--fp-rose) 35%, transparent)', backgroundColor: 'var(--fp-rose-soft)' }}>
+              <p id="remove-member-q" className="text-sm font-extrabold" style={{ color: 'var(--fp-ink)' }}>حذف {member.name} من العائلة؟</p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--fp-ink-2)' }}>سيُزال من أفراد هذا الملف نهائياً، ولا يمكن التراجع.</p>
+              <div className="mt-3 flex gap-2">
+                <button type="button" autoFocus onClick={() => onRemove(member)} className="inline-flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-bold text-white" style={{ backgroundColor: 'var(--fp-rose)' }}>
+                  <Trash2 className="h-4 w-4" aria-hidden /> نعم، احذف
+                </button>
+                <button type="button" onClick={() => setConfirming(false)} className="h-10 rounded-xl border px-5 text-sm font-semibold" style={{ borderColor: 'var(--fp-border)', color: 'var(--fp-ink-2)', backgroundColor: 'var(--fp-card)' }}>
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setConfirming(true)} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border text-sm font-bold transition hover:opacity-90" style={{ borderColor: 'color-mix(in srgb, var(--fp-rose) 35%, transparent)', color: 'var(--fp-rose)' }}>
+              <Trash2 className="h-4 w-4" aria-hidden /> إزالة من العائلة
+            </button>
+          )
+        )}
       </div>
     </SideSheet>
   );

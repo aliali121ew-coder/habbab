@@ -117,6 +117,19 @@ export function FamilyDetailPage() {
     showToast(`تمت إضافة ${member.name} إلى أفراد العائلة`);
   };
 
+  // Member ids are "mem-<family>-<index>", the index in the stored members list.
+  const handleRemoveMember = (member: FamilyMember) => {
+    const index = Number(member.id.split('-').pop());
+    const store = loadFamiliesStore();
+    const updated = store.map((f) => (f.id === familyId
+      ? { ...f, members: (f.members ?? []).filter((_: unknown, i: number) => i !== index) }
+      : f));
+    saveFamiliesStore(updated);
+    setFamily(getFamilyDetailById(familyId));
+    setSelectedMember(null);
+    showToast(`تمت إزالة ${member.name} من أفراد العائلة`);
+  };
+
   if (!family) {
     return (
       <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 py-12 md:-mx-[18px]">
@@ -209,6 +222,7 @@ export function FamilyDetailPage() {
             member={selectedMember}
             patient={family.patients.find((p) => p.id === selectedMember.patientId)}
             onClose={() => setSelectedMember(null)}
+            onRemove={handleRemoveMember}
           />
         )}
 
