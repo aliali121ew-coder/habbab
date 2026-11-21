@@ -1,4 +1,4 @@
-import { CalendarCheck, ChevronLeft, History, MapPin, Users } from 'lucide-react';
+import { ChevronLeft, MapPin, Users } from 'lucide-react';
 import { CATEGORY_CONFIG } from '../../utils/format';
 
 // Two initials from the head of the family ("زينب كاظم" → "زك"), as on the reference card.
@@ -11,13 +11,6 @@ const initials = (family) => {
 // "2026-11-10" → "10/11": short enough to keep the line whole on a phone.
 const dayMonth = (date) => `${Number(date.slice(8, 10))}/${Number(date.slice(5, 7))}`;
 
-// How many aids this month, in words that read naturally.
-const monthCount = (n) => {
-  if (n === 0) return 'لا مساعدات هذا الشهر';
-  if (n === 1) return 'مساعدة واحدة هذا الشهر';
-  if (n === 2) return 'مساعدتان هذا الشهر';
-  return `${n} ${n <= 10 ? 'مساعدات' : 'مساعدة'} هذا الشهر`;
-};
 
 /**
  * Phone list, one card per family, drawn like the reference: a band in the theme's colour at the
@@ -56,11 +49,20 @@ export function FamilyMobileList({ families, loading, onOpenFullFile }) {
                 </button>
               </div>
 
-              <dl className="fam-ref-facts">
-                <div><MapPin aria-hidden /><dt className="sr-only">المنطقة</dt><dd>{family.region}</dd></div>
-                <div><Users aria-hidden /><dt className="sr-only">الأفراد</dt><dd><bdi>{(family.members ?? []).length}</bdi> أفراد</dd></div>
-                <div className="is-wide"><History aria-hidden /><dt className="sr-only">آخر مساعدة</dt><dd>{last ? <>آخر صرف: {last.type} · <bdi>{dayMonth(last.date)}</bdi></> : 'لم تُصرف مساعدة بعد'}</dd></div>
-                <div className={`is-wide${thisMonth ? ' is-month' : ''}`}><CalendarCheck aria-hidden /><dt className="sr-only">مساعدات هذا الشهر</dt><dd>{monthCount(thisMonth)}</dd></div>
+              <div className="fam-ref-meta">
+                <span><MapPin aria-hidden />{family.region}</span>
+                <span><Users aria-hidden /><bdi>{(family.members ?? []).length}</bdi> أفراد</span>
+              </div>
+
+              <dl className="fam-ref-stats">
+                <div>
+                  <dt>آخر صرف</dt>
+                  <dd>{last ? <><strong>{last.type}</strong><small><bdi>{dayMonth(last.date)}</bdi></small></> : <strong className="is-none">لا يوجد</strong>}</dd>
+                </div>
+                <div className={thisMonth ? 'is-month' : undefined}>
+                  <dt>هذا الشهر</dt>
+                  <dd><strong><bdi>{thisMonth}</bdi></strong><small>{thisMonth === 1 ? 'مساعدة' : thisMonth === 2 ? 'مساعدتان' : 'مساعدات'}</small></dd>
+                </div>
               </dl>
             </div>
           </li>

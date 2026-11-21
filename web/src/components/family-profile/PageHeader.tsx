@@ -40,7 +40,8 @@ export function PageHeader({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <nav aria-label="مسار التنقل" className="flex items-center gap-1.5 text-xs font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+      {/* On the phone the top bar already shows the path; this second copy shows on a computer only. */}
+      <nav aria-label="مسار التنقل" className="hidden md:flex items-center gap-1.5 text-xs font-medium" style={{ color: 'var(--fp-ink-3)' }}>
         <a href="#/" className="inline-flex items-center gap-1 transition hover:opacity-80" style={{ color: 'var(--fp-primary)' }}>
           <Home className="h-3.5 w-3.5" aria-hidden />
           <span>الرئيسية</span>
