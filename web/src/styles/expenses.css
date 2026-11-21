@@ -590,3 +590,78 @@ dialog.exp-dialog::backdrop {
 @media (max-width: 767.98px) {
   .bal-pill { margin-top: 0; padding-top: 0; border-top: 0; font-size: .7rem; }
 }
+
+/* ══ Grouped category rows & sliding capsule details drawer ══════════════════════════════════ */
+.exp-type-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.exp-cat-count { color: var(--ink-3); font-size: .72rem; font-weight: 600; }
+.exp-more-people {
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-inline-start: 6px; padding: 1px 7px; border-radius: 99px;
+  background: color-mix(in srgb, var(--brand) 12%, var(--surface));
+  color: var(--brand); font-size: .72rem; font-weight: 700;
+}
+.exp-cat-row.expanded td { background: color-mix(in srgb, var(--brand) 4%, var(--surface)); border-bottom-color: transparent; }
+.exp-capsule-toggle {
+  width: 32px; height: 32px; display: inline-grid; place-items: center; padding: 0;
+  border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink-2);
+  cursor: pointer; transition: transform .22s cubic-bezier(.22, 1, .36, 1), border-color .15s ease, color .15s ease, background-color .15s ease;
+}
+.exp-capsule-toggle:hover, .exp-capsule-toggle.open {
+  border-color: var(--brand); color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 10%, var(--surface));
+}
+.exp-capsule-toggle.open { transform: rotate(180deg); }
+
+.exp-capsule-row td {
+  padding: 0 14px 14px !important;
+  background: color-mix(in srgb, var(--brand) 3%, var(--surface));
+  border-bottom: 1px solid var(--line);
+}
+.exp-capsule-drawer {
+  --tone: var(--brand);
+  padding: 10px 12px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--tone) 22%, var(--line));
+  background: color-mix(in srgb, var(--tone) 4%, var(--surface));
+  animation: exp-capsule-slide .22s cubic-bezier(.22, 1, .36, 1);
+  transform-origin: top center;
+}
+.exp-capsule-drawer[data-tone="care"] { --tone: #0f8a7e; }
+.exp-capsule-drawer[data-tone="money"] { --tone: #7c3aed; }
+.exp-capsule-drawer[data-tone="home"] { --tone: #c26a12; }
+.exp-capsule-drawer[data-tone="food"] { --tone: #16a34a; }
+.exp-capsule-drawer[data-tone="org"] { --tone: #2563eb; }
+.exp-capsule-drawer[data-tone="faith"] { --tone: #c0396b; }
+@keyframes exp-capsule-slide {
+  from { opacity: 0; transform: translateY(-8px) scaleY(.96); }
+  to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) { .exp-capsule-drawer { animation: none; } }
+
+.exp-capsule-list { display: grid; gap: 8px; }
+.exp-capsule-item {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px;
+  padding: 10px 14px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface);
+  box-shadow: 0 2px 6px -2px rgb(15 23 42 / 6%);
+  cursor: pointer; transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.exp-capsule-item:hover {
+  border-color: color-mix(in srgb, var(--tone) 55%, var(--line));
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -6px rgb(15 23 42 / 14%);
+}
+.exp-cap-main { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; min-width: 0; flex: 1 1 240px; }
+.exp-cap-person { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.exp-cap-person strong { color: var(--ink); font-size: .88rem; font-weight: 700; }
+.exp-cap-person .exp-file-no { margin-top: 0; }
+.exp-cap-details { color: var(--ink-2); font-size: .82rem; font-weight: 500; }
+.exp-cap-meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.exp-cap-amount { color: var(--ink); font-size: .92rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.exp-cap-actions { display: inline-flex; align-items: center; gap: 2px; }
+
+@container (width < 720px) {
+  .exp-flat .exp-capsule-row { display: block; border: 0; background: transparent; padding: 0; }
+  .exp-flat .exp-capsule-row td { display: block; padding: 0 0 6px !important; background: transparent; border: 0; }
+  .exp-capsule-item { border-radius: 16px; padding: 10px 12px; }
+}

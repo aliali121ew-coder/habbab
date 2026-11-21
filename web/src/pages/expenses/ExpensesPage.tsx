@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ChevronLeft, ChevronRight, Download, HeartPulse, Layers, Minus, Paperclip, Pencil,
+  ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ChevronDown, ChevronLeft, ChevronRight, Download, HeartPulse, Layers, Minus, Paperclip, Pencil,
   Plus, Printer, Receipt, Search, Sheet, Trash2, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X, Archive, Gift,
 } from 'lucide-react';
 import { BackToClose } from '../../components/useBackToClose';
@@ -266,8 +266,10 @@ export function ExpensesPage({ me }: { me: Me }) {
   const thisMonth = now.getUTCMonth();
   const [range, setRange] = useState<DateRange>(() => monthRange(thisYear, thisMonth));
   const [sheet, setSheet] = useState<MonthSheet | null>(null);
-  // Each heading's total over the same period a month earlier, for the comparison column.
-  const [before, setBefore] = useState<Map<ExpenseCategory, number> | null>(null);
+  // Each heading's monthly average across prior months of the year, for the percentage column.
+  const [beforeAvg, setBeforeAvg] = useState<Map<ExpenseCategory, number> | null>(null);
+  // Expanded category rows (showing their sliding capsule details).
+  const [expandedCats, setExpandedCats] = useState<Set<ExpenseCategory>>(() => new Set());
   // The month the period ends in and the month before it: spent and received.
   const [flow, setFlow] = useState<Flow | null>(null);
   const [error, setError] = useState('');
@@ -300,6 +302,15 @@ export function ExpensesPage({ me }: { me: Me }) {
     }
   };
 
+  const toggleCategory = (id: ExpenseCategory) => {
+    setExpandedCats((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   // The year card and the month comparison follow the month the period ends in.
   const year = Number(range.to.slice(0, 4));
   const month = Number(range.to.slice(5, 7)) - 1;
@@ -311,13 +322,27 @@ export function ExpensesPage({ me }: { me: Me }) {
     setError('');
     try {
       const back = monthBefore(range);
-      const [current, previous] = await Promise.all([
+      const priorFrom = `${Number(back.to.slice(0, 4))}-01-01`;
+      const [current, prior] = await Promise.all([
         api<MonthSheet>(`/expenses?from=${range.from}&to=${range.to}`),
-        api<MonthSheet>(`/expenses?from=${back.from}&to=${back.to}`).catch(() => null),
+        api<MonthSheet>(`/expenses?from=${priorFrom}&to=${back.to}`).catch(() => null),
       ]);
-      const totals = new Map<ExpenseCategory, number>();
-      previous?.items.forEach((item) => totals.set(item.category, (totals.get(item.category) ?? 0) + item.amount));
-      setBefore(previous ? totals : null);
+      const avgMap = new Map<ExpenseCategory, number>();
+      if (prior) {
+        const totals = new Map<ExpenseCategory, number>();
+        const months = new Map<ExpenseCategory, Set<string>>();
+        prior.items.forEach((item) => {
+          totals.set(item.category, (totals.get(item.category) ?? 0) + item.amount);
+          const set = months.get(item.category) ?? new Set<string>();
+          set.add(item.spent_on.slice(0, 7));
+          months.set(item.category, set);
+        });
+        totals.forEach((sum, cat) => {
+          const count = months.get(cat)?.size || 1;
+          avgMap.set(cat, sum / count);
+        });
+      }
+      setBeforeAvg(prior ? avgMap : null);
       setSheet(current);
     } catch (failure) {
       setError((failure as Error).message);
@@ -381,12 +406,17 @@ export function ExpensesPage({ me }: { me: Me }) {
     };
   }, [sheet, month, isMonth]);
 
-  // Per heading: the change in percent from the month before; null when it had nothing then.
+  // Per heading: percentage change against that category's monthly average (or against the
+  // average across active categories in this period when no prior months exist yet).
   const changeOf = (id: ExpenseCategory): number | null | undefined => {
-    if (!before || !figures) return undefined;
-    const previous = before.get(id) ?? 0;
+    if (!figures) return undefined;
     const current = figures.byCategory.get(id) ?? 0;
-    return previous > 0 ? ((current - previous) / previous) * 100 : null;
+    const historicalAvg = beforeAvg?.get(id) ?? 0;
+    if (historicalAvg > 0) return ((current - historicalAvg) / historicalAvg) * 100;
+    const activeCats = figures.byCategory.size;
+    if (activeCats <= 1) return 0;
+    const periodAvg = figures.total / activeCats;
+    return periodAvg > 0 ? ((current - periodAvg) / periodAvg) * 100 : 0;
   };
 
   const rows = useMemo(() => {
@@ -397,23 +427,49 @@ export function ExpensesPage({ me }: { me: Me }) {
       && (!needle || `${item.beneficiary_name ?? ''} ${item.details ?? ''}`.toLowerCase().includes(needle))
     ));
     shown.sort((a, b) => (sort.desc ? -1 : 1) * compare(a, b, sort.key, statusMap));
-    // Grouping keeps the chosen order inside each heading, and the headings in the paper's order.
-    if (grouped) shown.sort((a, b) => (categoryOrder.get(a.category) ?? 0) - (categoryOrder.get(b.category) ?? 0));
     return shown;
-  }, [sheet, query, category, sort, grouped, statusMap]);
+  }, [sheet, query, category, sort, statusMap]);
+
+  const categoryGroups = useMemo(() => {
+    const map = new Map<ExpenseCategory, ExpenseItem[]>();
+    rows.forEach((item) => {
+      const list = map.get(item.category) ?? [];
+      list.push(item);
+      map.set(item.category, list);
+    });
+    const list = [...map.entries()].map(([cat, items]) => {
+      const total = items.reduce((sum, it) => sum + it.amount, 0);
+      const latestDate = items.reduce((max, it) => (it.spent_on > max ? it.spent_on : max), items[0].spent_on);
+      const status = items.reduce<BeneficiaryStatus>((worst, it) => {
+        const s = getExpenseStatus(it.id, it.category, statusMap);
+        return STATUS_ORDER[s] < STATUS_ORDER[worst] ? s : worst;
+      }, getExpenseStatus(items[0].id, items[0].category, statusMap));
+      return {
+        category: cat,
+        items,
+        total,
+        count: items.length,
+        latestDate,
+        status,
+        primaryName: items[0].beneficiary_name,
+        primaryId: items[0].beneficiary_id,
+      };
+    });
+    list.sort((a, b) => {
+      const dir = sort.desc ? -1 : 1;
+      if (sort.key === 'amount') return dir * (a.total - b.total);
+      if (sort.key === 'category') return dir * ((categoryOrder.get(a.category) ?? 0) - (categoryOrder.get(b.category) ?? 0));
+      if (sort.key === 'beneficiary') return dir * (a.primaryName ?? '').localeCompare(b.primaryName ?? '', 'ar');
+      if (sort.key === 'status') return dir * (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+      return dir * a.latestDate.localeCompare(b.latestDate);
+    });
+    return list;
+  }, [rows, sort, statusMap]);
 
   const markedDays = useMemo(() => new Set(sheet?.items.map((item) => item.spent_on.slice(0, 10)) ?? []), [sheet]);
   const filtered = rows.length !== (sheet?.items.length ?? 0);
-  const pages = grouped ? 1 : Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const pageRows = grouped ? rows : rows.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const groupTotals = useMemo(() => {
-    const totals = new Map<ExpenseCategory, { count: number; total: number }>();
-    rows.forEach((item) => {
-      const current = totals.get(item.category) ?? { count: 0, total: 0 };
-      totals.set(item.category, { count: current.count + 1, total: current.total + item.amount });
-    });
-    return totals;
-  }, [rows]);
+  const pages = Math.max(1, Math.ceil(categoryGroups.length / PAGE_SIZE));
+  const pageGroups = categoryGroups.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const sortBy = (key: SortKey, label: string) => {
     const nextDesc = sort.key === key ? !sort.desc : key !== 'beneficiary' && key !== 'category';
@@ -513,62 +569,132 @@ export function ExpensesPage({ me }: { me: Me }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {pageRows.map((item, index) => {
-                      const Icon = CATEGORY_BY_ID.get(item.category)?.icon;
-                      const opensGroup = grouped && (index === 0 || pageRows[index - 1].category !== item.category);
-                      const group = groupTotals.get(item.category);
-                      const status = getExpenseStatus(item.id, item.category, statusMap);
+                    {pageGroups.map((group) => {
+                      const Icon = CATEGORY_BY_ID.get(group.category)?.icon;
+                      const expanded = expandedCats.has(group.category);
+                      const single = group.count === 1 ? group.items[0] : null;
                       return [
-                        opensGroup && group && (
-                          <tr key={`g-${item.category}`} className="exp-group-row">
-                            <th scope="rowgroup" className="col-cat">
-                              {Icon && <Icon size={15} aria-hidden />} {categoryLabel(item.category)}
-                              <span><bdi>{formatNumber(group.count)}</bdi> قيد</span>
-                            </th>
-                            <td className="col-amount"><bdi>{formatNumber(group.total)}</bdi> <small className="exp-cur">{me.currency}</small></td>
-                            <td colSpan={4} className="exp-group-gap" />
-                            <td className="col-change"><Delta change={changeOf(item.category)} bar /></td>
-                            <td />
-                          </tr>
-                        ),
-                        <tr key={item.id} className="exp-row" onClick={() => (isPhone ? setViewing(item) : setDialog({ entry: item }))}>
-                          <td className="col-cat"><span className="exp-type" data-tone={TONE[item.category]}><span className="exp-type-icon" aria-hidden>{Icon && <Icon size={17} />}</span>{categoryLabel(item.category)}</span></td>
-                          <td className="col-amount"><bdi>{formatNumber(item.amount)}</bdi> <small className="exp-cur">{me.currency}</small></td>
+                        <tr
+                          key={group.category}
+                          className={`exp-row exp-cat-row${expanded ? ' expanded' : ''}`}
+                          aria-expanded={expanded}
+                          onClick={() => toggleCategory(group.category)}
+                        >
+                          <td className="col-cat">
+                            <span className="exp-type" data-tone={TONE[group.category]}>
+                              <span className="exp-type-icon" aria-hidden>{Icon && <Icon size={17} />}</span>
+                              <span className="exp-type-meta">
+                                <span>{categoryLabel(group.category)}</span>
+                                <small className="exp-cat-count"><bdi>{formatNumber(group.count)}</bdi> {group.count === 1 ? 'قيد' : 'قيود'}</small>
+                              </span>
+                            </span>
+                          </td>
+                          <td className="col-amount"><bdi>{formatNumber(group.total)}</bdi> <small className="exp-cur">{me.currency}</small></td>
                           <td className="col-person">
-                            <span className="exp-person-name">{item.beneficiary_name ?? <span className="exp-missing">غير محدد</span>}</span>
-                            {item.beneficiary_id !== null && (
-                              <span className="exp-file-no" title="مرتبط بسجل المشتركين">رقم الملف: <bdi>#{item.beneficiary_id}</bdi></span>
+                            <span className="exp-person-name">
+                              {group.primaryName ?? <span className="exp-missing">غير محدد</span>}
+                              {group.count > 1 && <span className="exp-more-people">+{formatNumber(group.count - 1)}</span>}
+                            </span>
+                            {single && single.beneficiary_id !== null && (
+                              <span className="exp-file-no" title="مرتبط بسجل المشتركين">رقم الملف: <bdi>#{single.beneficiary_id}</bdi></span>
+                            )}
+                            {group.count > 1 && (
+                              <span className="exp-file-no">اضغط لعرض التفاصيل</span>
                             )}
                           </td>
                           <td className="col-status">
-                            <button
-                              type="button"
-                              className={`exp-status-badge ${status}`}
-                              title="اضغط لتغيير حالة المستفيد"
-                              aria-label={`حالة المستفيد: ${STATUS_LABEL[status]} — اضغط للتغيير`}
-                              onClick={(event) => { event.stopPropagation(); cycleStatus(item); }}
-                            >
-                              {STATUS_LABEL[status]}
-                            </button>
+                            {single ? (
+                              <button
+                                type="button"
+                                className={`exp-status-badge ${group.status}`}
+                                title="اضغط لتغيير حالة المستفيد"
+                                aria-label={`حالة المستفيد: ${STATUS_LABEL[group.status]} — اضغط للتغيير`}
+                                onClick={(event) => { event.stopPropagation(); cycleStatus(single); }}
+                              >
+                                {STATUS_LABEL[group.status]}
+                              </button>
+                            ) : (
+                              <span className={`exp-status-badge ${group.status}`}>{STATUS_LABEL[group.status]}</span>
+                            )}
                           </td>
-                          <td className="col-details">{item.details || <span className="exp-missing">غير محدد</span>}</td>
+                          <td className="col-details">
+                            {single ? (single.details || <span className="exp-missing">غير محدد</span>) : `${formatNumber(group.count)} قيود مجمّعة`}
+                          </td>
                           <td className="col-date">
                             <span className="exp-date-pill">
                               <CalendarDays size={13} aria-hidden />
-                              <bdi dir="ltr">{shortDate(item.spent_on)}</bdi>
+                              <bdi dir="ltr">{shortDate(group.latestDate)}</bdi>
                             </span>
                           </td>
-                          <td className="col-change"><Delta change={changeOf(item.category)} bar /></td>
+                          <td className="col-change"><Delta change={changeOf(group.category)} bar /></td>
                           <td className="col-act">
-                            {item.files > 0 && <span className="exp-clip" title={`${formatNumber(item.files)} مرفق`}><Paperclip size={14} aria-hidden /><bdi>{item.files}</bdi></span>}
-                            <button type="button" className="exp-row-edit" aria-label={`تعديل قيد ${item.beneficiary_name ?? item.id}`} onClick={(event) => { event.stopPropagation(); setDialog({ entry: item }); }}>
-                              <Pencil size={15} aria-hidden />
-                            </button>
-                            <button type="button" className="exp-row-del" aria-label={`حذف قيد ${item.beneficiary_name ?? item.id}`} onClick={(event) => { event.stopPropagation(); void removeEntry(item); }}>
-                              <Trash2 size={15} aria-hidden />
+                            <button
+                              type="button"
+                              className={`exp-capsule-toggle${expanded ? ' open' : ''}`}
+                              aria-label={expanded ? `إخفاء تفاصيل ${categoryLabel(group.category)}` : `عرض تفاصيل ${categoryLabel(group.category)}`}
+                              onClick={(event) => { event.stopPropagation(); toggleCategory(group.category); }}
+                            >
+                              <ChevronDown size={16} aria-hidden />
                             </button>
                           </td>
                         </tr>,
+                        expanded && (
+                          <tr key={`${group.category}-capsule`} className="exp-capsule-row">
+                            <td colSpan={8}>
+                              <div className="exp-capsule-drawer" data-tone={TONE[group.category]}>
+                                <div className="exp-capsule-list">
+                                  {group.items.map((item) => {
+                                    const st = getExpenseStatus(item.id, item.category, statusMap);
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        className="exp-capsule-item"
+                                        onClick={() => (isPhone ? setViewing(item) : setDialog({ entry: item }))}
+                                      >
+                                        <div className="exp-cap-main">
+                                          <span className="exp-cap-person">
+                                            <strong>{item.beneficiary_name ?? 'غير محدد'}</strong>
+                                            {item.beneficiary_id !== null && (
+                                              <span className="exp-file-no">رقم الملف: <bdi>#{item.beneficiary_id}</bdi></span>
+                                            )}
+                                          </span>
+                                          {item.details && <span className="exp-cap-details">{item.details}</span>}
+                                        </div>
+
+                                        <div className="exp-cap-meta">
+                                          <button
+                                            type="button"
+                                            className={`exp-status-badge ${st}`}
+                                            title="اضغط لتغيير حالة المستفيد"
+                                            onClick={(event) => { event.stopPropagation(); cycleStatus(item); }}
+                                          >
+                                            {STATUS_LABEL[st]}
+                                          </button>
+                                          <span className="exp-date-pill">
+                                            <CalendarDays size={13} aria-hidden />
+                                            <bdi dir="ltr">{shortDate(item.spent_on)}</bdi>
+                                          </span>
+                                          <span className="exp-cap-amount">
+                                            <bdi>{formatNumber(item.amount)}</bdi> <small className="exp-cur">{me.currency}</small>
+                                          </span>
+                                          <span className="exp-cap-actions">
+                                            {item.files > 0 && <span className="exp-clip" title={`${formatNumber(item.files)} مرفق`}><Paperclip size={13} aria-hidden /><bdi>{item.files}</bdi></span>}
+                                            <button type="button" className="exp-row-edit" aria-label={`تعديل قيد ${item.beneficiary_name ?? item.id}`} onClick={(event) => { event.stopPropagation(); setDialog({ entry: item }); }}>
+                                              <Pencil size={14} aria-hidden />
+                                            </button>
+                                            <button type="button" className="exp-row-del" aria-label={`حذف قيد ${item.beneficiary_name ?? item.id}`} onClick={(event) => { event.stopPropagation(); void removeEntry(item); }}>
+                                              <Trash2 size={14} aria-hidden />
+                                            </button>
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ),
                       ];
                     })}
                   </tbody>
