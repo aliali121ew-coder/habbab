@@ -455,3 +455,20 @@ dialog.exp-dialog::backdrop {
 @keyframes exp-view-fade { from { opacity: 0; } }
 @keyframes exp-view-pop { from { opacity: 0; transform: translateY(10px) scale(.97); } }
 @media (prefers-reduced-motion: reduce) { .exp-view-layer, .exp-view { animation: none; } }
+
+@media (max-width: 767.98px) {
+  /* Register tools (group by heading, Excel) are left to the computer. */
+  .exp-board-head .exp-tools { display: none; }
+  /* The register title in a framed box. */
+  .exp-board-head { padding: 12px; }
+  .exp-board-head > div:first-child {
+    display: grid; gap: 2px; padding: 10px 12px; border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--bar-active) 26%, var(--line));
+    background: color-mix(in srgb, var(--bar-active) 7%, var(--surface));
+    border-inline-start: 4px solid var(--bar-active);
+  }
+  .exp-board-head h2 { font-size: clamp(.95rem, 4.4vw, 1.05rem); }
+  .exp-board-head p { margin: 0; font-size: .76rem; }
+  /* The coloured top border of the register is no longer needed above the framed title. */
+  .exp-board-head { border-top: 0; }
+}

@@ -718,3 +718,41 @@
   border: 0 !important;
   box-shadow: 0 14px 30px -14px rgb(0 0 0 / 70%) !important;
 }
+
+/* ══ Expenses summary on phones: one parent card in a soft theme gradient (like the delegates
+   page's), the current balance as its header, the four figures as tiles inside it. ══════════ */
+@media (max-width: 767.98px) {
+  :root .stage .bal {
+    padding: 12px; gap: 8px; border-radius: 22px;
+    background:
+      radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--bar-active) 22%, transparent) 0%, transparent 60%),
+      linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 12%, var(--surface)) 0%, var(--surface) 80%);
+    border: 1px solid color-mix(in srgb, var(--bar-active) 24%, var(--line));
+    box-shadow: 0 12px 26px -14px color-mix(in srgb, var(--bar-active) 45%, rgb(16 24 40 / 40%));
+  }
+  :root[data-theme="dark"] .stage .bal {
+    background:
+      radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--bar-active) 30%, transparent) 0%, transparent 60%),
+      linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 16%, var(--surface)) 0%, var(--surface) 80%);
+    border-color: color-mix(in srgb, var(--bar-active) 30%, rgb(255 255 255 / 8%));
+    box-shadow: 0 14px 30px -14px rgb(0 0 0 / 70%);
+  }
+  /* The current balance: the parent card's header, no box of its own. */
+  :root:root:root:root .stage .bal .bal-card.bal-now.bal-now.bal-now.bal-now {
+    background: none !important; border: 0 !important; box-shadow: none !important;
+    padding: 4px 6px 6px; -webkit-backdrop-filter: none; backdrop-filter: none;
+  }
+  :root:root:root:root .stage .bal .bal-card.bal-now.bal-now.bal-now.bal-now :is(h2, .bal-value small) { color: var(--ink-2); }
+  :root:root:root:root .stage .bal .bal-card.bal-now.bal-now.bal-now.bal-now .bal-value { color: var(--ink); }
+  :root:root:root:root .stage .bal .bal-card.bal-now.neg.bal-now.bal-now .bal-value { color: var(--danger); }
+  /* The four figures: quiet tiles inside the card. */
+  :root:root:root:root .stage .bal .bal-card.bal-card.bal-card:not(.bal-now) {
+    background: color-mix(in srgb, var(--surface) 78%, transparent) !important;
+    border: 1px solid color-mix(in srgb, var(--bar-active) 14%, var(--line)) !important;
+    box-shadow: none !important;
+  }
+  :root:root:root:root[data-theme="dark"] .stage .bal .bal-card.bal-card.bal-card:not(.bal-now) {
+    background: rgb(255 255 255 / 4%) !important;
+    border: 1px solid rgb(255 255 255 / 8%) !important;
+  }
+}
