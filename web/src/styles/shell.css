@@ -642,3 +642,9 @@
   .register .reg-table tbody tr { position: relative; }
   .register .sub-pending { position: absolute; top: 10px; inset-inline-end: 12px; margin: 0; }
 }
+
+/* Phone: on the families list the path only repeated the page title ("الرئيسية › العوائل
+   المتعففة" right above "العوائل المتعففة"), so it is hidden there. The family file keeps it. */
+@media (max-width: 767.98px) {
+  .shell-crumbs[data-route="families"] { display: none; }
+}

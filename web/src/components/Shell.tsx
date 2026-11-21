@@ -281,7 +281,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
           </div>
         </header>
         <main className="page">
-          {me.role === 'admin' && crumbsFor(route) && <div className="shell-crumbs"><Breadcrumbs items={crumbsFor(route)!} /></div>}
+          {me.role === 'admin' && crumbsFor(route) && <div className="shell-crumbs" data-route={route}><Breadcrumbs items={crumbsFor(route)!} /></div>}
           {children}
         </main>
       </div>
