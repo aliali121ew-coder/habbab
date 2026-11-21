@@ -2137,3 +2137,10 @@ button.fam-ref-initials:active { transform: scale(.96); }
 }
 .fam-ref-cam svg { width: 12px; height: 12px; }
 :root[data-theme="dark"] .fam-ref-cam { background: var(--surface); }
+
+/* Families header buttons and icon take the theme colour (they were a fixed blue, so they
+   stayed blue when the palette changed while the cards followed it). */
+.fam-theme-fill {
+  background: var(--accent-grad);
+  box-shadow: 0 10px 22px -10px color-mix(in srgb, var(--bar-active) 70%, transparent);
+}

@@ -64,7 +64,7 @@ export function FiltersToolbar({
   const sheetActive = (filters.delegateId !== 'all' ? 1 : 0) + (filters.paymentStatus !== 'all' ? 1 : 0);
 
   const chipClass = (active) => `inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[13px] font-semibold transition ${
-    active ? 'bg-blue-600 text-white shadow-sm' : 'border border-slate-200/80 bg-white text-slate-700'
+    active ? 'bg-[var(--bar-active)] text-white shadow-sm' : 'border border-slate-200/80 bg-white text-slate-700'
   }`;
 
   const activeDelegate = DELEGATES.find((d) => String(d.id) === String(filters.delegateId));

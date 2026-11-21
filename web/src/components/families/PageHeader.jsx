@@ -59,7 +59,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
     {/* Phone: one compact row (title + month under it, today's date for the calendar), then the add button */}
     <header className="md:hidden" ref={menuRef}>
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-bl from-blue-600 to-indigo-600 text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.65)]">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl fam-theme-fill text-white">
           <HeartHandshake className="h-6 w-6" aria-hidden />
         </div>
         <div className="relative min-w-0 flex-1">
@@ -70,7 +70,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
             aria-expanded={monthMenuOpen}
             aria-haspopup="menu"
             aria-label={`الشهر: ${activeMonth.label}`}
-            className="-ms-1 mt-0.5 inline-flex min-h-[32px] items-center gap-1 rounded-lg px-1 text-[13px] font-semibold text-blue-600"
+            className="-ms-1 mt-0.5 inline-flex min-h-[32px] items-center gap-1 rounded-lg px-1 text-[13px] font-semibold text-[var(--bar-active)]"
           >
             <Calendar className="h-4 w-4" aria-hidden />
             <span>{activeMonth.label}</span>
@@ -86,7 +86,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
       <button
         type="button"
         onClick={onAddFamily}
-        className="fam-add-top mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-l from-blue-600 to-indigo-600 text-sm font-bold text-white shadow-[0_10px_22px_-10px_rgba(37,99,235,0.7)] active:scale-[.98]"
+        className="fam-add-top mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl fam-theme-fill text-sm font-bold text-white active:scale-[.98]"
       >
         <Plus className="h-5 w-5" aria-hidden />
         <span>إضافة عائلة</span>
@@ -103,7 +103,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
         </nav>
 
         <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-bl from-blue-600 to-indigo-600 text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.65)]">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl fam-theme-fill text-white">
             <HeartHandshake className="h-6 w-6" aria-hidden />
           </div>
           <div>
@@ -126,7 +126,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
             aria-haspopup="menu"
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200/80 bg-white px-3.5 text-xs font-semibold text-slate-700 shadow-xs transition hover:border-slate-300 hover:bg-slate-50"
           >
-            <Calendar className="h-4 w-4 text-blue-600" aria-hidden />
+            <Calendar className="h-4 w-4 text-[var(--bar-active)]" aria-hidden />
             <span>{activeMonth.label}</span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" aria-hidden />
           </button>
@@ -146,7 +146,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
         <button
           type="button"
           onClick={onAddFamily}
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-l from-blue-600 to-indigo-600 px-4 text-xs font-semibold text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.65)] transition hover:brightness-105"
+          className="inline-flex h-10 items-center gap-2 rounded-xl fam-theme-fill px-4 text-xs font-semibold text-white transition hover:brightness-105"
         >
           <Plus className="h-4 w-4" aria-hidden />
           <span>إضافة عائلة</span>
