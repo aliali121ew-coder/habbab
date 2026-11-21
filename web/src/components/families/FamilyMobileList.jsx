@@ -1,4 +1,6 @@
-import { ChevronLeft, MapPin, Users } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { Camera, ChevronLeft, MapPin, Users } from 'lucide-react';
+import { PhotoFramer } from '../PhotoFramer';
 import { CATEGORY_CONFIG } from '../../utils/format';
 
 // Two initials from the head of the family ("زينب كاظم" → "زك"), as on the reference card.
@@ -17,7 +19,21 @@ const dayMonth = (date) => `${date.slice(0, 4)}/${Number(date.slice(5, 7))}/${Nu
  * start with the initials and the family's priority; the name with a small arrow,
  * the only way into the file; area and members; the last aid and how many this month.
  */
-export function FamilyMobileList({ families, loading, onOpenFullFile }) {
+// A Blob → "data:image/…" so the photo can be kept with the family on this device.
+const toDataUrl = (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = () => reject(new Error('تعذّر حفظ الصورة'));
+  reader.readAsDataURL(blob);
+});
+
+export function FamilyMobileList({ families, loading, onOpenFullFile, onPhoto }) {
+  // The family whose photo is being chosen, and the chosen file waiting in the framer.
+  const fileInput = useRef(null);
+  const [photoFor, setPhotoFor] = useState(null);
+  const [framing, setFraming] = useState(null);
+  const pickFor = (family) => { setPhotoFor(family.id); fileInput.current?.click(); };
+
   if (loading) {
     return (
       <ul className="grid gap-3" aria-busy="true">
@@ -27,6 +43,12 @@ export function FamilyMobileList({ families, loading, onOpenFullFile }) {
   }
 
   return (
+    <>
+    <input ref={fileInput} type="file" accept="image/*" hidden onChange={(event) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+      if (file) setFraming(file);
+    }} />
     <ul className="fam-ref-list" aria-label="قائمة العوائل">
       {families.map((family) => {
         const cat = CATEGORY_CONFIG[family.category] ?? CATEGORY_CONFIG.stable;
@@ -36,8 +58,13 @@ export function FamilyMobileList({ families, loading, onOpenFullFile }) {
         const thisMonth = payments.filter((payment) => payment.date.startsWith(month)).length;
         return (
           <li key={family.id} className="fam-ref-card">
-            <div className="fam-ref-band" aria-hidden>
-              <span className="fam-ref-initials">{initials(family)}</span>
+            <div className="fam-ref-band">
+              {/* The family's photo, or its initials; tapping it chooses a new photo. */}
+              <button type="button" className="fam-ref-initials" onClick={() => pickFor(family)}
+                aria-label={family.photo ? `تغيير صورة ${family.name}` : `إضافة صورة لـ ${family.name}`}>
+                {family.photo ? <img src={family.photo} alt="" /> : initials(family)}
+                {!family.photo && <span className="fam-ref-cam" aria-hidden><Camera /></span>}
+              </button>
               <span className="fam-ref-tier">{cat.label}</span>
             </div>
 
@@ -69,5 +96,16 @@ export function FamilyMobileList({ families, loading, onOpenFullFile }) {
         );
       })}
     </ul>
+    {framing && (
+      <PhotoFramer
+        source={framing}
+        onCancel={() => setFraming(null)}
+        onDone={async (framed) => {
+          onPhoto?.(photoFor, await toDataUrl(framed));
+          setFraming(null);
+        }}
+      />
+    )}
+    </>
   );
 }

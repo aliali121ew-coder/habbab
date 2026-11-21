@@ -177,6 +177,11 @@ export function FamiliesPage() {
           <>
           <div className="md:hidden">
             <FamilyMobileList
+              onPhoto={(familyId, photo) => {
+                const updated = families.map((fam) => (fam.id === familyId ? { ...fam, photo } : fam));
+                setFamilies(updated);
+                saveFamiliesStore(updated);
+              }}
               families={filtered}
               loading={loading}
               onOpenFullFile={handleOpenFullFile}
