@@ -124,6 +124,17 @@
   .exp-flat { min-width: 0; }
   .exp-flat tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
   .exp-flat tr > * { width: auto; min-width: 0; padding: 0; border: 0; background: none !important; }
+  /* The desktop column widths (.exp-flat .col-person { width: 15% } …) are more specific than the
+     line above and squeezed each cell to a sliver inside the card, breaking names letter by letter
+     ("يوس ف حميد"). These reset them in the card. */
+  .exp-flat .exp-row > td, .exp-flat .exp-group-row > :is(td, th), .exp-flat tfoot tr > :is(td, th) { width: auto; }
+  /* Category header (grouped view): icon, name and count on one line, the total opposite. */
+  .exp-flat .exp-group-row .col-cat { grid-column: 1; grid-row: 1; display: flex; align-items: center; gap: 6px; white-space: nowrap; font-weight: 800; }
+  .exp-flat .exp-group-row .col-cat span { color: var(--ink-3); font-size: .78rem; font-weight: 600; }
+  .exp-flat .exp-group-row .col-amount { grid-column: 2; grid-row: 1; }
+  .exp-flat .exp-group-row .col-change { grid-column: 1 / -1; grid-row: 2; }
+  .exp-flat .exp-row .col-person { font-size: .98rem; font-weight: 700; overflow-wrap: normal; }
+  .exp-flat .exp-row .col-amount { font-size: 1rem; font-weight: 800; }
   .exp-row .col-person { grid-column: 1; grid-row: 1; }
   .exp-row .col-amount { grid-column: 2; grid-row: 1; }
   .exp-row .col-cat { grid-column: 1; grid-row: 2; }
