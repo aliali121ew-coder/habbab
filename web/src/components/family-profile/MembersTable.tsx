@@ -147,6 +147,9 @@ export function MemberSheet({ member, patient, onClose }: { member: FamilyMember
           { label: 'العمر', value: `${member.age} سنة` },
           { label: 'الدراسة / العمل', value: member.status },
           { label: 'الحالة الصحية', value: member.chronic ?? 'سليم' },
+          ...(member.gender ? [{ label: 'الجنس', value: member.gender }] : []),
+          ...(member.phone ? [{ label: 'رقم الهاتف', value: <a href={`tel:${member.phone.replace(/\s/g, '')}`} dir="ltr">{member.phone}</a> }] : []),
+          ...(member.notes ? [{ label: 'ملاحظات', value: member.notes }] : []),
         ]}
       />
 

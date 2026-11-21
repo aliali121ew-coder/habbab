@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MotionConfig, motion } from 'framer-motion';
-import { ArrowRight, Check, HandCoins, HeartHandshake, X } from 'lucide-react';
+import { ArrowRight, HandCoins, HeartHandshake } from 'lucide-react';
 import { printWhenReady } from '../components/printWhenReady';
 import { OfficialFamiliesPrintSheet, PaymentModal, VisitModal } from '../components/families/FamilyModalsAndPrint';
+import { AddMemberDialog, type NewMember } from '../components/family-profile/AddMemberDialog';
 import { AidBoard } from '../components/family-profile/AidBoard';
 import { AidSourceSheet, FoundationSheet } from '../components/family-profile/AidSections';
 import { FamilyHero } from '../components/family-profile/FamilyHero';
@@ -31,11 +32,6 @@ export function FamilyDetailPage() {
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
 
-  // Add Member form state
-  const [memName, setMemName] = useState('');
-  const [memRelation, setMemRelation] = useState('ابن');
-  const [memAge, setMemAge] = useState('10');
-  const [memStatus, setMemStatus] = useState('طالب ابتدائي');
 
   useEffect(() => {
     setFamily(getFamilyDetailById(familyId));
@@ -112,29 +108,13 @@ export function FamilyDetailPage() {
     showToast('تم تسجيل زيارة المندوب بنجاح');
   };
 
-  const handleAddMember = (e: FormEvent) => {
-    e.preventDefault();
-    if (!memName.trim()) return;
+  const handleAddMember = (member: NewMember) => {
     const store = loadFamiliesStore();
-    const updated = store.map((f) => (f.id === familyId
-      ? {
-        ...f,
-        members: [
-          ...(f.members ?? []),
-          {
-            name: memName.trim(),
-            relation: memRelation.trim(),
-            age: Math.max(1, Number(memAge) || 1),
-            status: memStatus.trim(),
-          },
-        ],
-      }
-      : f));
+    const updated = store.map((f) => (f.id === familyId ? { ...f, members: [...(f.members ?? []), member] } : f));
     saveFamiliesStore(updated);
     setFamily(getFamilyDetailById(familyId));
-    setMemName('');
     setAddMemberOpen(false);
-    showToast(`تمت إضافة ${memName.trim()} إلى أفراد العائلة`);
+    showToast(`تمت إضافة ${member.name} إلى أفراد العائلة`);
   };
 
   if (!family) {
@@ -269,91 +249,7 @@ export function FamilyDetailPage() {
         )}
 
         {addMemberOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-xs">
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="إضافة فرد جديد للعائلة"
-              className="fp-card w-full max-w-md overflow-hidden"
-            >
-              <div className="flex items-center justify-between border-b px-5 py-4" style={{ borderColor: 'var(--fp-border)' }}>
-                <h2 className="text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>إضافة فرد جديد للعائلة</h2>
-                <button
-                  type="button"
-                  onClick={() => setAddMemberOpen(false)}
-                  aria-label="إغلاق"
-                  style={{ color: 'var(--fp-ink-3)' }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <form onSubmit={handleAddMember} className="space-y-3.5 p-5 text-xs">
-                <label className="block">
-                  <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>الاسم الكامل *</span>
-                  <input
-                    type="text"
-                    required
-                    value={memName}
-                    onChange={(e) => setMemName(e.target.value)}
-                    className="h-10 w-full rounded-xl border px-3"
-                    style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
-                  />
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>الصلة</span>
-                    <input
-                      type="text"
-                      value={memRelation}
-                      onChange={(e) => setMemRelation(e.target.value)}
-                      className="h-10 w-full rounded-xl border px-3"
-                      style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>العمر</span>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      dir="ltr"
-                      value={memAge}
-                      onChange={(e) => setMemAge(e.target.value)}
-                      className="h-10 w-full rounded-xl border px-3"
-                      style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
-                    />
-                  </label>
-                </div>
-                <label className="block">
-                  <span className="mb-1 block font-semibold" style={{ color: 'var(--fp-ink-2)' }}>الوضع (دراسة / عمل / صحة)</span>
-                  <input
-                    type="text"
-                    value={memStatus}
-                    onChange={(e) => setMemStatus(e.target.value)}
-                    className="h-10 w-full rounded-xl border px-3"
-                    style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink)' }}
-                  />
-                </label>
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setAddMemberOpen(false)}
-                    className="h-9 rounded-xl border px-4 font-semibold"
-                    style={{ borderColor: 'var(--fp-border)', color: 'var(--fp-ink-2)' }}
-                  >
-                    إلغاء
-                  </button>
-                  <button
-                    type="submit"
-                    className="inline-flex h-9 items-center gap-1 rounded-xl px-4 font-semibold text-white"
-                    style={{ backgroundColor: 'var(--fp-primary)' }}
-                  >
-                    <Check className="h-3.5 w-3.5" aria-hidden /> حفظ
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
+          <AddMemberDialog familyName={family.name} onClose={() => setAddMemberOpen(false)} onSave={handleAddMember} />
         )}
 
         {printing && rawStoreFamily && createPortal(

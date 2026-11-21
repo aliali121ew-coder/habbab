@@ -18,6 +18,9 @@ export interface FamilyMember {
   age: number;
   status: string;
   chronic?: string;
+  gender?: 'ذكر' | 'أنثى';
+  phone?: string;
+  notes?: string;
   orphanLabel?: 'يتيم' | 'يتيمة';
   patientId?: number;
 }

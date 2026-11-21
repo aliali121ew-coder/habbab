@@ -157,7 +157,7 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
   const { salary = 0, aid = 0, medicine = 0, checkups = 0 } = raw.entitlements ?? {};
   const totalDue = salary + aid + medicine + checkups;
 
-  const members: FamilyMember[] = (raw.members ?? []).map((m: { name: string; relation: string; age: number; status: string; chronic?: string }, idx: number) => ({
+  const members: FamilyMember[] = (raw.members ?? []).map((m: { name: string; relation: string; age: number; status: string; chronic?: string; gender?: 'ذكر' | 'أنثى'; phone?: string; notes?: string }, idx: number) => ({
     id: `mem-${raw.id}-${idx}`,
     name: m.name,
     initials: toInitials(m.name),
@@ -165,6 +165,9 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
     age: m.age,
     status: m.status,
     chronic: m.chronic,
+    gender: m.gender,
+    phone: m.phone,
+    notes: m.notes,
     orphanLabel: m.relation.includes('يتيمة') ? 'يتيمة' : m.relation.includes('يتيم') ? 'يتيم' : undefined,
     patientId: raw.patients?.find((p: { id?: number; name: string }) => p.name === m.name)?.id,
   }));
