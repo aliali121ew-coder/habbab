@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowDown, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, Download, Layers, Minus, Paperclip, Pencil,
+  ArrowDown, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, Download, HeartPulse, Layers, Minus, Paperclip, Pencil,
   Plus, Printer, Receipt, Search, Sheet, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X, Archive, Gift,
 } from 'lucide-react';
 import { BackToClose } from '../../components/useBackToClose';
@@ -13,6 +13,10 @@ import { StateMessage } from '../../components/StateMessage';
 import { DatePicker, monthRange, periodLabel, wholeMonth, type DateRange } from '../../components/DatePicker';
 import { MONTH_NAMES, formatNumber, formatPercent, monthIndex, today } from '../../format';
 import { CATEGORIES, CATEGORY_BY_ID, type ExpenseCategory } from './categories';
+import {
+  STATUS_LABEL, STATUS_ORDER, getExpenseStatus, loadStatusMap, nextStatus, setExpenseStatus,
+  type BeneficiaryStatus,
+} from './beneficiaryStatus';
 import { ExpenseDialog } from './ExpenseDialog';
 import { ExpensesPrintModal } from './ExpensesPrintModal';
 
@@ -37,7 +41,7 @@ interface MonthSheet {
   year: { total: number; count: number }[];
 }
 
-type SortKey = 'spent_on' | 'category' | 'beneficiary' | 'amount';
+type SortKey = 'spent_on' | 'category' | 'beneficiary' | 'status' | 'amount';
 
 const PAGE_SIZE = 25;
 
@@ -66,15 +70,22 @@ function monthBefore(range: DateRange): DateRange {
 }
 
 // A heading's spending against the month before: a red arrow up when more was spent, a green
-// arrow down when less, a dash when steady, «جديد» when the heading had nothing the month before.
+// arrow down when less, a dash when steady.
 function Delta({ change }: { change: number | null | undefined }) {
   if (change === undefined) return <span className="exp-delta muted">—</span>;
-  if (change === null) return <span className="exp-delta new">جديد</span>;
+  if (change === null) {
+    return (
+      <span className="exp-delta up" title="زيادة عن الشهر السابق">
+        <ArrowUp size={15} strokeWidth={2.5} aria-label="زيادة" />
+        <bdi>100%</bdi>
+      </span>
+    );
+  }
   if (Math.abs(change) < 0.05) return <span className="exp-delta flat"><Minus size={14} aria-hidden /><bdi>0%</bdi></span>;
   const up = change > 0;
   return (
-    <span className={`exp-delta ${up ? 'up' : 'down'}`} title={up ? 'صُرف أكثر من الشهر السابق' : 'صُرف أقل من الشهر السابق'}>
-      {up ? <ArrowUp size={15} strokeWidth={2.5} aria-label="ارتفاع" /> : <ArrowDown size={15} strokeWidth={2.5} aria-label="انخفاض" />}
+    <span className={`exp-delta ${up ? 'up' : 'down'}`} title={up ? 'زيادة عن الشهر السابق' : 'انخفاض عن الشهر السابق'}>
+      {up ? <ArrowUp size={15} strokeWidth={2.5} aria-label="زيادة" /> : <ArrowDown size={15} strokeWidth={2.5} aria-label="انخفاض" />}
       <bdi>{formatPercent(Math.abs(change))}</bdi>
     </span>
   );
@@ -82,11 +93,12 @@ function Delta({ change }: { change: number | null | undefined }) {
 
 /**
  * One entry's details in a centred window (phones): the heading with its icon and the amount in
- * large type, then beneficiary, date, details, the heading's change on last month and the
- * attachments; «تعديل القيد» opens the entry for editing.
+ * large type, then beneficiary, beneficiary status, date, details, the heading's percentage change
+ * on last month and the attachments; «تعديل القيد» opens the entry for editing.
  */
-function ExpenseView({ item, change, currency, onEdit, onClose }: {
+function ExpenseView({ item, status, change, currency, onEdit, onClose }: {
   item: ExpenseItem;
+  status: BeneficiaryStatus;
   change: number | null | undefined;
   currency: string;
   onEdit: () => void;
@@ -95,9 +107,10 @@ function ExpenseView({ item, change, currency, onEdit, onClose }: {
   const Icon = CATEGORY_BY_ID.get(item.category)?.icon;
   const rows: [typeof User, string, React.ReactNode][] = [
     [User, 'المستفيد', item.beneficiary_name ?? <span className="exp-missing">غير محدد</span>],
+    [HeartPulse, 'حالة المستفيد', <span key="s" className={`exp-status-badge ${status}`}>{STATUS_LABEL[status]}</span>],
     [CalendarDays, 'التاريخ', <bdi key="d" dir="ltr">{shortDate(item.spent_on)}</bdi>],
     [FileText, 'التفاصيل', item.details || <span className="exp-missing">غير محدد</span>],
-    [BarChart3, 'مقارنة بالشهر السابق', <Delta key="c" change={change} />],
+    [BarChart3, 'النسبة', <Delta key="c" change={change} />],
   ];
   if (item.files > 0) rows.push([Paperclip, 'المرفقات', <bdi key="f">{formatNumber(item.files)}</bdi>]);
   return createPortal(
@@ -207,22 +220,28 @@ const TONE: Record<ExpenseCategory, string> = {
   other_aid: 'other',
 };
 
-function compare(a: ExpenseItem, b: ExpenseItem, key: SortKey): number {
+function compare(a: ExpenseItem, b: ExpenseItem, key: SortKey, statusMap: Record<number, BeneficiaryStatus>): number {
   if (key === 'amount') return a.amount - b.amount;
   if (key === 'category') return (categoryOrder.get(a.category) ?? 0) - (categoryOrder.get(b.category) ?? 0);
   if (key === 'beneficiary') return (a.beneficiary_name ?? '').localeCompare(b.beneficiary_name ?? '', 'ar');
+  if (key === 'status') {
+    const sa = STATUS_ORDER[getExpenseStatus(a.id, a.category, statusMap)];
+    const sb = STATUS_ORDER[getExpenseStatus(b.id, b.category, statusMap)];
+    return sa - sb;
+  }
   return a.spent_on.localeCompare(b.spent_on) || a.id - b.id;
 }
 
 // The rows on screen as a spreadsheet: UTF-8 with a byte-order mark, so Excel reads Arabic as is.
-function exportCsv(rows: ExpenseItem[], period: string) {
+function exportCsv(rows: ExpenseItem[], period: string, statusMap: Record<number, BeneficiaryStatus>) {
   const cell = (value: string | number | null) => {
     const text = value === null ? '' : String(value);
     return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
   };
-  const head = ['التاريخ', 'نوع الصرف', 'المستفيد', 'رقم المشترك', 'الوصف', 'المبلغ', 'أُدخل بواسطة', 'وقت الإدخال', 'المرفقات'];
+  const head = ['التاريخ', 'نوع الصرف', 'المستفيد', 'حالة المستفيد', 'رقم المشترك', 'الوصف', 'المبلغ', 'أُدخل بواسطة', 'وقت الإدخال', 'المرفقات'];
   const lines = rows.map((row) => [
-    row.spent_on, categoryLabel(row.category), row.beneficiary_name, row.beneficiary_id, row.details, row.amount,
+    row.spent_on, categoryLabel(row.category), row.beneficiary_name, STATUS_LABEL[getExpenseStatus(row.id, row.category, statusMap)],
+    row.beneficiary_id, row.details, row.amount,
     row.created_by_name, row.created_at.slice(0, 16).replace('T', ' '), row.files,
   ].map(cell).join(','));
   const blob = new Blob(['﻿', [head.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
@@ -259,6 +278,12 @@ export function ExpensesPage({ me }: { me: Me }) {
   const [sortStatus, setSortStatus] = useState('');
   const [grouped, setGrouped] = useState(false);
   const [page, setPage] = useState(0);
+  const [statusMap, setStatusMap] = useState<Record<number, BeneficiaryStatus>>(() => loadStatusMap());
+
+  const cycleStatus = (item: ExpenseItem) => {
+    const current = getExpenseStatus(item.id, item.category, statusMap);
+    setStatusMap(setExpenseStatus(item.id, nextStatus(current)));
+  };
 
   // The year card and the month comparison follow the month the period ends in.
   const year = Number(range.to.slice(0, 4));
@@ -356,11 +381,11 @@ export function ExpensesPage({ me }: { me: Me }) {
       (!category || item.category === category)
       && (!needle || `${item.beneficiary_name ?? ''} ${item.details ?? ''}`.toLowerCase().includes(needle))
     ));
-    shown.sort((a, b) => (sort.desc ? -1 : 1) * compare(a, b, sort.key));
+    shown.sort((a, b) => (sort.desc ? -1 : 1) * compare(a, b, sort.key, statusMap));
     // Grouping keeps the chosen order inside each heading, and the headings in the paper's order.
     if (grouped) shown.sort((a, b) => (categoryOrder.get(a.category) ?? 0) - (categoryOrder.get(b.category) ?? 0));
     return shown;
-  }, [sheet, query, category, sort, grouped]);
+  }, [sheet, query, category, sort, grouped, statusMap]);
 
   const markedDays = useMemo(() => new Set(sheet?.items.map((item) => item.spent_on.slice(0, 10)) ?? []), [sheet]);
   const filtered = rows.length !== (sheet?.items.length ?? 0);
@@ -441,7 +466,7 @@ export function ExpensesPage({ me }: { me: Me }) {
                 <button type="button" className={`exp-tool${grouped ? ' on' : ''}`} aria-pressed={grouped} onClick={() => setGrouped((value) => !value)}>
                   <Layers size={15} aria-hidden /> تجميع حسب الباب
                 </button>
-                <button type="button" className="exp-tool" disabled={!rows.length} onClick={() => exportCsv(rows, period)}>
+                <button type="button" className="exp-tool" disabled={!rows.length} onClick={() => exportCsv(rows, period, statusMap)}>
                   <Download size={15} aria-hidden /> تصدير Excel
                 </button>
               </div>
@@ -475,9 +500,10 @@ export function ExpensesPage({ me }: { me: Me }) {
                       {header('category', 'نوع الصرف', 'col-cat', 'text')}
                       {header('amount', 'المبلغ', 'col-amount', 'number')}
                       {header('beneficiary', 'المستفيد', 'col-person', 'text')}
+                      {header('status', 'حالة المستفيد', 'col-status', 'text')}
                       <th scope="col" className="col-details">التفاصيل</th>
                       {header('spent_on', 'التاريخ', 'col-date', 'date')}
-                      <th scope="col" className="col-change" title="مجموع نوع الصرف مقارنة بالشهر السابق">مقارنة بالشهر السابق</th>
+                      <th scope="col" className="col-change" title="نسبة التغيّر عن الشهر السابق">النسبة</th>
                       <th scope="col" className="col-act">الإجراءات</th>
                     </tr>
                   </thead>
@@ -486,6 +512,7 @@ export function ExpensesPage({ me }: { me: Me }) {
                       const Icon = CATEGORY_BY_ID.get(item.category)?.icon;
                       const opensGroup = grouped && (index === 0 || pageRows[index - 1].category !== item.category);
                       const group = groupTotals.get(item.category);
+                      const status = getExpenseStatus(item.id, item.category, statusMap);
                       return [
                         opensGroup && group && (
                           <tr key={`g-${item.category}`} className="exp-group-row">
@@ -494,7 +521,7 @@ export function ExpensesPage({ me }: { me: Me }) {
                               <span><bdi>{formatNumber(group.count)}</bdi> قيد</span>
                             </th>
                             <td className="col-amount"><bdi>{formatNumber(group.total)}</bdi></td>
-                            <td colSpan={3} className="exp-group-gap" />
+                            <td colSpan={4} className="exp-group-gap" />
                             <td className="col-change"><Delta change={changeOf(item.category)} /></td>
                             <td />
                           </tr>
@@ -505,6 +532,17 @@ export function ExpensesPage({ me }: { me: Me }) {
                           <td className="col-person">
                             {item.beneficiary_name ?? <span className="exp-missing">غير محدد</span>}
                             {item.beneficiary_id !== null && <small className="exp-linked" title="مرتبط بسجل المشتركين">#{item.beneficiary_id}</small>}
+                          </td>
+                          <td className="col-status">
+                            <button
+                              type="button"
+                              className={`exp-status-badge ${status}`}
+                              title="اضغط لتغيير حالة المستفيد"
+                              aria-label={`حالة المستفيد: ${STATUS_LABEL[status]} — اضغط للتغيير`}
+                              onClick={(event) => { event.stopPropagation(); cycleStatus(item); }}
+                            >
+                              {STATUS_LABEL[status]}
+                            </button>
                           </td>
                           <td className="col-details">{item.details || <span className="exp-missing">غير محدد</span>}</td>
                           <td className="col-date"><bdi dir="ltr">{shortDate(item.spent_on)}</bdi></td>
@@ -523,7 +561,7 @@ export function ExpensesPage({ me }: { me: Me }) {
                     <tr>
                       <th scope="row" className="col-cat">{filtered ? 'مجموع القيود المعروضة' : (isMonth ? `المجموع الكلي لشهر ${MONTH_NAMES[month]}` : 'المجموع الكلي للمدة')}</th>
                       <td className="col-amount">{money(shownTotal)}</td>
-                      <td colSpan={5}>{filtered && <small>من أصل <bdi>{formatNumber(figures.total)}</bdi></small>}</td>
+                      <td colSpan={6}>{filtered && <small>من أصل <bdi>{formatNumber(figures.total)}</bdi></small>}</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -559,6 +597,7 @@ export function ExpensesPage({ me }: { me: Me }) {
       {viewing && (
         <ExpenseView
           item={viewing}
+          status={getExpenseStatus(viewing.id, viewing.category, statusMap)}
           change={changeOf(viewing.category)}
           currency={me.currency}
           onEdit={() => { const entry = viewing; setViewing(null); setDialog({ entry }); }}
@@ -572,7 +611,7 @@ export function ExpensesPage({ me }: { me: Me }) {
           defaultDate={dayIn(range)}
           currency={me.currency}
           onClose={() => setDialog(null)}
-          onSaved={() => { setDialog(null); void load(); }}
+          onSaved={() => { setDialog(null); setStatusMap(loadStatusMap()); void load(); }}
         />
       )}
     </>

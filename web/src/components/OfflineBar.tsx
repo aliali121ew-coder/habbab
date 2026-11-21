@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import { CheckCircle2, CloudUpload, Info, TriangleAlert, WifiOff, X } from 'lucide-react';
-import { showingSavedCopy } from '../api';
+import { CheckCircle2, CloudUpload, Info, TriangleAlert, X } from 'lucide-react';
 import { MONTH_NAMES, formatNumber } from '../format';
-import { dismissUnsent, onQueueChange, queuedPayments, syncPayments, unsentPayments } from '../paymentQueue';
+import { dismissUnsent, queuedPayments, syncPayments, unsentPayments } from '../paymentQueue';
 
 const monthLabel = (period: string) => `${MONTH_NAMES[Number(period.slice(5, 7)) - 1]} ${period.slice(0, 4)}`;
 
@@ -13,7 +12,6 @@ const monthLabel = (period: string) => `${MONTH_NAMES[Number(period.slice(5, 7))
 // - payments the server refused, each with its reason, until dismissed.
 export function OfflineBar({ userId, currency }: { userId: number; currency: string }) {
   const [offline, setOffline] = useState(() => !navigator.onLine);
-  const [saved, setSaved] = useState(showingSavedCopy);
   const [waiting, setWaiting] = useState(() => queuedPayments(userId));
   const [unsent, setUnsent] = useState(() => unsentPayments(userId));
   const [justSent, setJustSent] = useState(0);
@@ -22,14 +20,11 @@ export function OfflineBar({ userId, currency }: { userId: number; currency: str
   useEffect(() => {
     const on = () => setOffline(false);
     const off = () => setOffline(true);
-    const copy = (event: Event) => setSaved((event as CustomEvent<boolean>).detail);
     window.addEventListener('online', on);
     window.addEventListener('offline', off);
-    window.addEventListener('ahbab:saved-copy', copy);
     return () => {
       window.removeEventListener('online', on);
       window.removeEventListener('offline', off);
-      window.removeEventListener('ahbab:saved-copy', copy);
     };
   }, []);
 
@@ -57,16 +52,9 @@ export function OfflineBar({ userId, currency }: { userId: number; currency: str
     setSending(false);
   };
 
-  if (!offline && !saved && !waiting.length && !unsent.length && !justSent) return null;
+  if (!waiting.length && !unsent.length && !justSent) return null;
   return (
     <div className="offline-stack" aria-live="polite">
-      {(offline || saved) && (
-        <div className="offline-bar" role="status">
-          <WifiOff size={16} aria-hidden />
-          <span>بدون اتصال — تُعرض آخر بيانات محفوظة على الجهاز. التسديدات تُحفظ على الجهاز وتُرسل عند عودة الاتصال</span>
-        </div>
-      )}
-
       {waiting.length > 0 && (
         <div className="offline-bar sync-waiting" role="status">
           <CloudUpload size={16} aria-hidden />

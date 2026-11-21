@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { CalendarDays, FileText, History, Paperclip, Receipt, Trash2, UserRound, Wallet, X } from 'lucide-react';
+import { CalendarDays, FileText, HeartPulse, History, Paperclip, Receipt, Trash2, UserRound, Wallet, X } from 'lucide-react';
 import { api } from '../../api';
 import { formatNumber, today } from '../../format';
 import { compressReceipt } from '../../image';
 import { CATEGORIES, CATEGORY_BY_ID, type ExpenseCategory } from './categories';
+import {
+  BENEFICIARY_STATUSES, defaultStatusForCategory, getExpenseStatus, setExpenseStatus,
+  type BeneficiaryStatus,
+} from './beneficiaryStatus';
 import { attachAccessibleValidation, attachDialogDismiss, closeTopLayer } from './dialogUtils';
 import type { ExpenseItem } from './ExpensesPage';
 
@@ -66,6 +70,10 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
   const [details, setDetails] = useState(entry?.details ?? '');
   const [name, setName] = useState(entry?.beneficiary_name ?? '');
   const [personId, setPersonId] = useState<number | null>(entry?.beneficiary_id ?? null);
+  const [status, setStatus] = useState<BeneficiaryStatus>(() => (
+    entry ? getExpenseStatus(entry.id, entry.category) : defaultStatusForCategory('cash_gift')
+  ));
+  const [statusTouched, setStatusTouched] = useState(Boolean(entry));
   const [matches, setMatches] = useState<{ id: number; full_name: string }[]>([]);
   const [queued, setQueued] = useState<File[]>([]);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -143,8 +151,10 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
     void run(async () => {
       if (entry) {
         await api(`/expenses/${entry.id}`, { method: 'PATCH', body });
+        setExpenseStatus(entry.id, status);
       } else {
         const created = await api<{ id: number }>('/expenses', { method: 'POST', body });
+        setExpenseStatus(created.id, status);
         if (queued.length) await upload(created.id, queued);
       }
     });
@@ -186,7 +196,16 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
           <div className="add-grid">
             <label className="add-field">
               <span className="add-field-label"><span aria-hidden><Receipt size={15} /></span>نوع الصرف</span>
-              <select className="exp-select" value={category} onChange={(event) => setCategory(event.target.value as ExpenseCategory)} required>
+              <select
+                className="exp-select"
+                value={category}
+                onChange={(event) => {
+                  const next = event.target.value as ExpenseCategory;
+                  setCategory(next);
+                  if (!statusTouched) setStatus(defaultStatusForCategory(next));
+                }}
+                required
+              >
                 {CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
               </select>
             </label>
@@ -232,6 +251,24 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="add-field">
+            <span className="add-field-label"><span aria-hidden><HeartPulse size={15} /></span>حالة المستفيد</span>
+            <div className="exp-status-picker" role="radiogroup" aria-label="حالة المستفيد">
+              {BENEFICIARY_STATUSES.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={status === opt.id}
+                  className={`exp-status-opt ${opt.id}${status === opt.id ? ' on' : ''}`}
+                  onClick={() => { setStatus(opt.id); setStatusTouched(true); }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           <label className="add-field">

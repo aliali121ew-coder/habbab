@@ -31,20 +31,69 @@
 .exp-sort:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .exp-sort:hover, .exp-sort.active { color: var(--brand); }
 /* Fixed shares so no single column swallows the spare width; together they make 100%. */
-.exp-flat .col-date { width: 11%; color: var(--ink-2); white-space: nowrap; }
-.exp-flat .col-cat { width: 20%; }
-.exp-flat .col-person { width: 15%; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
-.exp-flat .col-details { width: 20%; color: var(--ink); overflow-wrap: anywhere; }
-.exp-flat .col-amount { width: 12%; text-align: start; font-weight: 600; color: var(--ink); white-space: nowrap; }
+.exp-flat .col-date { width: 10%; color: var(--ink-2); white-space: nowrap; }
+.exp-flat .col-cat { width: 17%; }
+.exp-flat .col-person { width: 14%; font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.exp-flat .col-status { width: 11%; white-space: nowrap; }
+.exp-flat .col-details { width: 18%; color: var(--ink); overflow-wrap: anywhere; }
+.exp-flat .col-amount { width: 11%; text-align: start; font-weight: 600; color: var(--ink); white-space: nowrap; }
 .exp-flat .col-act { width: 8%; white-space: nowrap; text-align: center; }
-.exp-flat .col-change { width: 14%; white-space: nowrap; }
+.exp-flat .col-change { width: 11%; white-space: nowrap; }
 .exp-flat thead th.col-change { white-space: normal; line-height: 1.35; }
-.exp-flat { min-width: 900px; }
+.exp-flat { min-width: 960px; }
 .exp-delta { display: inline-flex; align-items: center; gap: 3px; font-size: .86rem; font-weight: 700; white-space: nowrap; }
 .exp-delta.up { color: var(--danger); }
 .exp-delta.down { color: var(--paid); }
 .exp-delta.new { color: var(--brand); font-weight: 600; font-size: .8rem; }
 .exp-delta.flat, .exp-delta.muted { color: var(--ink-3); font-weight: 600; }
+
+/* Beneficiary status pill (حرجة / متوسطة / جيدة) */
+.exp-status-badge {
+  --st: #64748b;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-width: 64px; padding: 3px 10px; border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--st) 35%, transparent);
+  background: color-mix(in srgb, var(--st) 12%, var(--surface));
+  color: var(--st); font-size: .78rem; font-weight: 700; line-height: 1.35;
+  cursor: pointer; transition: transform .12s ease, background-color .15s ease, border-color .15s ease;
+}
+.exp-status-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+.exp-status-badge:hover { background: color-mix(in srgb, var(--st) 20%, var(--surface)); border-color: color-mix(in srgb, var(--st) 55%, transparent); }
+.exp-status-badge:active { transform: scale(.96); }
+.exp-status-badge.critical { --st: #dc2626; }
+.exp-status-badge.medium { --st: #d97706; }
+.exp-status-badge.good { --st: #16a34a; }
+:root[data-theme="dark"] .exp-status-badge.critical { --st: #f87171; }
+:root[data-theme="dark"] .exp-status-badge.medium { --st: #fbbf24; }
+:root[data-theme="dark"] .exp-status-badge.good { --st: #4ade80; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .exp-status-badge.critical { --st: #f87171; }
+  :root:not([data-theme="light"]) .exp-status-badge.medium { --st: #fbbf24; }
+  :root:not([data-theme="light"]) .exp-status-badge.good { --st: #4ade80; }
+}
+span.exp-status-badge { cursor: default; }
+
+/* Status segmented picker inside ExpenseDialog */
+.exp-status-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 4px; }
+.exp-status-opt {
+  --st: #64748b;
+  min-height: 36px; padding: 6px 10px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+  font-size: .84rem; font-weight: 700; cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+}
+.exp-status-opt.critical { --st: #dc2626; }
+.exp-status-opt.medium { --st: #d97706; }
+.exp-status-opt.good { --st: #16a34a; }
+:root[data-theme="dark"] .exp-status-opt.critical { --st: #f87171; }
+:root[data-theme="dark"] .exp-status-opt.medium { --st: #fbbf24; }
+:root[data-theme="dark"] .exp-status-opt.good { --st: #4ade80; }
+.exp-status-opt:hover { border-color: color-mix(in srgb, var(--st) 55%, var(--line)); color: var(--st); }
+.exp-status-opt.on {
+  border-color: var(--st);
+  background: color-mix(in srgb, var(--st) 14%, var(--surface));
+  color: var(--st);
+}
 
 /* Design A: the type as a coloured icon tile beside its name; the amount stands out. */
 .exp-type { display: inline-flex; align-items: center; gap: 9px; max-width: 100%; color: var(--ink); font-size: .86rem; font-weight: 500; }
@@ -411,7 +460,7 @@ dialog.exp-dialog::backdrop {
     border: 1px solid var(--line); border-radius: 14px; background: var(--surface) !important;
     box-shadow: 0 1px 2px rgb(16 24 40 / 5%); cursor: pointer;
   }
-  .exp-flat .exp-row .col-person, .exp-flat .exp-row .col-details, .exp-flat .exp-row .col-date,
+  .exp-flat .exp-row .col-person, .exp-flat .exp-row .col-status, .exp-flat .exp-row .col-details, .exp-flat .exp-row .col-date,
   .exp-flat .exp-row .col-change, .exp-flat .exp-row .col-act { display: none; }
   .exp-flat .exp-row .exp-type { gap: 10px; font-size: .92rem; font-weight: 700; color: var(--ink); }
   .exp-flat .exp-row .exp-type-icon { width: 38px; height: 38px; border-radius: 12px; }
