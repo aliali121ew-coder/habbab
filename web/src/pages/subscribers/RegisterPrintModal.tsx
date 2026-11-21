@@ -245,6 +245,7 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
                   <section>
                     <h4>المحاسب</h4>
                     <p>صباح محمد العيساوي</p>
+                    <span className="reg-sig"><img src="/signature.png" alt="توقيع المحاسب" /></span>
                     <span className="line" />
                     <small>التوقيع</small>
                   </section>
@@ -252,6 +253,7 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
                   <section>
                     <h4>مدير المؤسسة</h4>
                     <p>سماحة السيد علي كاظم داود الشريفي</p>
+                    <span className="reg-sig"><img src="/signature-manager.png" alt="توقيع المدير" /></span>
                     <span className="line" />
                     <small>التوقيع</small>
                   </section>

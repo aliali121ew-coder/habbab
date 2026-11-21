@@ -237,12 +237,14 @@ export function StatementSheet({ row, year, currentMonth, currency, delegateName
             <section>
               <h4>المحاسب</h4>
               <p className="sheet-approval-name">صباح محمد العيساوي</p>
+              <span className="sheet-sig"><img src="/signature.png" alt="توقيع المحاسب" /></span>
               <div className="sheet-sign-line"><span>التوقيع</span></div>
             </section>
             <FoundationStamp />
             <section>
               <h4>مدير المؤسسة</h4>
               <p className="sheet-approval-name">سماحة السيد علي كاظم داود الشريفي</p>
+              <span className="sheet-sig"><img src="/signature-manager.png" alt="توقيع المدير" /></span>
               <div className="sheet-sign-line"><span>التوقيع</span></div>
             </section>
           </div>

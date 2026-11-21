@@ -310,3 +310,8 @@
 /* The statement drawn off screen for the WhatsApp PDF: full A4, never zoomed for small screens. */
 .pdf-host { position: fixed; top: 0; left: -10000px; pointer-events: none; }
 .pdf-host .official-sheet { zoom: 1 !important; border-radius: 0; box-shadow: none; }
+
+/* Signatures over the signature lines; the box takes the line's top gap so nothing moves. */
+.sheet-approval .sheet-sig { position: relative; display: block; height: 42px; }
+.sheet-approval .sheet-sig img { position: absolute; bottom: -8px; left: 50%; width: 25mm; max-height: 48px; object-fit: contain; transform: translateX(-50%); pointer-events: none; }
+.sheet-approval .sheet-sig + .sheet-sign-line { margin-block-start: 0; }
