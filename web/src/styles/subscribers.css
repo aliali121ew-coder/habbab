@@ -670,3 +670,16 @@ a.whatsapp-row-btn { text-decoration: none; }
 .report-field .seg { width: 100%; }
 .report-field .seg button { flex: 1; }
 .report-go { min-height: 48px; justify-content: center; font-size: .95rem; }
+
+/* Tablets (768–1100px): the register table was 10px wider than its panel, so subscriber names
+   were cut ("آية جعفر…") and two headings spilled. Headings may take two lines and names wrap
+   rather than cut, so the table fits its panel. */
+@media (min-width: 768px) and (max-width: 1100px) {
+  .register .reg-table th, .register .reg-table thead th { white-space: normal; }
+  .register .reg-table .sub-name { white-space: normal; overflow: visible; text-overflow: clip; }
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+  /* The "واتساب" button stuck 10px out of the register on tablets: icon only there (its name
+     stays as the button's label for screen readers). */
+  .register .reg-col-action .whatsapp-row-btn .btn-label { display: none; }
+}

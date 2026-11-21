@@ -42,12 +42,12 @@ export function PageHeader({
     <div className="flex flex-wrap items-center justify-between gap-3">
       {/* On the phone the top bar already shows the path; this second copy shows on a computer only. */}
       <nav aria-label="مسار التنقل" className="hidden md:flex items-center gap-1.5 text-xs font-medium" style={{ color: 'var(--fp-ink-3)' }}>
-        <a href="#/" className="inline-flex items-center gap-1 transition hover:opacity-80" style={{ color: 'var(--fp-primary)' }}>
+        <a href="#/" className="tap inline-flex items-center gap-1 transition hover:opacity-80" style={{ color: 'var(--fp-primary)' }}>
           <Home className="h-3.5 w-3.5" aria-hidden />
           <span>الرئيسية</span>
         </a>
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-        <a href="#/families" className="font-semibold transition hover:underline" style={{ color: 'var(--fp-ink)' }}>
+        <a href="#/families" className="tap font-semibold transition hover:underline" style={{ color: 'var(--fp-ink)' }}>
           العوائل
         </a>
       </nav>

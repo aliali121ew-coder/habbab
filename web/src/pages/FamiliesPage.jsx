@@ -138,7 +138,7 @@ export function FamiliesPage() {
       dir="rtl"
       className="fam-saas -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] bg-[#F5F7FB] px-4 py-6 text-slate-900 md:-mx-[18px] md:px-7"
     >
-      <div className="mx-auto flex max-w-[1560px] flex-col gap-6">
+      <div className="mx-auto flex max-w-[2400px] flex-col gap-6">
         <PageHeader
           families={families}
           selectedMonth={selectedMonth}

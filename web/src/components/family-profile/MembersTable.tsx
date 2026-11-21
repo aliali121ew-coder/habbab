@@ -122,7 +122,7 @@ export function MembersTable({ members, onOpen, onAdd }: Props) {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onOpen(member); }}
-                    className="fp-row-button inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold"
+                    className="tap fp-row-button inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold"
                     style={{ color: 'var(--fp-primary)' }}
                     aria-label={`فتح ملف ${member.name}`}
                   >

@@ -648,3 +648,24 @@
 @media (max-width: 767.98px) {
   .shell-crumbs[data-route="families"] { display: none; }
 }
+
+/* Only the very largest screens (wider than 2440px) stop the page at 2400px; everything smaller
+   uses its full width. A 1600px limit left wide empty sides on 1920 screens. */
+@media (min-width: 2440px) {
+  .page { max-width: 2400px; }
+}
+
+/* Path links ("الرئيسية › …") are 17px tall; on touch screens each gets a finger-sized tap area
+   without changing how the line looks. */
+@media (max-width: 1100px) {
+  .crumb-link { position: relative; }
+  .crumb-link::after { content: ''; position: absolute; inset: -12px -4px; }
+}
+
+/* Touch screens (phones and tablets up to 1100px): sortable table headings and small links
+   marked .tap get a finger-sized tap area — an invisible box around them — without changing how
+   they look. */
+@media (max-width: 1100px) {
+  table th button, .tap { position: relative; }
+  table th button::after, .tap::after { content: ''; position: absolute; inset: -8px -2px; }
+}

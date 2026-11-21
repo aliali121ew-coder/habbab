@@ -97,7 +97,7 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
     <header className="hidden flex-col gap-4 md:flex md:flex-row md:items-center md:justify-between">
       <div>
         <nav aria-label="مسار التنقل" className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-          <a href="#/" className="transition hover:text-blue-600">الرئيسية</a>
+          <a href="#/" className="tap transition hover:text-blue-600">الرئيسية</a>
           <ChevronLeft className="h-3.5 w-3.5 text-slate-400" aria-hidden />
           <span className="font-semibold text-slate-700">العوائل المتعففة</span>
         </nav>

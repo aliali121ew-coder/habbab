@@ -133,7 +133,7 @@ function BalanceCards({ flow, year, month, currency }: { flow: Flow | null; year
         <span className="bal-note">صرفيات <bdi dir="ltr">{thisMonth}</bdi></span>
       </article>
       <article className="bal-card">
-        <h2>النسبة عن الشهر السابق</h2>
+        <h2>عن الشهر السابق</h2>
         <div className="bal-deltas">
           {delta('الوارد', flow ? change(flow.prevIncome, flow.income) : null, true)}
           {delta('المصروف', flow ? change(flow.prevSpent, flow.spent) : null, false)}
@@ -345,7 +345,7 @@ export function ExpensesPage({ me }: { me: Me }) {
 
   return (
     <>
-      <div className="page-head">
+      <div className="page-head exp-head">
         <span className="page-icon" aria-hidden><Receipt size={24} /></span>
         <div>
           <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }]} />

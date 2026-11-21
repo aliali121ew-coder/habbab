@@ -56,18 +56,19 @@ export function CaseOfficerCard({ officer, officers, onChangeOfficer, onCopyPhon
         <button
           type="button"
           onClick={() => { setPickerOpen((p) => !p); setQuery(''); }}
-          className="text-xs font-semibold transition hover:underline"
+          className="-my-2 py-2 text-xs font-semibold transition hover:underline"
           style={{ color: 'var(--fp-primary)' }}
         >
           تغيير المندوب
         </button>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+      {/* On narrow phones the call buttons drop under the name rather than squeeze it onto two lines. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 basis-[14rem] items-center gap-3">
           <InitialsAvatar initials={officer.initials} size="lg" shape="circle" tone="primary" />
           <div className="min-w-0">
-            <a href={`#/delegates/${officer.id}`} className="block text-sm font-bold leading-snug hover:underline" style={{ color: 'var(--fp-ink)' }}>
+            <a href={`#/delegates/${officer.id}`} className="tap block whitespace-nowrap text-[clamp(13px,4vw,14px)] font-bold leading-snug hover:underline" style={{ color: 'var(--fp-ink)' }}>
               {officer.name}
             </a>
             <p className="truncate text-xs" style={{ color: 'var(--fp-ink-3)' }}>

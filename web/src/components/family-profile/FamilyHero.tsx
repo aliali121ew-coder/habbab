@@ -44,7 +44,7 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
             type="button"
             onClick={() => onCopy(family.fileNo, 'رقم الملف')}
             aria-label={`نسخ رقم الملف ${family.fileNo}`}
-            className="inline-flex min-h-[32px] items-center gap-1 font-mono text-xs font-bold"
+            className="tap inline-flex min-h-[32px] items-center gap-1 font-mono text-xs font-bold"
             style={{ color: 'var(--fp-ink-3)' }}
             dir="ltr"
           >
@@ -114,7 +114,7 @@ export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props)
                 type="button"
                 onClick={() => onCopy(family.fileNo, 'رقم الملف')}
                 title="نسخ رقم الملف"
-                className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-xs font-bold transition hover:opacity-80"
+                className="tap inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-xs font-bold transition hover:opacity-80"
                 style={{
                   backgroundColor: 'var(--fp-muted-2)',
                   borderColor: 'var(--fp-border)',

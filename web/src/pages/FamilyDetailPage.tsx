@@ -159,7 +159,7 @@ export function FamilyDetailPage() {
   return (
     <MotionConfig reducedMotion="user">
       <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 pb-24 pt-6 md:-mx-[18px] md:px-7 md:pb-10">
-        <div className="mx-auto max-w-[1440px] space-y-6">
+        <div className="mx-auto max-w-[2400px] space-y-6">
           <PageHeader
             onRecordPayment={() => setPayOpen(true)}
             onAddVisit={() => setVisitOpen(true)}

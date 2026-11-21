@@ -185,8 +185,9 @@ export function AidBoard({ members, internal, external, onOpenFoundation, onOpen
                 {column.logo}
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-bold leading-snug" style={{ color: column.tone.color }}>{column.name}</span>
-                  <span className="mt-0.5 flex items-center justify-between gap-2 text-[11px] tabular-nums" style={{ color: 'var(--fp-ink-3)' }}>
-                    <span className="truncate">{column.paused ? 'متوقف حالياً' : column.subtitle}</span>
+                  {/* The amount line may wrap (badge under it) rather than cut the amount on a tablet. */}
+                  <span className="mt-0.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] tabular-nums" style={{ color: 'var(--fp-ink-3)' }}>
+                    <span className="min-w-0">{column.paused ? 'متوقف حالياً' : column.subtitle}</span>
                     <span
                       className="shrink-0 rounded-full px-2 py-0.5 font-bold"
                       style={{ backgroundColor: 'var(--fp-card)', color: column.tone.color }}

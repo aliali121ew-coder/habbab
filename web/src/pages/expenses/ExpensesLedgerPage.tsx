@@ -101,7 +101,7 @@ export function ExpensesLedgerPage({ me }: { me: Me }) {
 
   return (
     <>
-      <div className="page-head">
+      <div className="page-head exp-head">
         <span className="page-icon" aria-hidden><Sheet size={24} /></span>
         <div>
           <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'الصرفيات', href: '#/expenses' }]} />

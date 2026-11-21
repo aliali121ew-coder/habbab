@@ -147,7 +147,7 @@ export function PatientDetailPage({ me }: { me: Me }) {
 
       <section className="pt-panel ptd-list" aria-labelledby="ptd-list-title">
         <header className="ptd-tabs">
-          <h2 id="ptd-list-title">سجل المساعدات <span>(<bdi>{aids.length}</bdi>)</span></h2>
+          <h2 id="ptd-list-title" className="ptd-list-title">سجل المساعدات <span>(<bdi>{aids.length}</bdi>)</span></h2>
           <small className="ptd-sorted">مرتب حسب {AID_LABELS[sort.key]}</small>
         </header>
         <div className="ptd-tools">

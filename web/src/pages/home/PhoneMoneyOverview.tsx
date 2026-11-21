@@ -161,8 +161,10 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
   const caption = range === 'year' ? `${MONTHS_SHORT[0]} – ${MONTHS_SHORT[month]}` : range === 'month' ? 'هذا الشهر حسب الأسبوع' : 'آخر 7 أيام حتى اليوم';
 
   return (
-    <div className="grid gap-3">
-      <div className="grid grid-cols-2 gap-3">
+    // grid-cols-1 (minmax(0, 1fr)): a plain grid column grows to its widest content, which made
+    // the page 15px wider than a 320px phone. Under 360px the two money cards stack.
+    <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
         <MoneyCard since={sinceLabel} label="الوارد" icon={Wallet} tone={INCOME} value={formatNumber(inNow)} unit={currency} delta={<Delta value={change(inNow, inBefore)} goodWhenUp />} />
         <MoneyCard
           since={sinceLabel}
@@ -173,7 +175,7 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
       </div>
 
       <section className="fp-card p-4" aria-label="الوارد والمصروف">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <h3 className="whitespace-nowrap text-sm font-extrabold" style={{ color: 'var(--fp-ink)' }}>الوارد والمصروف</h3>
             <span className="text-xs" style={{ color: 'var(--fp-ink-3)' }}>{caption}</span>

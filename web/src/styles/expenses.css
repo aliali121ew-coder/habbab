@@ -296,3 +296,26 @@ dialog.exp-dialog::backdrop {
 .exp-dialog .add-field :is(input, select):is(:user-invalid, .user-invalid-fallback) ~ .exp-field-error {
   display: block;
 }
+
+/* ── Phones: nothing in the expenses pages wraps, spills or is cut ─────────────────────────── */
+@media (max-width: 767.98px) {
+  /* Page title takes the whole first line at a size that fits; the actions go under it. */
+  /* (:root[data-palette] in the selector: each palette sets its own title size.) */
+  .page-head.exp-head > div:has(h1) { flex: 1 1 100%; min-width: 0; }
+  :root[data-palette] main .page-head.exp-head h1 { font-size: clamp(1rem, 5.2vw, 1.3rem); white-space: nowrap; }
+  /* Summary cards: less padding and a figure that shrinks a little, so it stays inside. */
+  .bal-card { padding: 14px; }
+  .bal-value { font-size: clamp(1rem, 4.7vw, 1.3rem); }
+  .bal-card h2 { white-space: nowrap; }
+  /* Row edit buttons keep their look but get a finger-sized tap area. */
+  .exp-row-edit { position: relative; }
+  .exp-row-edit::after { content: ''; position: absolute; inset: -6px; }
+}
+/* The smallest phones (iPhone 5/SE): one summary card per row. */
+@media (max-width: 359.98px) {
+  .bal { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767.98px) {
+  /* "سجل صرفيات تشرين الثاني 2026" stays on one line at a size that fits. */
+  #exp-board-title { white-space: nowrap; font-size: clamp(.92rem, 4.5vw, 1.1rem); }
+}

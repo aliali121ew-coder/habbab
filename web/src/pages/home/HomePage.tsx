@@ -115,7 +115,7 @@ export function HomePage({ me }: { me: Me }) {
   if (!overview) {
     return (
       <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 py-6 md:-mx-[18px] md:px-7" aria-busy="true">
-        <div className="mx-auto grid max-w-[1520px] grid-cols-1 gap-6 lg:grid-cols-12">
+        <div className="mx-auto grid max-w-[2400px] grid-cols-1 gap-6 lg:grid-cols-12">
           <div className="fp-card h-96 animate-pulse lg:col-span-3" />
           <div className="space-y-6 lg:col-span-9">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
@@ -210,7 +210,7 @@ export function HomePage({ me }: { me: Me }) {
 
   return (
     <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 py-6 md:-mx-[18px] md:px-7">
-      <div className="mx-auto max-w-[1520px] space-y-6">
+      <div className="mx-auto max-w-[2400px] space-y-6">
         {/* Top Animated Hero Carousel (3 rotating aid distribution slides) */}
         <AidHeroBanner isAdmin={me.role === 'admin'} />
 

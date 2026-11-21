@@ -131,3 +131,19 @@
   .lg-c-total { width: 140px; }
   .lg-tot { grid-template-columns: minmax(0, 1fr) 44px; }
 }
+
+/* Phones: month names were cut ("كانون الثاني", "تشرين الأول"); the month column is wide enough
+   for the longest one. The year arrows and the thousands/full toggle get finger-sized tap areas
+   without changing their look. */
+@media (max-width: 520px) {
+  .lg-c-month { width: 138px; }
+  .lg-table .lg-month { text-overflow: clip; }
+}
+@media (max-width: 767.98px) {
+  .page-actions .lg-year .icon-btn, .lg-head button { position: relative; }
+  .page-actions .lg-year .icon-btn::after, .lg-head button::after { content: ''; position: absolute; inset: -6px -2px; }
+}
+@media (max-width: 520px) {
+  /* "بالألف" / "المبلغ كاملاً" were 2px wider than their buttons. */
+  .lg-unit button { flex: none; white-space: nowrap; padding-inline: 8px; }
+}
