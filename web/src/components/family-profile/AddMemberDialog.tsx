@@ -84,6 +84,8 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
   const [healthNote, setHealthNote] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
+  // After saving, a check mark draws itself for a moment, then the dialog closes.
+  const [savedName, setSavedName] = useState<string | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -112,7 +114,7 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
       : lostMother ? (female ? ' فقيدة الأم' : ' فقيد الأم')
       : '';
     const studentWord = gender === 'ذكر' ? 'طالب' : 'طالبة';
-    onSave({
+    const member: NewMember = {
       name: name.trim(),
       gender,
       relation: `${relation}${loss}`,
@@ -123,7 +125,11 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
       chronic: health === 'سليم' ? undefined : (healthNote.trim() ? `${health}: ${healthNote.trim()}` : health),
       phone: phone.trim() || undefined,
       notes: notes.trim() || undefined,
-    });
+    };
+    if (savedName) return;
+    setSavedName(member.name);
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.setTimeout(() => onSave(member), reduced ? 500 : 1100);
   };
 
   return createPortal(
@@ -133,8 +139,17 @@ export function AddMemberDialog({ familyName, onClose, onSave }: { familyName: s
         aria-modal="true"
         aria-labelledby="add-member-title"
         onClick={(e) => e.stopPropagation()}
-        className="fp-card flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-b-none sm:max-w-lg sm:rounded-b-[inherit]"
+        className="fp-card relative flex max-h-[92dvh] w-full flex-col overflow-hidden rounded-b-none sm:max-w-lg sm:rounded-b-[inherit]"
       >
+        {savedName && (
+          <div className="member-saved" role="status" aria-live="polite">
+            <svg viewBox="0 0 52 52" className="member-saved-mark" aria-hidden>
+              <circle cx="26" cy="26" r="23" />
+              <path d="M15 27.5l7.5 7.5L37.5 19" />
+            </svg>
+            <p className="member-saved-text">تمت إضافة {savedName}</p>
+          </div>
+        )}
         <header className="flex items-center gap-3 border-b px-5 py-4" style={{ borderColor: 'var(--fp-border)' }}>
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}>
             <UserPlus className="h-5 w-5" aria-hidden />

@@ -1,8 +1,9 @@
-import { ArrowLeft, ChevronLeft, HeartPulse, UserPlus } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { ArrowLeft, Briefcase, ChevronLeft, GraduationCap, HeartPulse, MessageCircle, Phone, ShieldCheck, StickyNote, UserPlus, UserRound, type LucideIcon } from 'lucide-react';
 import { formatIQDText } from '../../mock/family';
 import type { FamilyMember, FamilyPatientRecord } from '../../types/family';
 import { InitialsAvatar } from '../shared/InitialsAvatar';
-import { SheetFacts, SheetSection, SideSheet } from './SideSheet';
+import { SideSheet } from './SideSheet';
 
 interface Props {
   members: FamilyMember[];
@@ -138,46 +139,124 @@ export function MembersTable({ members, onOpen, onAdd }: Props) {
   );
 }
 
-export function MemberSheet({ member, patient, onClose }: { member: FamilyMember; patient?: FamilyPatientRecord; onClose: () => void }) {
+// One information row in the member card: a tinted icon tile, a small label and the value.
+function InfoRow({ icon: Icon, tone, label, children }: { icon: LucideIcon; tone: string; label: string; children: ReactNode }) {
   return (
-    <SideSheet title={member.name} subtitle={`${member.relation} · ${member.age} سنة`} onClose={onClose}>
-      <SheetFacts
-        items={[
-          { label: 'صلة القرابة', value: member.relation },
-          { label: 'العمر', value: `${member.age} سنة` },
-          { label: 'الدراسة / العمل', value: member.status },
-          { label: 'الحالة الصحية', value: member.chronic ?? 'سليم' },
-          ...(member.gender ? [{ label: 'الجنس', value: member.gender }] : []),
-          ...(member.phone ? [{ label: 'رقم الهاتف', value: <a href={`tel:${member.phone.replace(/\s/g, '')}`} dir="ltr">{member.phone}</a> }] : []),
-          ...(member.notes ? [{ label: 'ملاحظات', value: member.notes }] : []),
-        ]}
-      />
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `color-mix(in srgb, ${tone} 13%, transparent)`, color: tone }}>
+        <Icon className="h-[18px] w-[18px]" aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{label}</p>
+        <div className="mt-0.5 text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>{children}</div>
+      </div>
+    </div>
+  );
+}
 
-      {patient ? (
-        <SheetSection title="الملف الصحي">
-          <SheetFacts
-            items={[
-              { label: 'التشخيص', value: patient.diagnosis },
-              { label: 'الطبيب المعالج', value: patient.doctor },
-              { label: 'آخر مراجعة', value: <bdi dir="ltr">{patient.lastVisit}</bdi> },
-              { label: 'كلفة الأدوية', value: formatIQDText(patient.medicineCost) },
-              { label: 'كلفة الكشفيات', value: formatIQDText(patient.examsCost) },
-              { label: 'المصروف له نقداً', value: formatIQDText(patient.deliveredCash) },
-            ]}
-          />
-          <a
-            href={`#/patients/${patient.id}`}
-            className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl text-xs font-bold text-white"
-            style={{ backgroundColor: 'var(--fp-primary)' }}
-          >
-            فتح ملف المريض الكامل <ArrowLeft className="h-4 w-4" aria-hidden />
-          </a>
-        </SheetSection>
-      ) : member.chronic ? (
-        <p className="mt-5 rounded-xl px-3.5 py-3 text-xs" style={{ backgroundColor: 'var(--fp-amber-soft)', color: 'var(--fp-amber)' }}>
-          لديه حالة مزمنة ولم يُسجَّل بعد في سجل المرضى.
-        </p>
-      ) : null}
+/**
+ * A family member's card: a profile header (initials, name, relation, orphan mark), three joined
+ * facts (age, gender, health), then study or work, health, phone (call and WhatsApp) and notes as
+ * rows with tinted icons; the health file follows when the member is on the patients registry.
+ */
+export function MemberSheet({ member, patient, onClose }: { member: FamilyMember; patient?: FamilyPatientRecord; onClose: () => void }) {
+  const female = member.gender ? member.gender === 'أنثى' : /(^|\s)(الأم|ابنة|أخت|الجدة|الزوجة|حفيدة)/.test(member.relation);
+  const tone = female ? 'var(--fp-rose)' : 'var(--fp-primary)';
+  const healthy = !member.chronic;
+  const student = member.status.includes('طالب');
+  const working = /يعمل|موظف|كاسب/.test(member.status);
+  const digits = member.phone?.replace(/\D/g, '') ?? '';
+  const wa = digits ? `https://wa.me/${digits.startsWith('0') ? `964${digits.slice(1)}` : digits}` : '';
+  // «ابنة يتيمة الأب» → relation «ابنة» and the loss «يتيمة الأب» as its own badge.
+  const baseRelation = member.relation.replace(/\s+(يتيم|يتيمة|فقيد|فقيدة)(\s.*)?$/, '');
+  const loss = member.relation.slice(baseRelation.length).trim();
+
+  return (
+    <SideSheet title={member.name} onClose={onClose} bare>
+      {/* Profile header */}
+      <div className="relative px-6 pb-6 pt-10 text-center" style={{ backgroundImage: `linear-gradient(180deg, color-mix(in srgb, ${tone} 16%, transparent) 0%, transparent 100%)` }}>
+        <span
+          className="mx-auto inline-flex h-20 w-20 items-center justify-center rounded-full text-2xl font-extrabold text-white"
+          style={{ backgroundImage: `linear-gradient(145deg, color-mix(in srgb, ${tone} 70%, #fff), ${tone})`, boxShadow: `0 12px 26px -12px ${tone}, 0 0 0 4px var(--fp-card)` }}
+          aria-hidden
+        >
+          {member.initials}
+        </span>
+        <h2 className="mt-3 text-xl font-extrabold leading-snug" style={{ color: 'var(--fp-ink)' }}>{member.name}</h2>
+        <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+          <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}>{baseRelation}</span>
+          {loss && <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: 'var(--fp-amber-soft)', color: 'var(--fp-amber)' }}>{loss}</span>}
+          {!healthy && <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: 'var(--fp-rose-soft)', color: 'var(--fp-rose)' }}>حالة صحية</span>}
+        </div>
+      </div>
+
+      <div className="space-y-4 px-5 pb-6">
+        {/* Three joined facts */}
+        <dl className="grid grid-cols-3 overflow-hidden rounded-2xl border text-center" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-muted)' }}>
+          <div className="px-2 py-3">
+            <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>العمر</dt>
+            <dd className="mt-1 text-lg font-extrabold leading-none tabular-nums" style={{ color: 'var(--fp-ink)' }}><bdi>{member.age}</bdi><small className="ms-1 text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>سنة</small></dd>
+          </div>
+          <div className="border-s px-2 py-3" style={{ borderColor: 'var(--fp-border)' }}>
+            <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>الجنس</dt>
+            <dd className="mt-1 text-sm font-extrabold leading-tight" style={{ color: 'var(--fp-ink)' }}>{member.gender ?? (female ? 'أنثى' : 'ذكر')}</dd>
+          </div>
+          <div className="border-s px-2 py-3" style={{ borderColor: 'var(--fp-border)' }}>
+            <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>الصحة</dt>
+            <dd className="mt-1 text-sm font-extrabold leading-tight" style={{ color: healthy ? 'var(--fp-emerald)' : 'var(--fp-rose)' }}>{healthy ? 'سليم' : 'تحتاج رعاية'}</dd>
+          </div>
+        </dl>
+
+        {/* Details */}
+        <div className="divide-y divide-[color:var(--fp-border)] overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}>
+          <InfoRow icon={student ? GraduationCap : working ? Briefcase : UserRound} tone="var(--fp-primary)" label="الدراسة / العمل">{member.status}</InfoRow>
+          <InfoRow icon={healthy ? ShieldCheck : HeartPulse} tone={healthy ? 'var(--fp-emerald)' : 'var(--fp-rose)'} label="الحالة الصحية">
+            {member.chronic ?? 'سليم — لا أمراض مسجلة'}
+          </InfoRow>
+          <InfoRow icon={Phone} tone="var(--fp-ink-2)" label="رقم الهاتف">
+            {member.phone ? (
+              <span className="flex items-center justify-between gap-2">
+                <bdi dir="ltr" className="tabular-nums">{member.phone}</bdi>
+                <span className="flex shrink-0 gap-1.5">
+                  <a href={`tel:${digits}`} aria-label={`اتصال بـ ${member.name}`} className="inline-flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}><Phone className="h-4 w-4" aria-hidden /></a>
+                  <a href={wa} target="_blank" rel="noreferrer" aria-label={`مراسلة ${member.name} على واتساب`} className="inline-flex h-9 w-9 items-center justify-center rounded-full" style={{ backgroundColor: 'color-mix(in srgb, #25d366 14%, transparent)', color: '#1fa855' }}><MessageCircle className="h-4 w-4" aria-hidden /></a>
+                </span>
+              </span>
+            ) : <span className="font-semibold" style={{ color: 'var(--fp-ink-3)' }}>لم يُسجَّل رقم</span>}
+          </InfoRow>
+          {member.notes && <InfoRow icon={StickyNote} tone="var(--fp-amber)" label="ملاحظات"><span className="font-semibold leading-relaxed">{member.notes}</span></InfoRow>}
+        </div>
+
+        {patient ? (
+          <section className="overflow-hidden rounded-2xl border" style={{ borderColor: 'var(--fp-border)' }}>
+            <h3 className="flex items-center gap-2 px-4 py-3 text-sm font-extrabold" style={{ backgroundColor: 'var(--fp-rose-soft)', color: 'var(--fp-rose)' }}>
+              <HeartPulse className="h-4 w-4" aria-hidden /> الملف الصحي
+            </h3>
+            <dl className="grid grid-cols-2 gap-px" style={{ backgroundColor: 'var(--fp-border)' }}>
+              {([
+                ['التشخيص', patient.diagnosis],
+                ['الطبيب المعالج', patient.doctor],
+                ['آخر مراجعة', <bdi key="d" dir="ltr">{patient.lastVisit}</bdi>],
+                ['كلفة الأدوية', formatIQDText(patient.medicineCost)],
+                ['كلفة الكشفيات', formatIQDText(patient.examsCost)],
+                ['المصروف له نقداً', formatIQDText(patient.deliveredCash)],
+              ] as [string, ReactNode][]).map(([label, value]) => (
+                <div key={label} className="px-4 py-3" style={{ backgroundColor: 'var(--fp-card)' }}>
+                  <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{label}</dt>
+                  <dd className="mt-0.5 text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <a href={`#/patients/${patient.id}`} className="flex h-11 items-center justify-center gap-2 text-xs font-bold text-white" style={{ backgroundColor: 'var(--fp-primary)' }}>
+              فتح ملف المريض الكامل <ArrowLeft className="h-4 w-4" aria-hidden />
+            </a>
+          </section>
+        ) : member.chronic ? (
+          <p className="flex items-center gap-2 rounded-2xl px-4 py-3 text-xs font-semibold" style={{ backgroundColor: 'var(--fp-amber-soft)', color: 'var(--fp-amber)' }}>
+            <HeartPulse className="h-4 w-4 shrink-0" aria-hidden /> لديه حالة صحية ولم يُسجَّل بعد في سجل المرضى.
+          </p>
+        ) : null}
+      </div>
     </SideSheet>
   );
 }

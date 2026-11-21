@@ -11,7 +11,7 @@ interface Props {
 }
 
 /** A file panel that slides in from the page edge; Escape or the backdrop closes it. */
-export function SideSheet({ title, subtitle, badge, onClose, children }: Props) {
+export function SideSheet({ title, subtitle, badge, onClose, children, bare = false }: Props & { bare?: boolean }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -47,6 +47,18 @@ export function SideSheet({ title, subtitle, badge, onClose, children }: Props) 
         className="fp-sheet relative flex h-full w-full max-w-[520px] flex-col shadow-2xl focus:outline-none"
         style={{ backgroundColor: 'var(--fp-card)' }}
       >
+        {bare ? (
+          // The content draws its own title (a profile card); only the close button floats on top.
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="إغلاق"
+            className="absolute end-4 top-4 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full transition hover:opacity-80"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--fp-card) 80%, transparent)', color: 'var(--fp-ink-2)', boxShadow: '0 1px 3px rgb(0 0 0 / 12%)' }}
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        ) : (
         <header className="flex items-start justify-between gap-3 border-b px-6 py-5" style={{ borderColor: 'var(--fp-border)' }}>
           <div className="min-w-0">
             {badge}
@@ -63,7 +75,8 @@ export function SideSheet({ title, subtitle, badge, onClose, children }: Props) 
             <X className="h-4 w-4" aria-hidden />
           </button>
         </header>
-        <div className="flex-1 overflow-y-auto px-6 py-5">{children}</div>
+        )}
+        <div className={bare ? 'flex-1 overflow-y-auto' : 'flex-1 overflow-y-auto px-6 py-5'}>{children}</div>
       </div>
     </div>,
     document.body,

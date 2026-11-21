@@ -193,3 +193,29 @@ a.fp-kpi:focus-visible { outline: 2px solid var(--fp-primary); outline-offset: 2
   .fp-kpi-title { order: 1; flex: 1; font-size: 14px !important; font-weight: 800 !important; color: var(--fp-ink) !important; line-height: 1.35; }
   .fp-kpi-go { display: block; order: 3; }
 }
+
+/* "Member saved": a check mark draws itself in a ring over the add-member dialog, then it closes. */
+.member-saved {
+  position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 14px;
+  background: color-mix(in srgb, var(--fp-card) 92%, transparent); backdrop-filter: blur(2px);
+  animation: member-saved-in .18s ease-out both;
+}
+.member-saved-mark { width: 84px; height: 84px; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.member-saved-mark circle {
+  stroke: var(--fp-emerald); stroke-width: 3; fill: color-mix(in srgb, var(--fp-emerald) 12%, transparent);
+  stroke-dasharray: 145; stroke-dashoffset: 145; transform: rotate(-90deg); transform-origin: center;
+  animation: member-saved-draw .45s cubic-bezier(.65, 0, .45, 1) forwards;
+}
+.member-saved-mark path {
+  stroke: var(--fp-emerald); stroke-width: 4.5; stroke-dasharray: 36; stroke-dashoffset: 36;
+  animation: member-saved-draw .3s cubic-bezier(.65, 0, .45, 1) .4s forwards;
+}
+.member-saved-mark { animation: member-saved-pop .3s ease-out .65s both; }
+.member-saved-text { margin: 0; color: var(--fp-ink); font-size: .95rem; font-weight: 800; animation: member-saved-in .25s ease-out .5s both; }
+@keyframes member-saved-draw { to { stroke-dashoffset: 0; } }
+@keyframes member-saved-pop { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+@keyframes member-saved-in { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .member-saved, .member-saved-mark, .member-saved-text { animation: none; }
+  .member-saved-mark circle, .member-saved-mark path { animation: none; stroke-dashoffset: 0; }
+}
