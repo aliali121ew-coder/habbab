@@ -1,5 +1,6 @@
-import { ArrowLeft, Phone } from 'lucide-react';
-import { formatIQDText } from '../../mock/family';
+import type { ReactNode } from 'react';
+import { ArrowLeft, Building2, HeartHandshake, Info, MessageCircle, Phone, Repeat } from 'lucide-react';
+import { formatIQDParts, formatIQDText } from '../../mock/family';
 import type { AidSource, AidSourceStatus } from '../../types/family';
 import { SheetFacts, SheetSection, SideSheet } from './SideSheet';
 
@@ -109,68 +110,128 @@ export function FoundationSheet({ programs, onOpenProgram, onClose }: {
   );
 }
 
+/**
+ * One aid provider in a family's file: a header (the provider's icon, name, kind, aid type and
+ * status), the payment amount in large type with how often it comes, joined facts, the note,
+ * the contact person with call and WhatsApp, and the receipts as a timeline with their total.
+ */
 export function AidSourceSheet({ source, onClose }: { source: AidSource; onClose: () => void }) {
   const internal = source.kind === 'internal';
-  const facts = [
-    { label: internal ? 'المستحق الشهري' : 'قيمة الدفعة', value: formatIQDText(source.monthlyAmount) },
+  const status = AID_STATUS[source.status];
+  const tone = internal ? 'var(--fp-primary)' : 'var(--fp-violet, #7c3aed)';
+  const amount = formatIQDParts(source.monthlyAmount);
+  const received = source.history.reduce((sum, r) => sum + r.amount, 0);
+  const digits = source.contact?.phone.replace(/\D/g, '') ?? '';
+  const wa = digits ? `https://wa.me/${digits.startsWith('0') ? `964${digits.slice(1)}` : digits}` : '';
+  const Icon = internal ? HeartHandshake : Building2;
+  const facts: [string, ReactNode][] = [
+    ['بداية الدعم', <bdi key="s" dir="ltr">{source.since}</bdi>],
+    ['آخر استلام', <bdi key="l" dir="ltr">{source.lastReceived ?? '—'}</bdi>],
     internal
-      ? { label: 'المصروف هذا الشهر', value: formatIQDText(source.paidThisMonth ?? 0) }
-      : { label: 'التكرار', value: source.frequency },
-    { label: 'بداية الدعم', value: <bdi dir="ltr">{source.since}</bdi> },
-    { label: 'آخر استلام', value: <bdi dir="ltr">{source.lastReceived ?? '—'}</bdi> },
+      ? ['المصروف هذا الشهر', formatIQDText(source.paidThisMonth ?? 0)]
+      : ['عدد الدفعات', `${source.history.length}`],
   ];
 
   return (
-    <SideSheet
-      title={source.name}
-      subtitle={`${internal ? 'برنامج المؤسسة' : 'جهة خارجية'} · ${source.aidType}`}
-      badge={<StatusChip status={source.status} />}
-      onClose={onClose}
-    >
-      <SheetFacts items={facts} />
+    <SideSheet title={source.name} onClose={onClose} bare>
+      {/* Header */}
+      <div className="px-6 pb-5 pt-10 text-center" style={{ backgroundImage: `linear-gradient(180deg, color-mix(in srgb, ${tone} 15%, transparent) 0%, transparent 100%)` }}>
+        <span
+          className="mx-auto inline-flex h-16 w-16 items-center justify-center rounded-2xl text-white"
+          style={{ backgroundImage: `linear-gradient(145deg, color-mix(in srgb, ${tone} 70%, #fff), ${tone})`, boxShadow: `0 12px 26px -12px ${tone}, 0 0 0 4px var(--fp-card)` }}
+          aria-hidden
+        >
+          <Icon className="h-8 w-8" />
+        </span>
+        <h2 className="mt-3 text-xl font-extrabold leading-snug" style={{ color: 'var(--fp-ink)' }}>{source.name}</h2>
+        <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: status.bg, color: status.color }}>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: status.color }} aria-hidden />{status.label}
+          </span>
+          <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}>{internal ? 'برنامج المؤسسة' : 'جهة خارجية'}</span>
+          <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: 'var(--fp-muted)', color: 'var(--fp-ink-2)' }}>{source.aidType}</span>
+        </div>
+      </div>
 
-      <p className="mt-4 rounded-xl border px-3.5 py-3 text-xs leading-relaxed" style={{ borderColor: 'var(--fp-border)', color: 'var(--fp-ink-2)' }}>
-        {source.note}
-      </p>
-
-      {source.contact && (
-        <SheetSection title="جهة الاتصال">
-          <div className="flex items-center justify-between gap-3 rounded-xl p-3" style={{ backgroundColor: 'var(--fp-muted)' }}>
-            <div>
-              <p className="text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>{source.contact.person}</p>
-              <p className="text-xs tabular-nums" style={{ color: 'var(--fp-ink-3)' }} dir="ltr">{source.contact.phone}</p>
-            </div>
-            <a
-              href={`tel:${source.contact.phone.replace(/\D/g, '')}`}
-              aria-label={`اتصال بـ ${source.contact.person}`}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border"
-              style={{ backgroundColor: 'var(--fp-card)', borderColor: 'var(--fp-border)', color: 'var(--fp-ink-2)' }}
-            >
-              <Phone className="h-4 w-4" aria-hidden />
-            </a>
+      <div className="space-y-4 px-5 pb-6">
+        {/* The amount, large, with how often it comes */}
+        <div className="flex items-center justify-between gap-3 rounded-2xl px-4 py-4" style={{ backgroundImage: `linear-gradient(135deg, color-mix(in srgb, ${tone} 16%, var(--fp-card)), var(--fp-card))`, border: `1px solid color-mix(in srgb, ${tone} 25%, transparent)` }}>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{internal ? 'المستحق الشهري' : 'قيمة الدفعة'}</p>
+            <p className="mt-1 whitespace-nowrap tabular-nums" style={{ color: 'var(--fp-ink)' }}>
+              <span className="text-[26px] font-extrabold leading-none"><bdi>{amount.value}</bdi></span>
+              <span className="ms-1.5 text-xs font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{amount.currency}</span>
+            </p>
           </div>
-        </SheetSection>
-      )}
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold" style={{ backgroundColor: 'var(--fp-card)', color: tone, boxShadow: '0 1px 2px rgb(0 0 0 / 8%)' }}>
+            <Repeat className="h-3.5 w-3.5" aria-hidden /> {source.frequency}
+          </span>
+        </div>
 
-      <SheetSection title={`سجل الاستلام (${source.history.length})`}>
-        {source.history.length === 0 ? (
-          <p className="text-xs" style={{ color: 'var(--fp-ink-3)' }}>لا توجد دفعات مسجلة بعد.</p>
-        ) : (
-          <ol className="divide-y rounded-xl border" style={{ borderColor: 'var(--fp-border)' }}>
-            {source.history.map((record) => (
-              <li key={record.id} className="flex items-center justify-between gap-3 px-3.5 py-3" style={{ borderColor: 'var(--fp-border)' }}>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold" style={{ color: 'var(--fp-ink)' }}>
-                    <bdi dir="ltr" className="tabular-nums">{record.date}</bdi>
-                  </p>
-                  <p className="truncate text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>{record.note}</p>
-                </div>
-                <b className="shrink-0 text-sm tabular-nums" style={{ color: 'var(--fp-ink)' }}>{formatIQDText(record.amount)}</b>
-              </li>
-            ))}
-          </ol>
+        {/* Joined facts */}
+        <dl className="grid grid-cols-3 overflow-hidden rounded-2xl border text-center" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-muted)' }}>
+          {facts.map(([label, value], i) => (
+            <div key={label} className={`min-w-0 px-2 py-3${i ? ' border-s' : ''}`} style={{ borderColor: 'var(--fp-border)' }}>
+              <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>{label}</dt>
+              <dd className="mt-1 whitespace-nowrap text-[13px] font-extrabold tabular-nums" style={{ color: 'var(--fp-ink)' }}>{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        {/* Note */}
+        <p className="flex gap-2.5 rounded-2xl px-4 py-3 text-xs leading-relaxed" style={{ backgroundColor: 'color-mix(in srgb, var(--fp-amber) 10%, transparent)', color: 'var(--fp-ink-2)' }}>
+          <Info className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--fp-amber)' }} aria-hidden />
+          <span>{source.note}</span>
+        </p>
+
+        {/* Contact */}
+        {source.contact && (
+          <section>
+            <h3 className="mb-2 text-xs font-bold" style={{ color: 'var(--fp-ink-3)' }}>جهة الاتصال</h3>
+            <div className="flex items-center gap-3 rounded-2xl border p-3" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}>
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-extrabold" style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }} aria-hidden>
+                {source.contact.person.replace(/^(أبو|أم|د\.|قسم)\s+/, '').trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join(' ')}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>{source.contact.person}</p>
+                <p className="text-xs tabular-nums" style={{ color: 'var(--fp-ink-3)' }} dir="ltr">{source.contact.phone}</p>
+              </div>
+              <a href={`tel:${digits}`} aria-label={`اتصال بـ ${source.contact.person}`} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}>
+                <Phone className="h-4 w-4" aria-hidden />
+              </a>
+              <a href={wa} target="_blank" rel="noreferrer" aria-label={`مراسلة ${source.contact.person} على واتساب`} className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full" style={{ backgroundColor: 'color-mix(in srgb, #25d366 14%, transparent)', color: '#1fa855' }}>
+                <MessageCircle className="h-4 w-4" aria-hidden />
+              </a>
+            </div>
+          </section>
         )}
-      </SheetSection>
+
+        {/* Receipts as a timeline */}
+        <section>
+          <div className="mb-2 flex items-baseline justify-between gap-2">
+            <h3 className="text-xs font-bold" style={{ color: 'var(--fp-ink-3)' }}>سجل الاستلام · <bdi>{source.history.length}</bdi> دفعات</h3>
+            {received > 0 && <span className="text-xs font-bold tabular-nums" style={{ color: 'var(--fp-emerald)' }}>المجموع {formatIQDText(received)}</span>}
+          </div>
+          {source.history.length === 0 ? (
+            <p className="rounded-2xl px-4 py-5 text-center text-xs" style={{ backgroundColor: 'var(--fp-muted)', color: 'var(--fp-ink-3)' }}>لا توجد دفعات مسجلة بعد.</p>
+          ) : (
+            <ol className="rounded-2xl border px-4 py-1" style={{ borderColor: 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }}>
+              {source.history.map((record, i) => (
+                <li key={record.id} className="relative flex items-center gap-3 py-3 ps-6">
+                  {/* the line through the dots */}
+                  {i < source.history.length - 1 && <span className="absolute start-[7px] top-1/2 h-full w-px" style={{ backgroundColor: 'var(--fp-border)' }} aria-hidden />}
+                  <span className="absolute start-0 top-1/2 h-[15px] w-[15px] -translate-y-1/2 rounded-full border-[3px]" style={{ borderColor: i === 0 ? 'var(--fp-emerald)' : 'var(--fp-border)', backgroundColor: 'var(--fp-card)' }} aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold tabular-nums" style={{ color: 'var(--fp-ink)' }}><bdi dir="ltr">{record.date}</bdi></p>
+                    <p className="truncate text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>{record.note}</p>
+                  </div>
+                  <b className="shrink-0 rounded-lg px-2 py-1 text-[13px] tabular-nums" style={{ backgroundColor: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)' }}>{formatIQDText(record.amount)}</b>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+      </div>
     </SideSheet>
   );
 }
