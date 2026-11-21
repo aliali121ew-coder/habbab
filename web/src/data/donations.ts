@@ -1,5 +1,6 @@
 // Sample donations for the home card until the «التبرعات» section is programmed.
-// Replace with the API once donations are recorded; nothing else reads this file.
+// Replace with the API once donations are recorded; read by the home card and the expenses page
+// summary (phone tile «تبرعات مالية»).
 export interface DonationsSummary {
   cash: number;
   cashBefore: number;

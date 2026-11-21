@@ -472,3 +472,19 @@ dialog.exp-dialog::backdrop {
   /* The coloured top border of the register is no longer needed above the framed title. */
   .exp-board-head { border-top: 0; }
 }
+
+/* Summary tiles: phones show spending, income (each with its change), charity boxes and cash
+   donations; computers keep their five cards. */
+.bal > .bal-phone { display: none; }
+@media (max-width: 767.98px) {
+  .bal > .bal-card:not(.bal-now):not(.bal-phone) { display: none; }
+  .bal > .bal-phone { display: flex; }
+  .bal-phone h2 { display: inline-flex; align-items: center; gap: 5px; }
+  .bal-phone h2 svg { color: var(--bar-active); }
+  .bal-value.bal-none { color: var(--ink-3); }
+  .bal-pill { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; font-size: .7rem; font-weight: 700; }
+  .bal-pill span { color: var(--ink-3); font-weight: 600; }
+  .bal-pill.good { color: var(--paid); }
+  .bal-pill.bad { color: var(--danger); }
+  .bal-pill.flat { color: var(--ink-3); }
+}

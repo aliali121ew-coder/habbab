@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowDown, ArrowUp, CalendarRange, ChevronLeft, ChevronRight, Download, Layers, Minus, Paperclip, Pencil,
-  Plus, Printer, Receipt, Search, Sheet, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X,
+  Plus, Printer, Receipt, Search, Sheet, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X, Archive, Gift,
 } from 'lucide-react';
 import { BackToClose } from '../../components/useBackToClose';
 import { useIsPhone } from '../../useIsPhone';
+import { SAMPLE_DONATIONS } from '../../data/donations';
 import { api, type Me, type Overview } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
@@ -163,6 +164,18 @@ function BalanceCards({ flow, year, month, currency }: { flow: Flow | null; year
       </div>
     );
   };
+  // Phone tiles: a small change pill under the figure (green when it moved the good way).
+  const pill = (value: number | null, goodUp: boolean) => {
+    if (value === null) return <span className="bal-pill flat" title="مقارنة بالشهر السابق">— عن السابق</span>;
+    const up = value >= 0;
+    const tone = Math.abs(value) < 0.05 ? 'flat' : up === goodUp ? 'good' : 'bad';
+    return (
+      <span className={`bal-pill ${tone}`} title="مقارنة بالشهر السابق">
+        {up ? <ArrowUp size={13} strokeWidth={2.5} aria-label="ارتفاع" /> : <ArrowDown size={13} strokeWidth={2.5} aria-label="انخفاض" />}
+        <bdi>{formatPercent(Math.abs(value))}</bdi> <span>عن السابق</span>
+      </span>
+    );
+  };
   const amount = (value: number | undefined, signed = false) => (flow && value !== undefined
     ? <>{signed ? <Signed value={value} /> : <bdi>{formatNumber(value)}</bdi>} <small>{currency}</small></>
     : '—');
@@ -193,6 +206,30 @@ function BalanceCards({ flow, year, month, currency }: { flow: Flow | null; year
       <article className={`bal-card bal-now${flow && closing < 0 ? ' neg' : ''}`}>
         <h2>الرصيد الحالي</h2>
         <p className="bal-value">{amount(flow ? closing : undefined, true)}</p>      </article>
+      {/* Phones: four tiles instead of the ones above — spending and income each with its change
+          on last month, charity boxes and cash donations. */}
+      <article className="bal-card bal-phone">
+        <h2><TrendingDown size={14} aria-hidden /> المصروف</h2>
+        <p className="bal-value">{amount(flow?.spent)}</p>
+        {flow && pill(change(flow.prevSpent, flow.spent), false)}
+      </article>
+      <article className="bal-card bal-phone">
+        <h2><TrendingUp size={14} aria-hidden /> الوارد</h2>
+        <p className="bal-value">{amount(flow?.income)}</p>
+        {flow && pill(change(flow.prevIncome, flow.income), true)}
+      </article>
+      <article className="bal-card bal-phone">
+        <h2><Archive size={14} aria-hidden /> صناديق الصدقات</h2>
+        {/* No charity-box records exist yet; nothing is made up here. */}
+        <p className="bal-value bal-none">—</p>
+        <span className="bal-pill flat">لم تُسجَّل بعد</span>
+      </article>
+      <article className="bal-card bal-phone">
+        <h2><Gift size={14} aria-hidden /> تبرعات مالية</h2>
+        {/* Sample figures (data/donations.ts) until the donations section exists, as on the home page. */}
+        <p className="bal-value"><bdi>{formatNumber(SAMPLE_DONATIONS.cash)}</bdi> <small>{currency}</small></p>
+        {pill(change(SAMPLE_DONATIONS.cashBefore, SAMPLE_DONATIONS.cash), true)}
+      </article>
     </section>
   );
 }
