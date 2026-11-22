@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
+  Calendar as CalendarIcon,
   CheckCircle2,
   ClipboardCheck,
   FileText,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import { formatIQDParts } from '../../mock/family';
 import type { FamilyDetail, FamilyMember, FamilyPaymentRecord, FamilyVisitRecord } from '../../types/family';
+import { FamilyAidsArchiveModal } from './FamilyAidsArchiveModal';
 import type { FamilyProfileTab, MembersQuickFilter } from './FamilyKpiRow';
 
 interface Props {
@@ -55,6 +57,7 @@ export function FamilyDetailTabs({
   onOpenVisit,
 }: Props) {
   const [memberQuery, setMemberQuery] = useState('');
+  const [aidsArchiveOpen, setAidsArchiveOpen] = useState(false);
 
   const medicalCount = useMemo(
     () => family.members.filter((m) => Boolean(m.chronic)).length,
@@ -519,9 +522,9 @@ export function FamilyDetailTabs({
           </div>
         )}
 
-        {/* TAB 2: AID HISTORY */}
+        {/* TAB 2: AID HISTORY (Compact half-height cards, latest 5 + "عرض المزيد" Calendar Archive) */}
         {activeTab === 'aids' && (
-          <div>
+          <div className="space-y-3">
             {family.payments.length === 0 ? (
               <div className="py-10 text-center">
                 <p className="text-sm font-semibold" style={{ color: 'var(--fp-ink-3)' }}>
@@ -536,66 +539,72 @@ export function FamilyDetailTabs({
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {family.payments.map((payment) => {
-                  const status = PAYMENT_STATUS_META[payment.status] ?? PAYMENT_STATUS_META.paid;
-                  const amountParts = formatIQDParts(payment.amount);
-                  return (
-                    <article
-                      key={payment.id}
-                      className="flex flex-col justify-between gap-3.5 rounded-2xl border p-4 transition hover:shadow-sm"
-                      style={{ backgroundColor: 'var(--fp-card)', borderColor: 'var(--fp-border)' }}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
+              <>
+                <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+                  {family.payments.slice(0, 5).map((payment) => {
+                    const status = PAYMENT_STATUS_META[payment.status] ?? PAYMENT_STATUS_META.paid;
+                    const amountParts = formatIQDParts(payment.amount);
+                    return (
+                      <article
+                        key={payment.id}
+                        className="flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 transition hover:shadow-xs"
+                        style={{
+                          backgroundColor: 'color-mix(in srgb, var(--fp-card) 74%, var(--fp-muted))',
+                          borderColor: 'var(--fp-border)',
+                        }}
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
                           <span
-                            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                            style={{ backgroundColor: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)' }}
+                            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: status.bg, color: status.color }}
                           >
-                            <HandHeart className="h-5 w-5" aria-hidden />
+                            <HandHeart className="h-4 w-4" aria-hidden />
                           </span>
-                          <div>
-                            <span className="block font-mono text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }} dir="ltr">
-                              {payment.id.toUpperCase()}
-                            </span>
-                            <h3 className="text-sm font-extrabold" style={{ color: 'var(--fp-ink)' }}>
+                          <div className="min-w-0">
+                            <strong className="block truncate text-xs font-extrabold sm:text-[13px]" style={{ color: 'var(--fp-ink)' }}>
                               {payment.title || payment.typeLabel}
-                            </h3>
+                            </strong>
+                            <span className="mt-0.5 block truncate text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>
+                              <bdi dir="ltr">{payment.date}</bdi> • {payment.officer}
+                            </span>
                           </div>
                         </div>
 
-                        <span
-                          className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold"
-                          style={{ backgroundColor: status.bg, color: status.color }}
-                        >
-                          {status.label}
-                        </span>
-                      </div>
-
-                      <div
-                        className="rounded-xl px-3 py-2 text-xs leading-relaxed"
-                        style={{ backgroundColor: 'var(--fp-muted)', color: 'var(--fp-ink-2)' }}
-                      >
-                        {payment.note || `تم التسليم عبر المندوب ${payment.officer}`}
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
-                        <span style={{ color: 'var(--fp-ink-3)' }}>
-                          بواسطة: <b style={{ color: 'var(--fp-ink)' }}>{payment.officer}</b>
-                        </span>
-                        <div className="flex items-center gap-2.5 tabular-nums">
-                          <span style={{ color: 'var(--fp-ink-3)' }} dir="ltr">
-                            {payment.date}
-                          </span>
-                          <strong className="text-sm font-extrabold" style={{ color: 'var(--fp-emerald)' }}>
+                        <div className="shrink-0 text-end tabular-nums">
+                          <strong className="block whitespace-nowrap text-xs font-extrabold sm:text-[13px]" style={{ color: 'var(--fp-emerald)' }}>
                             {amountParts.value} {amountParts.currency}
                           </strong>
+                          <span
+                            className="mt-0.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold"
+                            style={{ backgroundColor: status.bg, color: status.color }}
+                          >
+                            {status.label}
+                          </span>
                         </div>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {/* Show More button -> opens Calendar + Full Cards view */}
+                <button
+                  type="button"
+                  onClick={() => setAidsArchiveOpen(true)}
+                  className="flex h-10 w-full items-center justify-center gap-2 rounded-xl border text-xs font-extrabold transition hover:opacity-90"
+                  style={{
+                    backgroundColor: 'color-mix(in srgb, var(--bar-active) 10%, var(--fp-card))',
+                    borderColor: 'color-mix(in srgb, var(--bar-active) 30%, transparent)',
+                    color: 'var(--bar-active)',
+                  }}
+                >
+                  <CalendarIcon className="h-4 w-4" aria-hidden />
+                  <span>
+                    {family.payments.length > 5
+                      ? `عرض المزيد (${family.payments.length - 5}+) والتقويم`
+                      : 'عرض التقويم والسجل الكامل'}
+                  </span>
+                </button>
+              </>
             )}
           </div>
         )}
@@ -774,6 +783,15 @@ export function FamilyDetailTabs({
           </div>
         )}
       </motion.div>
+
+      {aidsArchiveOpen && (
+        <FamilyAidsArchiveModal
+          familyName={family.name}
+          payments={family.payments}
+          visits={family.visits}
+          onClose={() => setAidsArchiveOpen(false)}
+        />
+      )}
     </section>
   );
 }
