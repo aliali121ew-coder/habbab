@@ -173,69 +173,61 @@ export function FiltersToolbar({
 
     <section
       aria-label="أدوات البحث والفلترة"
-      className="hidden md:block px-5 py-4"
+      className="hidden md:block px-5 py-3.5"
     >
-      <div className="flex flex-col gap-3.5">
-        {/* Top Row: Wide Search */}
-        <div className="relative flex w-full items-center">
-          <Search
-            className="pointer-events-none absolute right-3.5 h-4 w-4 text-slate-400"
-            aria-hidden
-          />
-          <input
-            ref={searchRef}
-            type="search"
-            value={filters.query}
-            onChange={(e) => onChange({ query: e.target.value })}
-            placeholder="ابحث باسم العائلة، رقم الملف، المنطقة، المندوب، أو اسم مريض…"
-            aria-label="بحث في سجل العوائل"
-            className="h-10 w-full rounded-xl border border-slate-200/80 bg-slate-50/70 pr-10 pl-14 text-xs text-slate-900 placeholder:text-slate-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-blue-500/15 md:text-sm"
-          />
-          <kbd
-            className="pointer-events-none absolute left-3 hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:inline-block"
-            dir="ltr"
-          >
-            ⌘ K
-          </kbd>
-        </div>
-
-        {/* Bottom Row: Status Pills on Start + Dropdown Controls on End */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          {/* Individual Rounded Status Pills */}
-          <div
-            role="group"
-            aria-label="تصفية حسب الأولوية"
-            className="inline-flex flex-wrap items-center gap-2"
-          >
-            {SEGMENT_ITEMS.map((item) => {
-              const active = filters.category === item.key;
-              return (
-                <button
-                  key={item.key}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => onChange({ category: item.key })}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
-                    active
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'border border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        {/* Individual Rounded Status Pills */}
+        <div
+          role="group"
+          aria-label="تصفية حسب الأولوية"
+          className="inline-flex flex-wrap items-center gap-2"
+        >
+          {SEGMENT_ITEMS.map((item) => {
+            const active = filters.category === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                aria-pressed={active}
+                onClick={() => onChange({ category: item.key })}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
+                  active
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'border border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
+                }`}
+              >
+                {item.dot && <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : item.dot}`} aria-hidden />}
+                <span>{item.label}</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-[10px] tabular-nums ${
+                    active ? 'bg-white/20 text-white' : 'text-slate-400'
                   }`}
                 >
-                  {item.dot && <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : item.dot}`} aria-hidden />}
-                  <span>{item.label}</span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.2 text-[10px] tabular-nums ${
-                      active ? 'bg-white/20 text-white' : 'text-slate-400'
-                    }`}
-                  >
-                    {categoryCounts[item.key] ?? 0}
-                  </span>
-                </button>
-              );
-            })}
+                  {categoryCounts[item.key] ?? 0}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Compact Search Input beside Delegates */}
+          <div className="relative flex items-center">
+            <Search
+              className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-slate-400"
+              aria-hidden
+            />
+            <input
+              ref={searchRef}
+              type="search"
+              value={filters.query}
+              onChange={(e) => onChange({ query: e.target.value })}
+              placeholder="بحث…"
+              aria-label="بحث في سجل العوائل"
+              className="h-9 w-48 rounded-xl border border-slate-200/80 bg-slate-50/70 pr-8 pl-3 text-xs text-slate-900 placeholder:text-slate-400 transition focus:w-60 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-blue-500/15"
+            />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
           {/* Custom Delegate Picker with Avatar & Family Count */}
           <div className="relative" ref={delegateRef}>
             <button
@@ -342,7 +334,6 @@ export function FiltersToolbar({
               ))}
             </select>
           </label>
-          </div>
         </div>
       </div>
     </section>
