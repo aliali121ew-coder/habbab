@@ -239,7 +239,7 @@ export function FamiliesTable({
                       <>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(salary)}</span>
-                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                          <span className="rounded-md border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                             راتب شهري
                           </span>
                         </div>
@@ -248,7 +248,7 @@ export function FamiliesTable({
                         </p>
                       </>
                     ) : (
-                      <span className="text-xs font-medium text-slate-400">لا يوجد راتب</span>
+                      <span className="inline-flex rounded-lg border border-slate-200/80 px-2.5 py-1 text-[11px] font-medium text-slate-400">لا يوجد راتب</span>
                     )}
                   </td>
 
@@ -258,7 +258,11 @@ export function FamiliesTable({
                       <>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(lastAid.amount)}</span>
-                          <span className="rounded-full bg-blue-600/10 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                          <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${
+                            /دواء|أدوية|علاج/.test(lastAid.type ?? '')
+                              ? 'border-purple-500/30 bg-purple-500/12 text-purple-700'
+                              : 'border-blue-500/30 bg-blue-500/12 text-blue-700'
+                          }`}>
                             {lastAid.type}
                           </span>
                         </div>
@@ -267,19 +271,21 @@ export function FamiliesTable({
                         </p>
                       </>
                     ) : (
-                      <span className="text-xs font-medium text-slate-400">لا توجد مساعدات</span>
+                      <span className="inline-flex rounded-lg border border-slate-200/80 px-2.5 py-1 text-[11px] font-medium text-slate-400">لا توجد مساعدات</span>
                     )}
                   </td>
 
                   {/* 4. المندوب */}
                   <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <DelegateAvatar delegate={family.delegate} size="sm" />
-                      <span className="text-sm font-semibold text-slate-800">{family.delegate?.name}</span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-800">{family.delegate?.name}</p>
+                        <p className="mt-0.5 text-xs text-slate-400 tabular-nums" dir="ltr">
+                          {family.delegate?.phone}
+                        </p>
+                      </div>
                     </div>
-                    <p className="mt-0.5 text-xs text-slate-400 tabular-nums" dir="ltr">
-                      {family.delegate?.phone}
-                    </p>
                   </td>
 
                   {/* 5. الإجراءات */}

@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowUpDown, Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react';
 import { DELEGATES } from '../../data/families';
 import { PAYMENT_STATUS_LABELS, SORT_LABELS } from '../../utils/format';
 import { DelegateAvatar } from './DelegateChip';
 
 const SEGMENT_ITEMS = [
-  { key: 'all', label: 'الكل' },
-  { key: 'critical', label: 'حرجة' },
-  { key: 'intensive', label: 'متوسطة' },
-  { key: 'stable', label: 'جيدة' },
+  { key: 'all', label: 'الكل', dot: null },
+  { key: 'critical', label: 'حرجة', dot: 'bg-rose-500' },
+  { key: 'intensive', label: 'متوسطة', dot: 'bg-amber-500' },
+  { key: 'stable', label: 'جيدة', dot: 'bg-emerald-500' },
 ];
 
 export function FiltersToolbar({
@@ -217,12 +217,13 @@ export function FiltersToolbar({
                   type="button"
                   aria-pressed={active}
                   onClick={() => onChange({ category: item.key })}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition ${
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition ${
                     active
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
                   }`}
                 >
+                  {item.dot && <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : item.dot}`} aria-hidden />}
                   <span>{item.label}</span>
                   <span
                     className={`rounded-full px-1.5 py-0.2 text-[10px] tabular-nums ${
@@ -329,12 +330,13 @@ export function FiltersToolbar({
           </label>
 
           {/* Sort Select */}
-          <label className="inline-flex items-center md:ms-auto">
+          <label className="relative inline-flex items-center md:ms-auto">
             <span className="sr-only">الترتيب</span>
+            <ArrowUpDown className="pointer-events-none absolute end-3 h-3.5 w-3.5 text-slate-400" aria-hidden />
             <select
               value={filters.sortBy}
               onChange={(e) => onChange({ sortBy: e.target.value })}
-              className="h-9 rounded-xl border border-slate-200/80 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-slate-300 focus:border-blue-500 focus:outline-none"
+              className="h-9 appearance-none rounded-xl border border-slate-200/80 bg-white ps-3 pe-8 text-xs font-semibold text-slate-700 transition hover:border-slate-300 focus:border-blue-500 focus:outline-none"
             >
               {Object.entries(SORT_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>ترتيب: {label}</option>

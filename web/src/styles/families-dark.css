@@ -103,6 +103,7 @@
   :root[data-theme="dark"] .fam-saas .text-emerald-700 { color: #6ee7b7; }
   :root[data-theme="dark"] .fam-saas .text-emerald-600 { color: #34d399; }
   :root[data-theme="dark"] .fam-saas :is(.text-blue-700, .text-blue-600) { color: #93c5fd; }
+  :root[data-theme="dark"] .fam-saas .text-purple-700 { color: #d8b4fe; }
   :root[data-theme="dark"] .fam-saas .text-indigo-700 { color: #a5b4fc; }
   :root[data-theme="dark"] .fam-saas .text-white { color: #ffffff; }
 
@@ -203,6 +204,7 @@
     :root:not([data-theme="light"]) .fam-saas .text-emerald-700 { color: #6ee7b7; }
     :root:not([data-theme="light"]) .fam-saas .text-emerald-600 { color: #34d399; }
     :root:not([data-theme="light"]) .fam-saas :is(.text-blue-700, .text-blue-600) { color: #93c5fd; }
+    :root:not([data-theme="light"]) .fam-saas .text-purple-700 { color: #d8b4fe; }
     :root:not([data-theme="light"]) .fam-saas .text-white { color: #ffffff; }
 
     :root:not([data-theme="light"]) .fam-saas :is(input:not([type="checkbox"]), select, textarea) {
