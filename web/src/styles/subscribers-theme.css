@@ -744,7 +744,23 @@ div.list-card { cursor: default; }
 .list-card.aid { --tone: #8b5cf6; }
 .list-card.exam { --tone: #ef4444; }
 .list-cards.fam-aid-cards { margin-bottom: 0; }
-@media (min-width: 768px) { .list-cards.fam-aid-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 768px) {
+  .list-cards.fam-aid-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .list-cards.fam-aid-cards .list-card {
+    min-height: 126px;
+    padding: 20px 18px;
+    align-content: center;
+    row-gap: 6px;
+  }
+  .list-cards.fam-aid-cards .list-card-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+  }
+  .list-cards.fam-aid-cards .list-card-val {
+    font-size: 1.65rem;
+  }
+}
 @media (min-width: 1280px) { .list-cards.fam-aid-cards { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 
 /* Light mode: a much lighter wash on the coloured cards — a hint of the card's colour by the
