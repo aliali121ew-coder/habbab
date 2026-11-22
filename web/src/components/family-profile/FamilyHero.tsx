@@ -4,10 +4,13 @@ import {
   HandHeart,
   Home,
   MapPin,
+  Phone,
   Users,
 } from 'lucide-react';
 import { formatIQDParts } from '../../mock/family';
+import { WhatsAppMark } from '../../pages/subscribers/WhatsAppButton';
 import type { CaseOfficer, FamilyDetail } from '../../types/family';
+import { DelegateAvatar } from '../families/DelegateChip';
 import { CaseOfficerCard } from './CaseOfficerCard';
 
 interface Props {
@@ -36,6 +39,9 @@ export function FamilyHero({
     .sort()
     .pop() ?? family.registeredAt;
 
+  const officerDigits = family.officer.phone.replace(/\D/g, '');
+  const officerWaHref = `https://wa.me/${officerDigits.startsWith('0') ? `964${officerDigits.slice(1)}` : officerDigits}`;
+
   return (
     <div className="space-y-4">
       {/* Primary Quick Action */}
@@ -53,7 +59,7 @@ export function FamilyHero({
         </button>
       </div>
 
-      {/* Top Hero Bento Grid: 8 cols Family Identity (Right) + 4 cols Delegate Card (Left) */}
+      {/* Top Hero Bento Grid: 8 cols Family Identity (Right) + 4 cols Delegate Card (Left, hidden on phone) */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
         <section className="fp-card fp-hero-main relative flex flex-col justify-between overflow-hidden lg:col-span-8">
           {/* Theme-aware gradient top accent strip */}
@@ -87,7 +93,7 @@ export function FamilyHero({
               </span>
             </div>
 
-            {/* 2x2 Inner Info Tiles */}
+            {/* 2x2 Inner Info Tiles (+ Compact Delegate Tile on Phone Only) */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div
                 className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
@@ -185,11 +191,65 @@ export function FamilyHero({
                   </strong>
                 </div>
               </div>
+
+              {/* Phone-only compact Delegate tile inside the family card (same style as info tiles) */}
+              <div
+                className="flex items-center justify-between gap-2.5 rounded-xl border px-3.5 py-3 md:hidden"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--fp-card) 74%, var(--fp-muted))',
+                  borderColor: 'var(--fp-border)',
+                }}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <DelegateAvatar
+                    delegate={{ id: family.officer.id, name: family.officer.name }}
+                    size="md"
+                  />
+                  <div className="min-w-0">
+                    <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+                      المندوب المسؤول
+                    </span>
+                    <a
+                      href={`#/delegates/${family.officer.id}`}
+                      className="mt-0.5 block truncate text-xs font-bold no-underline"
+                      style={{ color: 'var(--fp-ink)' }}
+                    >
+                      {family.officer.name}
+                    </a>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <a
+                    href={`tel:${officerDigits}`}
+                    onClick={() => onCopy(family.officer.phone, 'رقم المندوب')}
+                    aria-label={`اتصال بـ ${family.officer.name}`}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border no-underline transition hover:opacity-85"
+                    style={{
+                      backgroundColor: 'var(--fp-card)',
+                      borderColor: 'var(--fp-border)',
+                      color: 'var(--bar-active)',
+                    }}
+                  >
+                    <Phone className="h-4 w-4" aria-hidden />
+                  </a>
+                  <a
+                    href={officerWaHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`واتساب ${family.officer.name}`}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white no-underline transition hover:bg-emerald-700"
+                  >
+                    <WhatsAppMark />
+                  </a>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <div className="lg:col-span-4">
+        {/* Desktop & Tablet Delegate Card (hidden on phone since it's merged into the family card above) */}
+        <div className="hidden md:block lg:col-span-4">
           <CaseOfficerCard
             officer={family.officer}
             officers={officers}
