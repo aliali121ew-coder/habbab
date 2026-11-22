@@ -28,7 +28,8 @@ const listeners = new Set();
 function fetchLiveDelegates(force = false) {
   if (!force && cachedData) return Promise.resolve(cachedData);
   if (!inflight) {
-    inflight = api('/collections/overview')
+    const year = new Date().getUTCFullYear();
+    inflight = api(`/collections/overview?year=${year}`)
       .then((overview) => {
         const list = (overview?.delegates ?? []).map((d) => ({
           id: d.id,
