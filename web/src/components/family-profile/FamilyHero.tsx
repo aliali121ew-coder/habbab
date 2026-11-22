@@ -1,5 +1,4 @@
 import {
-  AlertCircle,
   ArrowRight,
   Calendar,
   ClipboardCheck,
@@ -12,7 +11,7 @@ import {
   Users,
 } from 'lucide-react';
 import { formatIQDParts } from '../../mock/family';
-import type { CaseOfficer, FamilyDetail, FamilyPriority } from '../../types/family';
+import type { CaseOfficer, FamilyDetail } from '../../types/family';
 import { CaseOfficerCard } from './CaseOfficerCard';
 
 interface Props {
@@ -25,12 +24,6 @@ interface Props {
   onPrint: () => void;
 }
 
-const PRIORITY_META: Record<FamilyPriority, { label: string; bg: string; color: string; dot: string }> = {
-  critical: { label: 'حالة حرجة', bg: 'var(--fp-rose-soft)', color: 'var(--fp-rose)', dot: 'var(--fp-rose)' },
-  intensive: { label: 'حالة متوسطة', bg: 'var(--fp-amber-soft)', color: 'var(--fp-amber)', dot: 'var(--fp-amber)' },
-  stable: { label: 'حالة جيدة', bg: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)', dot: 'var(--fp-emerald)' },
-};
-
 export function FamilyHero({
   family,
   officers,
@@ -40,7 +33,6 @@ export function FamilyHero({
   onOpenVisit,
   onPrint,
 }: Props) {
-  const prio = PRIORITY_META[family.priority];
   const rentFormatted = formatIQDParts(family.rentAmount);
 
   const latestUpdate = [
@@ -59,7 +51,7 @@ export function FamilyHero({
         <div className="flex flex-wrap items-center gap-2">
           <a
             href="#/families"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition hover:opacity-85"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold no-underline transition hover:opacity-85"
             style={{
               backgroundColor: 'var(--fp-card)',
               borderColor: 'var(--fp-border)',
@@ -120,7 +112,7 @@ export function FamilyHero({
             onClick={onOpenPayment}
             className="inline-flex h-9 items-center gap-1.5 rounded-xl px-4 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
             style={{
-              backgroundImage: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+              backgroundImage: 'linear-gradient(135deg, var(--bar-active), var(--brand))',
             }}
           >
             <HandHeart className="h-3.5 w-3.5" aria-hidden />
@@ -129,94 +121,48 @@ export function FamilyHero({
         </div>
       </div>
 
-      {/* Top Hero Bento Grid: 8 cols Family Identity (Right) + 4 cols Dark Navy Delegate Card (Left) */}
+      {/* Top Hero Bento Grid: 8 cols Family Identity (Right) + 4 cols Delegate Card (Left) */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        <section className="fp-card relative overflow-hidden lg:col-span-8">
-          {/* Thin pink-to-indigo top accent strip */}
+        <section className="fp-card fp-hero-main relative flex flex-col justify-between overflow-hidden lg:col-span-8">
+          {/* Theme-aware gradient top accent strip */}
           <div
             className="h-1.5 w-full"
-            style={{ backgroundImage: 'linear-gradient(270deg, #f43f5e 0%, #6366f1 55%, #3b82f6 100%)' }}
+            style={{ backgroundImage: 'linear-gradient(270deg, var(--bar-active) 0%, var(--brand) 100%)' }}
             aria-hidden
           />
 
-          <div className="space-y-4 p-5 sm:p-6">
-            {/* Top meta pills + last updated */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => onCopy(family.fileNo, 'رقم الملف')}
-                  className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-xs font-bold transition hover:opacity-80"
-                  style={{
-                    backgroundColor: 'var(--fp-muted)',
-                    borderColor: 'var(--fp-border)',
-                    color: 'var(--fp-ink)',
-                  }}
-                  dir="ltr"
-                >
-                  {family.fileNo}
-                  <Copy className="h-3 w-3 opacity-65" aria-hidden />
-                </button>
-
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
-                  style={{ backgroundColor: prio.bg, color: prio.color }}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: prio.dot }} aria-hidden />
-                  {prio.label}
-                </span>
-
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
-                  style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}
-                >
-                  <Users className="h-3.5 w-3.5" aria-hidden />
-                  {family.socialStatus}
-                </span>
-              </div>
+          <div className="flex flex-1 flex-col justify-between gap-5 p-5 sm:p-6">
+            {/* Family Title + Last Updated */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h1
+                id="fp-main-heading"
+                className="text-xl font-extrabold tracking-tight sm:text-2xl"
+                style={{ color: 'var(--fp-ink)' }}
+              >
+                {family.name}
+              </h1>
 
               <span
-                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold"
-                style={{ backgroundColor: 'var(--fp-muted)', color: 'var(--fp-ink-3)' }}
+                className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-semibold"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--fp-card) 72%, transparent)',
+                  borderColor: 'var(--fp-border)',
+                  color: 'var(--fp-ink-3)',
+                }}
               >
                 <Clock className="h-3.5 w-3.5" aria-hidden />
                 <span>آخر تحديث: <bdi dir="ltr">{latestUpdate}</bdi></span>
               </span>
             </div>
 
-            {/* Family Title */}
-            <h1
-              id="fp-main-heading"
-              className="text-xl font-extrabold tracking-tight sm:text-2xl"
-              style={{ color: 'var(--fp-ink)' }}
-            >
-              {family.name}
-            </h1>
-
-            {/* Urgent / Case Summary Callout Box */}
-            {family.caseSummary && (
-              <div
-                className="flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-xs leading-relaxed sm:text-[13px]"
-                style={{
-                  backgroundColor: 'color-mix(in srgb, var(--fp-amber-soft) 72%, var(--fp-card))',
-                  borderColor: 'color-mix(in srgb, var(--fp-amber) 28%, transparent)',
-                  color: 'var(--fp-ink-2)',
-                }}
-              >
-                <AlertCircle
-                  className="mt-0.5 h-4 w-4 shrink-0"
-                  style={{ color: 'var(--fp-amber)' }}
-                  aria-hidden
-                />
-                <p>{family.caseSummary}</p>
-              </div>
-            )}
-
             {/* 2x2 Inner Info Tiles */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div
                 className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
-                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--fp-card) 74%, var(--fp-muted))',
+                  borderColor: 'var(--fp-border)',
+                }}
               >
                 <span
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
@@ -236,7 +182,10 @@ export function FamilyHero({
 
               <div
                 className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
-                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--fp-card) 74%, var(--fp-muted))',
+                  borderColor: 'var(--fp-border)',
+                }}
               >
                 <span
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
@@ -261,7 +210,10 @@ export function FamilyHero({
 
               <div
                 className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
-                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--fp-card) 74%, var(--fp-muted))',
+                  borderColor: 'var(--fp-border)',
+                }}
               >
                 <span
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
@@ -281,7 +233,10 @@ export function FamilyHero({
 
               <div
                 className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
-                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--fp-card) 74%, var(--fp-muted))',
+                  borderColor: 'var(--fp-border)',
+                }}
               >
                 <span
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"

@@ -257,3 +257,50 @@ a.fp-kpi:focus-visible { outline: 2px solid var(--fp-primary); outline-offset: 2
 .fp-root .fp-kpi-card:active {
   transform: translateY(-1px) scale(0.99);
 }
+
+/* Main Family Identity Card: soft theme-aware gradient (light & dark) */
+.fp-root .fp-hero-main {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bar-active) 11%, var(--surface)) 0%,
+    color-mix(in srgb, var(--bar-active) 4%, var(--surface)) 50%,
+    var(--surface) 100%
+  ) !important;
+  border-color: color-mix(in srgb, var(--bar-active) 22%, var(--line)) !important;
+}
+:root[data-theme="dark"] .fp-root .fp-hero-main {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--bar-active) 20%, var(--surface)) 0%,
+    color-mix(in srgb, var(--brand) 11%, var(--surface)) 54%,
+    color-mix(in srgb, var(--paper) 86%, var(--surface)) 100%
+  ) !important;
+  border-color: color-mix(in srgb, var(--bar-active) 28%, var(--line)) !important;
+}
+
+/* Delegate Card on FamilyDetailPage: matches .dcard on Delegates page (light & dark) */
+.fp-root .fp-officer-card {
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--surface) 88%, var(--brand) 6%) 0%,
+    color-mix(in srgb, var(--surface) 74%, var(--paper)) 100%
+  );
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--brand) 16%, transparent);
+  color: var(--ink);
+}
+:root[data-theme="dark"] .fp-root .fp-officer-card {
+  border-color: color-mix(in srgb, var(--brand-2) 26%, var(--line));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--brand) 16%, var(--surface)) 0%,
+    color-mix(in srgb, var(--paper) 82%, transparent) 100%
+  );
+  box-shadow: 0 8px 22px -10px rgb(0 0 0 / 48%);
+  color: var(--ink);
+}
+.fp-root .fp-officer-card a {
+  text-decoration: none;
+}

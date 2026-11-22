@@ -51,23 +51,30 @@ export function CaseOfficerCard({ officer, officers, onChangeOfficer, onCopyPhon
   return (
     <div
       ref={popRef}
-      className="relative flex h-full flex-col justify-between gap-5 rounded-2xl p-5 text-white shadow-lg"
-      style={{
-        backgroundImage: 'linear-gradient(155deg, #0f172a 0%, #1e1b4b 100%)',
-        border: '1px solid rgba(255,255,255,0.08)',
-      }}
+      className="fp-officer-card relative flex h-full flex-col justify-between gap-4 rounded-[18px] p-5"
     >
       {/* Top row */}
       <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-indigo-100">
-          <UserCheck className="h-3.5 w-3.5 text-indigo-300" aria-hidden />
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--bar-active) 12%, transparent)',
+            color: 'var(--bar-active)',
+          }}
+        >
+          <UserCheck className="h-3.5 w-3.5" aria-hidden />
           المندوب المسؤول
         </span>
 
         <button
           type="button"
           onClick={() => { setPickerOpen((p) => !p); setQuery(''); }}
-          className="rounded-lg bg-white/10 px-2.5 py-1 text-xs font-semibold text-indigo-100 transition hover:bg-white/20"
+          className="rounded-lg border px-2.5 py-1 text-xs font-bold transition hover:opacity-85"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--fp-card) 75%, transparent)',
+            borderColor: 'var(--fp-border)',
+            color: 'var(--fp-ink-2)',
+          }}
         >
           تغيير المندوب
         </button>
@@ -76,43 +83,64 @@ export function CaseOfficerCard({ officer, officers, onChangeOfficer, onCopyPhon
       {/* Delegate profile */}
       <div className="flex items-center gap-3.5">
         <div className="relative shrink-0">
-          <div className="rounded-full ring-2 ring-indigo-400/50">
+          <div
+            className="rounded-full p-0.5"
+            style={{ background: 'color-mix(in srgb, var(--bar-active) 24%, transparent)' }}
+          >
             <DelegateAvatar
               delegate={{ id: officer.id, name: officer.name }}
               size="md"
             />
           </div>
           <span
-            className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-[#131937]"
+            className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2"
+            style={{ boxShadow: '0 0 0 2px var(--fp-card)' }}
             aria-hidden
           />
         </div>
         <div className="min-w-0">
           <a
             href={`#/delegates/${officer.id}`}
-            className="block truncate text-base font-extrabold text-white transition hover:text-indigo-200"
+            className="block truncate text-base font-extrabold no-underline transition hover:opacity-80"
+            style={{ color: 'var(--fp-ink)' }}
           >
             {officer.name}
           </a>
-          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-indigo-200/80">
-            <MapPin className="h-3.5 w-3.5 shrink-0 text-indigo-300" aria-hidden />
+          <p className="mt-0.5 flex items-center gap-1 truncate text-xs" style={{ color: 'var(--fp-ink-3)' }}>
+            <MapPin className="h-3.5 w-3.5 shrink-0" style={{ color: 'var(--bar-active)' }} aria-hidden />
             {officer.zone}
           </p>
         </div>
       </div>
 
-      {/* 2 glass mini-stats */}
+      {/* 2 theme-matched mini-stats */}
       <div className="grid grid-cols-2 gap-2.5">
-        <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5">
-          <span className="block text-[11px] font-medium text-indigo-200/75">العوائل المتابعة</span>
-          <strong className="mt-1 block text-sm font-extrabold tabular-nums text-white">
+        <div
+          className="rounded-xl border px-3 py-2.5"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--fp-card) 70%, var(--fp-muted))',
+            borderColor: 'var(--fp-border)',
+          }}
+        >
+          <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+            العوائل المتابعة
+          </span>
+          <strong className="mt-1 block text-sm font-extrabold tabular-nums" style={{ color: 'var(--fp-ink)' }}>
             {followedCount} {followedCount === 1 ? 'عائلة' : 'عوائل'}
           </strong>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.06] px-3 py-2.5">
-          <span className="block text-[11px] font-medium text-indigo-200/75">تقييم الاستجابة</span>
-          <strong className="mt-1 inline-flex items-center gap-1 text-sm font-extrabold tabular-nums text-emerald-400">
-            <Star className="h-3.5 w-3.5 fill-emerald-400 text-emerald-400" aria-hidden />
+        <div
+          className="rounded-xl border px-3 py-2.5"
+          style={{
+            backgroundColor: 'color-mix(in srgb, var(--fp-card) 70%, var(--fp-muted))',
+            borderColor: 'var(--fp-border)',
+          }}
+        >
+          <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+            تقييم الاستجابة
+          </span>
+          <strong className="mt-1 inline-flex items-center gap-1 text-sm font-extrabold tabular-nums" style={{ color: 'var(--fp-emerald)' }}>
+            <Star className="h-3.5 w-3.5 fill-current" aria-hidden />
             4.9
           </strong>
         </div>
@@ -124,16 +152,21 @@ export function CaseOfficerCard({ officer, officers, onChangeOfficer, onCopyPhon
           href={`tel:${digits}`}
           onClick={() => onCopyPhone(officer.phone)}
           title={officer.phone}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white px-3 text-xs font-bold text-slate-900 shadow-xs transition hover:bg-slate-100"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-bold no-underline shadow-xs transition hover:opacity-85"
+          style={{
+            backgroundColor: 'var(--fp-card)',
+            borderColor: 'var(--fp-border)',
+            color: 'var(--fp-ink)',
+          }}
         >
-          <Phone className="h-3.5 w-3.5" aria-hidden />
+          <Phone className="h-3.5 w-3.5" style={{ color: 'var(--bar-active)' }} aria-hidden />
           اتصال مباشر
         </a>
         <a
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-500 px-3 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-600"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 text-xs font-bold text-white no-underline shadow-xs transition hover:bg-emerald-700"
         >
           <WhatsAppMark />
           واتساب
