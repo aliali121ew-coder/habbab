@@ -252,27 +252,16 @@ export function FamiliesTable({
 
                   {/* 3. نوع المساعدة */}
                   <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {salary > 0 && (
-                        <span className="rounded-md border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
-                          راتب شهري
-                        </span>
-                      )}
-                      {lastAid && (
-                        <span className={`rounded-md border px-2 py-0.5 text-[11px] font-bold ${
-                          /دواء|أدوية|علاج/.test(lastAid.type ?? '')
-                            ? 'border-purple-500/30 bg-purple-500/12 text-purple-700'
-                            : 'border-blue-500/30 bg-blue-500/12 text-blue-700'
-                        }`}>
-                          {lastAid.type}
-                        </span>
-                      )}
-                      {salary <= 0 && !lastAid && (
-                        <span className="inline-flex rounded-lg border border-slate-200/80 px-2.5 py-0.5 text-[11px] font-medium text-slate-400">
-                          لا توجد مساعدات
-                        </span>
-                      )}
-                    </div>
+                    {(() => {
+                      const kinds = [];
+                      if (salary > 0) kinds.push('راتب شهري');
+                      if (lastAid?.type) kinds.push(lastAid.type);
+                      return kinds.length > 0 ? (
+                        <span className="text-sm font-medium text-slate-700">{kinds.join(' · ')}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      );
+                    })()}
                   </td>
 
                   {/* 4. الدفع */}
