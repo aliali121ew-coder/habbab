@@ -28,7 +28,14 @@ try {
     if (!chosen()) document.documentElement.dataset.theme = media.matches ? 'dark' : 'light';
   };
   apply();
-  media.addEventListener('change', function () { apply(); if (window.syncThemeColor) window.syncThemeColor(); });
+  media.addEventListener('change', function () {
+    // No element transitions while the colours change (see switchLook in src/theme.ts).
+    var root = document.documentElement;
+    root.classList.add('theme-switching');
+    apply();
+    if (window.syncThemeColor) window.syncThemeColor();
+    requestAnimationFrame(function () { requestAnimationFrame(function () { root.classList.remove('theme-switching'); }); });
+  });
 })();
 
 // The browser / installed-app title bar takes the top bar's colour (the --surface token) for the

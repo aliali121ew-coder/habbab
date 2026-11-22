@@ -780,3 +780,11 @@
     border: 1px solid rgb(255 255 255 / 8%) !important;
   }
 }
+
+/* Switching light/dark or the palette: no element transitions for that moment, so the page
+   changes in one step instead of rippling (src/theme.ts adds the class for two frames). */
+html.theme-switching, html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after {
+  transition: none !important;
+}
+/* Where the browser supports it the whole page crossfades once, quickly. */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; animation-timing-function: ease-out; }
