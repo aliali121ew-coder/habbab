@@ -90,67 +90,9 @@ export function FamilyKpiRow({ family, activeTab, memberFilter, onSelect }: Prop
   ];
 
   return (
-    <section aria-label="ملخص مؤشرات العائلة">
-      {/* Mobile: Single Parent Card formatted as a crisp 2x2 Table Grid (zero truncation) */}
-      <div className="fp-card overflow-hidden md:hidden">
-        <div className="grid grid-cols-2">
-          {cards.map((card, idx) => {
-            const isTopRow = idx < 2;
-            const isFirstCol = idx % 2 === 0;
-            return (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => onSelect(card.tab, card.filter)}
-                className="flex flex-col justify-between gap-2 p-3.5 text-start outline-none transition-colors active:opacity-80"
-                style={{
-                  borderBottom: isTopRow ? '1px solid var(--fp-border)' : undefined,
-                  borderInlineEnd: isFirstCol ? '1px solid var(--fp-border)' : undefined,
-                  backgroundColor: card.isActive
-                    ? `color-mix(in srgb, ${card.accent} 8%, var(--fp-card))`
-                    : 'transparent',
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span
-                    className="text-[11px] font-bold leading-tight"
-                    style={{ color: card.isActive ? card.accent : 'var(--fp-ink-3)' }}
-                  >
-                    {card.mobileLabel}
-                  </span>
-                  <span
-                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-colors"
-                    style={
-                      card.isActive
-                        ? { backgroundColor: card.accent, color: '#ffffff' }
-                        : { backgroundColor: card.soft, color: card.accent }
-                    }
-                  >
-                    <card.Icon className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                </div>
-
-                <strong
-                  className="block whitespace-nowrap text-[clamp(14px,4.2vw,17px)] font-extrabold tabular-nums leading-tight"
-                  style={{ color: card.valueColor }}
-                >
-                  {card.value}
-                </strong>
-
-                <span
-                  className="block text-[10.5px] font-semibold leading-tight"
-                  style={{ color: card.subColor }}
-                >
-                  {card.mobileSub}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
+    <section aria-label="ملخص مؤشرات العائلة" className="hidden md:block">
       {/* Desktop & Tablet: 4 Interactive Lifting KPI Cards */}
-      <div className="hidden gap-3.5 md:grid md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-4">
         {cards.map((card) => (
           <button
             key={card.id}

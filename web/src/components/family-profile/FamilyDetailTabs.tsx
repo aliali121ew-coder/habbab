@@ -215,7 +215,7 @@ export function FamilyDetailTabs({
           })}
         </div>
 
-        <div className="mt-3 md:mt-0 md:pb-2.5">
+        <div className="hidden md:block md:pb-2.5">
           {activeTab === 'members' && (
             <button
               type="button"

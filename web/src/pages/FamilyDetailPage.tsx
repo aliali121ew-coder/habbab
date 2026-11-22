@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MotionConfig, motion } from 'framer-motion';
-import { ArrowRight, HandCoins, HeartHandshake } from 'lucide-react';
+import { ArrowRight, HeartHandshake } from 'lucide-react';
 import { printWhenReady } from '../components/printWhenReady';
 import { OfficialFamiliesPrintSheet, PaymentModal, VisitModal } from '../components/families/FamilyModalsAndPrint';
 import { AddMemberDialog, type EditableMember, type NewMember } from '../components/family-profile/AddMemberDialog';
@@ -165,7 +165,7 @@ export function FamilyDetailPage() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div dir="rtl" className="fp-root -mx-[14px] -mb-3 min-h-[calc(100dvh-56px)] px-4 pb-24 pt-2 md:-mx-[18px] md:px-7 md:pb-10">
+      <div dir="rtl" className="fp-root -mx-[14px] -mb-3 min-h-[calc(100dvh-56px)] px-4 pb-8 pt-2 md:-mx-[18px] md:px-7 md:pb-10">
         <div className="mx-auto max-w-[2400px] space-y-6">
           {loading ? (
             <ProfileSkeleton />
@@ -228,25 +228,6 @@ export function FamilyDetailPage() {
             }}
           />
         )}
-
-        {/* Mobile Sticky Bottom Bar */}
-        <div
-          className="fixed inset-x-0 bottom-0 z-30 border-t p-3 backdrop-blur-md md:hidden"
-          style={{
-            backgroundColor: 'color-mix(in srgb, var(--fp-card) 92%, transparent)',
-            borderColor: 'var(--fp-border)',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setPayOpen(true)}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-white shadow-md"
-            style={{ backgroundImage: 'linear-gradient(270deg, var(--fp-primary), var(--fp-primary-2))' }}
-          >
-            <HandCoins className="h-4 w-4" aria-hidden />
-            <span>تسجيل دفعة</span>
-          </button>
-        </div>
 
         {/* Modals */}
         {payOpen && rawStoreFamily && (
