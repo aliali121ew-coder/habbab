@@ -106,10 +106,15 @@ export function FamilyDetailTabs({
     <section className="fp-card overflow-hidden">
       {/* Tabs Header + Contextual CTA */}
       <div
-        className="flex flex-wrap items-center justify-between gap-3 border-b px-4 pt-3 sm:px-6"
+        className="border-b px-4 py-3.5 sm:px-6 md:flex md:flex-wrap md:items-center md:justify-between md:gap-3 md:pb-0 md:pt-3"
         style={{ borderColor: 'var(--fp-border)' }}
       >
-        <div className="flex flex-wrap items-center gap-1 sm:gap-2" role="tablist" aria-label="أقسام ملف العائلة">
+        {/* Mobile 2x2 Tab Cards */}
+        <div
+          className="grid grid-cols-2 gap-2.5 md:hidden"
+          role="tablist"
+          aria-label="أقسام ملف العائلة"
+        >
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
             return (
@@ -119,7 +124,68 @@ export function FamilyDetailTabs({
                 role="tab"
                 aria-selected={active}
                 onClick={() => onTabChange(tab.id)}
-                className="relative inline-flex items-center gap-2 px-3 pb-3 pt-1.5 text-xs font-bold transition sm:text-[13px]"
+                className="flex flex-col justify-between gap-2.5 rounded-2xl border p-3 text-start transition active:scale-[0.98]"
+                style={
+                  active
+                    ? {
+                        backgroundColor: 'color-mix(in srgb, var(--bar-active) 10%, var(--fp-card))',
+                        borderColor: 'color-mix(in srgb, var(--bar-active) 60%, transparent)',
+                        boxShadow: '0 6px 16px -8px color-mix(in srgb, var(--bar-active) 35%, transparent)',
+                      }
+                    : {
+                        backgroundColor: 'var(--fp-muted)',
+                        borderColor: 'var(--fp-border)',
+                      }
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition"
+                    style={
+                      active
+                        ? { backgroundColor: 'var(--bar-active)', color: '#ffffff' }
+                        : { backgroundColor: 'var(--fp-card)', color: 'var(--fp-ink-2)' }
+                    }
+                  >
+                    <tab.Icon className="h-4 w-4" aria-hidden />
+                  </span>
+                  {typeof tab.count === 'number' && (
+                    <span
+                      className="inline-flex h-5 min-w-[22px] items-center justify-center rounded-full px-1.5 text-[11px] font-extrabold tabular-nums"
+                      style={
+                        active
+                          ? { backgroundColor: 'var(--bar-active)', color: '#ffffff' }
+                          : { backgroundColor: 'var(--fp-card)', color: 'var(--fp-ink-3)' }
+                      }
+                    >
+                      {tab.count}
+                    </span>
+                  )}
+                </div>
+
+                <span
+                  className="block truncate text-xs font-extrabold"
+                  style={{ color: active ? 'var(--bar-active)' : 'var(--fp-ink)' }}
+                >
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Desktop Horizontal Tabs */}
+        <div className="hidden flex-wrap items-center gap-2 md:flex" role="tablist" aria-label="أقسام ملف العائلة">
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onTabChange(tab.id)}
+                className="relative inline-flex items-center gap-2 px-3 pb-3 pt-1.5 text-[13px] font-bold transition"
                 style={{
                   color: active ? 'var(--fp-primary)' : 'var(--fp-ink-3)',
                   borderBottom: active ? '2px solid var(--fp-primary)' : '2px solid transparent',
@@ -143,13 +209,13 @@ export function FamilyDetailTabs({
           })}
         </div>
 
-        <div className="pb-2.5">
+        <div className="mt-3 md:mt-0 md:pb-2.5">
           {activeTab === 'members' && (
             <button
               type="button"
               onClick={onAddMember}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3.5 text-xs font-bold text-white shadow-xs transition hover:opacity-95"
-              style={{ backgroundImage: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}
+              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl px-3.5 text-xs font-bold text-white shadow-xs transition hover:opacity-95 md:w-auto"
+              style={{ backgroundImage: 'linear-gradient(135deg, var(--bar-active), var(--brand))' }}
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden />
               <span>إضافة فرد</span>
@@ -159,7 +225,7 @@ export function FamilyDetailTabs({
             <button
               type="button"
               onClick={onOpenPayment}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700"
+              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-700 md:w-auto"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               <span>صرف مساعدة</span>
@@ -169,7 +235,7 @@ export function FamilyDetailTabs({
             <button
               type="button"
               onClick={onOpenVisit}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700"
+              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-amber-600 px-3.5 text-xs font-bold text-white shadow-xs transition hover:bg-amber-700 md:w-auto"
             >
               <Plus className="h-3.5 w-3.5" aria-hidden />
               <span>تسجيل زيارة</span>
