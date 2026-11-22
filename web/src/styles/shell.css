@@ -589,7 +589,7 @@
 }
 
 /* Page path drawn by the shell for pages without their own. */
-.shell-crumbs { margin-block-end: 10px; }
+.shell-crumbs { position: relative; z-index: 2; margin-block-end: 10px; }
 
 /* Smooth scrolling without touching the look: the page background is fixed, so every blurred
    card is re-blurred on each scroll frame. Cards off screen are skipped until they scroll into

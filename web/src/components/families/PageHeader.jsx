@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Calendar, ChevronDown, ChevronLeft, HeartHandshake, Plus, Printer } from 'lucide-react';
+import { Calendar, ChevronDown, HeartHandshake, Plus, Printer } from 'lucide-react';
 import { AVAILABLE_MONTHS } from '../../data/families';
 import { CalendarButton, FamiliesCalendar } from './FamiliesCalendar';
 
@@ -83,12 +83,6 @@ export function PageHeader({ families = [], selectedMonth, onMonthChange, onPrin
 
     <header className="hidden flex-col gap-4 md:flex md:flex-row md:items-center md:justify-between">
       <div>
-        <nav aria-label="مسار التنقل" className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-          <a href="#/" className="tap transition hover:text-blue-600">الرئيسية</a>
-          <ChevronLeft className="h-3.5 w-3.5 text-slate-400" aria-hidden />
-          <span className="font-semibold text-slate-700">العوائل المتعففة</span>
-        </nav>
-
         <div className="flex items-center gap-3.5">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl fam-theme-fill text-white">
             <HeartHandshake className="h-6 w-6" aria-hidden />

@@ -136,7 +136,7 @@ export function FamiliesPage() {
   return (
     <div
       dir="rtl"
-      className="fam-saas -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] bg-[#F5F7FB] px-4 py-6 text-slate-900 md:-mx-[18px] md:px-7"
+      className="fam-saas -mx-[14px] -mb-3 min-h-[calc(100dvh-56px)] bg-[#F5F7FB] px-4 py-4 text-slate-900 md:-mx-[18px] md:px-7 md:py-5"
     >
       <div className="mx-auto flex max-w-[2400px] flex-col gap-6">
         <PageHeader
