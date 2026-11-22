@@ -665,3 +665,24 @@ dialog.exp-dialog::backdrop {
   .exp-flat .exp-capsule-row td { display: block; padding: 0 0 6px !important; background: transparent; border: 0; }
   .exp-capsule-item { border-radius: 16px; padding: 10px 12px; }
 }
+
+/* ══ Expenses register at night: no grey bars on the blue glass ══════════════════════════════
+   The header row, the search strip and every second row were plain grey (--surface / --surface-2);
+   at night they take a light tint of the theme colour, like the families and subscribers tables. */
+:root:root[data-theme="dark"] .exp-flat thead th {
+  background: color-mix(in srgb, var(--bar-active) 16%, var(--surface));
+  border-bottom-color: color-mix(in srgb, var(--bar-active) 26%, var(--line));
+}
+:root:root[data-theme="dark"] .exp-filters {
+  background: color-mix(in srgb, var(--bar-active) 6%, transparent);
+  border-block-end-color: color-mix(in srgb, var(--bar-active) 20%, var(--line));
+}
+:root:root[data-theme="dark"] .exp-search,
+:root:root[data-theme="dark"] .exp-filters > select {
+  background-color: color-mix(in srgb, var(--bar-active) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--bar-active) 28%, var(--line));
+}
+:root:root[data-theme="dark"] .exp-search:focus-within { background-color: color-mix(in srgb, var(--bar-active) 18%, var(--surface)); border-color: var(--bar-active); }
+:root:root[data-theme="dark"] .exp-flat tbody tr:not(.expanded, .exp-capsule-row) > td { background: transparent; }
+:root:root[data-theme="dark"] .exp-flat tbody tr:nth-child(even):not(.expanded, .exp-capsule-row) > td { background: color-mix(in srgb, var(--bar-active) 6%, transparent); }
+:root:root[data-theme="dark"] .exp-flat tbody tr.exp-row:not(.expanded, .exp-capsule-row):hover > td { background: color-mix(in srgb, var(--bar-active) 12%, transparent); }
