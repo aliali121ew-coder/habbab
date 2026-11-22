@@ -109,9 +109,13 @@ export function FamilyDetailTabs({
         className="border-b px-4 py-3.5 sm:px-6 md:flex md:flex-wrap md:items-center md:justify-between md:gap-3 md:pb-0 md:pt-3"
         style={{ borderColor: 'var(--fp-border)' }}
       >
-        {/* Mobile 2x2 Tab Cards */}
+        {/* Mobile 2x2 Compact Sliding Tab Cards (half-height single row + spring glide) */}
         <div
-          className="grid grid-cols-2 gap-2.5 md:hidden"
+          className="grid grid-cols-2 gap-2 rounded-2xl p-1.5 md:hidden"
+          style={{
+            backgroundColor: 'var(--fp-muted)',
+            border: '1px solid var(--fp-border)',
+          }}
           role="tablist"
           aria-label="أقسام ملف العائلة"
         >
@@ -124,51 +128,53 @@ export function FamilyDetailTabs({
                 role="tab"
                 aria-selected={active}
                 onClick={() => onTabChange(tab.id)}
-                className="flex flex-col justify-between gap-2.5 rounded-2xl border p-3 text-start transition active:scale-[0.98]"
-                style={
-                  active
-                    ? {
-                        backgroundColor: 'color-mix(in srgb, var(--bar-active) 10%, var(--fp-card))',
-                        borderColor: 'color-mix(in srgb, var(--bar-active) 60%, transparent)',
-                        boxShadow: '0 6px 16px -8px color-mix(in srgb, var(--bar-active) 35%, transparent)',
-                      }
-                    : {
-                        backgroundColor: 'var(--fp-muted)',
-                        borderColor: 'var(--fp-border)',
-                      }
-                }
+                className="relative flex h-11 items-center justify-between gap-1.5 rounded-xl px-2.5 text-start transition-colors active:scale-[0.98]"
               >
-                <div className="flex items-center justify-between gap-2">
+                {active && (
+                  <motion.span
+                    layoutId="family-mobile-tab-slide"
+                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                    className="pointer-events-none absolute inset-0 rounded-xl border"
+                    style={{
+                      backgroundColor: 'color-mix(in srgb, var(--bar-active) 12%, var(--fp-card))',
+                      borderColor: 'color-mix(in srgb, var(--bar-active) 55%, transparent)',
+                      boxShadow: '0 4px 12px -4px color-mix(in srgb, var(--bar-active) 32%, transparent)',
+                    }}
+                    aria-hidden
+                  />
+                )}
+
+                <span className="relative z-10 flex min-w-0 items-center gap-1.5">
                   <span
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition"
+                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors"
                     style={
                       active
                         ? { backgroundColor: 'var(--bar-active)', color: '#ffffff' }
                         : { backgroundColor: 'var(--fp-card)', color: 'var(--fp-ink-2)' }
                     }
                   >
-                    <tab.Icon className="h-4 w-4" aria-hidden />
+                    <tab.Icon className="h-3.5 w-3.5" aria-hidden />
                   </span>
-                  {typeof tab.count === 'number' && (
-                    <span
-                      className="inline-flex h-5 min-w-[22px] items-center justify-center rounded-full px-1.5 text-[11px] font-extrabold tabular-nums"
-                      style={
-                        active
-                          ? { backgroundColor: 'var(--bar-active)', color: '#ffffff' }
-                          : { backgroundColor: 'var(--fp-card)', color: 'var(--fp-ink-3)' }
-                      }
-                    >
-                      {tab.count}
-                    </span>
-                  )}
-                </div>
-
-                <span
-                  className="block truncate text-xs font-extrabold"
-                  style={{ color: active ? 'var(--bar-active)' : 'var(--fp-ink)' }}
-                >
-                  {tab.label}
+                  <span
+                    className="truncate text-[11.5px] font-extrabold transition-colors"
+                    style={{ color: active ? 'var(--bar-active)' : 'var(--fp-ink)' }}
+                  >
+                    {tab.label}
+                  </span>
                 </span>
+
+                {typeof tab.count === 'number' && (
+                  <span
+                    className="relative z-10 inline-flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full px-1.5 text-[10.5px] font-extrabold tabular-nums transition-colors"
+                    style={
+                      active
+                        ? { backgroundColor: 'var(--bar-active)', color: '#ffffff' }
+                        : { backgroundColor: 'var(--fp-card)', color: 'var(--fp-ink-3)' }
+                    }
+                  >
+                    {tab.count}
+                  </span>
+                )}
               </button>
             );
           })}
