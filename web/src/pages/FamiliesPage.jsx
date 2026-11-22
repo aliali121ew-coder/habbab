@@ -194,69 +194,80 @@ export function FamiliesPage() {
           onShowOverdue={() => updateFilters({ paymentStatus: 'overdue', sortBy: 'arrears_desc' })}
         />
 
-        <div className="space-y-2.5">
-          <FiltersToolbar
-            filters={filters}
-            onChange={updateFilters}
-            categoryCounts={categoryCounts}
-            delegateCounts={delegateCounts}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-          />
-          <ActiveFilterChips
-            chips={activeChips}
-            onRemove={(key) => updateFilters({ [key]: key === 'query' ? '' : 'all' })}
-            onClearAll={clearAllFilters}
-          />
-        </div>
+        {/* Unified Desktop Card (Toolbar + Table + Pagination); Phone keeps its native mobile layout */}
+        <div className="fam-unified-card space-y-3 md:space-y-0 md:overflow-hidden md:rounded-2xl md:border md:border-slate-200/80 md:bg-white md:shadow-[0_1px_2px_rgba(16,24,40,.04),0_6px_20px_rgba(16,24,40,.04)]">
+          <div className="space-y-2.5 md:space-y-0">
+            <FiltersToolbar
+              filters={filters}
+              onChange={updateFilters}
+              categoryCounts={categoryCounts}
+              delegateCounts={delegateCounts}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+            />
+            {activeChips.length > 0 && (
+              <div className="md:px-5 md:pb-3">
+                <ActiveFilterChips
+                  chips={activeChips}
+                  onRemove={(key) => updateFilters({ [key]: key === 'query' ? '' : 'all' })}
+                  onClearAll={clearAllFilters}
+                />
+              </div>
+            )}
+          </div>
 
-        {/* Full-width Families List / Table */}
-        <div>
-          {!loading && filtered.length === 0 ? (
-            <EmptyState variant="no-results" onReset={clearAllFilters} />
-          ) : (
-          <>
-          <div className="md:hidden">
-            <FamilyMobileList
-              onPhoto={(familyId, photo) => {
-                const updated = families.map((fam) => (fam.id === familyId ? { ...fam, photo } : fam));
-                setFamilies(updated);
-                saveFamiliesStore(updated);
-              }}
-              families={filtered}
-              loading={loading}
-              onOpenFullFile={handleOpenFullFile}
-              onPay={setPayingFamily}
-            />
+          {/* Full-width Families List / Table */}
+          <div>
+            {!loading && filtered.length === 0 ? (
+              <div className="md:p-6">
+                <EmptyState variant="no-results" onReset={clearAllFilters} />
+              </div>
+            ) : (
+            <>
+            <div className="md:hidden">
+              <FamilyMobileList
+                onPhoto={(familyId, photo) => {
+                  const updated = families.map((fam) => (fam.id === familyId ? { ...fam, photo } : fam));
+                  setFamilies(updated);
+                  saveFamiliesStore(updated);
+                }}
+                families={filtered}
+                loading={loading}
+                onOpenFullFile={handleOpenFullFile}
+                onPay={setPayingFamily}
+              />
+            </div>
+            <div className="hidden md:block">
+            {viewMode === 'cards' ? (
+              <div className="p-5">
+                <FamiliesGrid
+                  families={filtered}
+                  selectedId={selectedFamily?.id ?? null}
+                  loading={loading}
+                  onSelect={handleSelectFamily}
+                  onOpenFullFile={handleOpenFullFile}
+                  onPay={setPayingFamily}
+                  onRecordVisit={setVisitingFamily}
+                  onPrint={(fam) => setPrintingList([fam])}
+                />
+              </div>
+            ) : (
+              <FamiliesTable
+                families={filtered}
+                selectedId={selectedFamily?.id ?? null}
+                loading={loading}
+                onSelect={handleSelectFamily}
+                onOpenFullFile={handleOpenFullFile}
+                onPay={setPayingFamily}
+                onEditAid={setEditingAidFamily}
+                onBulkPay={handleBulkPay}
+                onBulkPrint={(list) => setPrintingList(list)}
+              />
+            )}
+            </div>
+            </>
+            )}
           </div>
-          <div className="hidden md:block">
-          {viewMode === 'cards' ? (
-            <FamiliesGrid
-              families={filtered}
-              selectedId={selectedFamily?.id ?? null}
-              loading={loading}
-              onSelect={handleSelectFamily}
-              onOpenFullFile={handleOpenFullFile}
-              onPay={setPayingFamily}
-              onRecordVisit={setVisitingFamily}
-              onPrint={(fam) => setPrintingList([fam])}
-            />
-          ) : (
-            <FamiliesTable
-              families={filtered}
-              selectedId={selectedFamily?.id ?? null}
-              loading={loading}
-              onSelect={handleSelectFamily}
-              onOpenFullFile={handleOpenFullFile}
-              onPay={setPayingFamily}
-              onEditAid={setEditingAidFamily}
-              onBulkPay={handleBulkPay}
-              onBulkPrint={(list) => setPrintingList(list)}
-            />
-          )}
-          </div>
-          </>
-          )}
         </div>
       </div>
 

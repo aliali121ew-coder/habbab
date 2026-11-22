@@ -169,12 +169,12 @@ export function FamiliesTable({
   }
 
   return (
-    <div className="relative space-y-3">
-      <div className="overflow-x-auto px-0.5 pb-1">
-        <table className="w-full min-w-[760px] border-separate border-spacing-y-2.5 text-start">
+    <div className="relative">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] border-collapse text-start">
           <thead>
-            <tr>
-              <th scope="col" className="w-12 px-4 py-2 text-center">
+            <tr className="border-y border-slate-200/70 bg-slate-50/80">
+              <th scope="col" className="w-12 px-4 py-3 text-center">
                 <input
                   type="checkbox"
                   checked={allOnPageChecked}
@@ -187,34 +187,31 @@ export function FamiliesTable({
               <SortHeader label="نوع المساعدة" colKey="aid" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortHeader label="الدفع" colKey="payment" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortHeader label="المندوب" colKey="delegate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-              <th scope="col" className="px-4 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-400">
+              <th scope="col" className="px-4 py-3 text-center text-[11px] font-semibold tracking-wide text-slate-400">
                 الإجراءات
               </th>
             </tr>
           </thead>
 
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {pageRows.map((family) => {
               const cat = CATEGORY_CONFIG[family.category] ?? CATEGORY_CONFIG.stable;
               const salary = family.entitlements?.salary ?? 0;
-              const lastSalaryDate = getLastSalaryDate(family);
               const lastAid = getLastAid(family);
               const isSelected = family.id === selectedId;
               const isChecked = checkedIds.has(family.id);
-
-              const rowShadow = isSelected
-                ? 'shadow-[0_10px_28px_-6px_rgba(37,99,235,0.16),0_2px_8px_rgba(15,23,42,0.06)] ring-1 ring-blue-500/35'
-                : 'shadow-[0_1px_2px_rgba(16,24,40,.04),0_4px_14px_rgba(16,24,40,.04)] hover:shadow-[0_10px_26px_-6px_rgba(15,23,42,0.1)]';
 
               return (
                 <tr
                   key={family.id}
                   onClick={() => onSelect(family.id)}
-                  className={`group cursor-pointer rounded-2xl bg-white transition duration-150 ${rowShadow}`}
+                  className={`group cursor-pointer transition-colors duration-150 ${
+                    isSelected ? 'bg-blue-50/40' : 'hover:bg-slate-50/70'
+                  }`}
                 >
                   {/* Checkbox */}
                   <td
-                    className="rounded-s-2xl border-y border-s border-slate-200/70 bg-white px-4 py-4 text-center"
+                    className="px-4 py-3.5 text-center"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <input
@@ -226,7 +223,7 @@ export function FamiliesTable({
                   </td>
 
                   {/* 1. العائلة */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5">
+                  <td className="px-4 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="relative shrink-0">
                         <span className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${cat.avatarBg}`}>
@@ -234,12 +231,14 @@ export function FamiliesTable({
                         </span>
                         <span className={`absolute bottom-0 end-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${cat.dotClass}`} />
                       </div>
-                      <p className="min-w-0 truncate text-sm font-bold text-slate-900">{family.name}</p>
+                      <p className={`min-w-0 truncate text-sm font-bold transition-colors ${isSelected ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'}`}>
+                        {family.name}
+                      </p>
                     </div>
                   </td>
 
                   {/* 2. الحالة */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     {(() => {
                       const st = STATUS_META[family.category] ?? STATUS_META.stable;
                       return (
@@ -252,13 +251,13 @@ export function FamiliesTable({
                   </td>
 
                   {/* 3. نوع المساعدة */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     {(() => {
                       const kinds = [];
                       if (salary > 0) kinds.push('راتب شهري');
                       if (lastAid?.type) kinds.push(lastAid.type);
                       return kinds.length > 0 ? (
-                        <span className="text-sm font-medium text-slate-700">{kinds.join(' · ')}</span>
+                        <span className="text-sm font-medium text-slate-600">{kinds.join(' - ')}</span>
                       ) : (
                         <span className="text-xs text-slate-400">—</span>
                       );
@@ -266,21 +265,21 @@ export function FamiliesTable({
                   </td>
 
                   {/* 4. الدفع */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(totalEntitlement(family))}</span>
                   </td>
 
                   {/* 5. المندوب */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-2.5">
                       <DelegateAvatar delegate={family.delegate} size="sm" />
-                      <p className="min-w-0 truncate text-sm font-semibold text-slate-800">{family.delegate?.name}</p>
+                      <p className="min-w-0 truncate text-sm font-semibold text-slate-700">{family.delegate?.name}</p>
                     </div>
                   </td>
 
-                  {/* 5. الإجراءات */}
+                  {/* 6. الإجراءات */}
                   <td
-                    className="rounded-e-2xl border-y border-e border-slate-200/70 bg-white px-4 py-4 text-center whitespace-nowrap"
+                    className="px-4 py-3.5 text-center whitespace-nowrap"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="inline-flex items-center justify-center gap-1.5">
@@ -329,10 +328,10 @@ export function FamiliesTable({
         </table>
       </div>
 
-      {/* Numbered Pagination */}
+      {/* Numbered Pagination attached seamlessly to bottom of unified card */}
       {totalPages > 1 && (
         <nav
-          className="reg-pager rounded-2xl border border-slate-200/70 bg-white shadow-xs"
+          className="reg-pager border-t border-slate-200/70 px-5 py-3"
           aria-label="ترقيم صفحات العوائل"
         >
           <button

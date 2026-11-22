@@ -173,41 +173,39 @@ export function FiltersToolbar({
 
     <section
       aria-label="أدوات البحث والفلترة"
-      className="sticky top-14 z-20 hidden rounded-2xl md:block border border-slate-200/70 bg-white/85 p-3.5 shadow-[0_1px_2px_rgba(16,24,40,.04),0_4px_16px_rgba(16,24,40,.04)] backdrop-blur-md"
+      className="hidden md:block px-5 py-4"
     >
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3.5">
         {/* Top Row: Wide Search */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[240px]">
-            <Search
-              className="pointer-events-none absolute start-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
-              aria-hidden
-            />
-            <input
-              ref={searchRef}
-              type="search"
-              value={filters.query}
-              onChange={(e) => onChange({ query: e.target.value })}
-              placeholder="ابحث باسم العائلة، رقم الملف، المنطقة، المندوب، أو اسم مريض…"
-              aria-label="بحث في سجل العوائل"
-              className="h-10 w-full rounded-xl border border-slate-200/80 bg-slate-50/70 ps-10 pe-16 text-xs text-slate-900 placeholder:text-slate-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-blue-500/15 md:text-sm"
-            />
-            <kbd
-              className="pointer-events-none absolute end-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:inline-block"
-              dir="ltr"
-            >
-              ⌘K
-            </kbd>
-          </div>
+        <div className="relative flex w-full items-center">
+          <Search
+            className="pointer-events-none absolute right-3.5 h-4 w-4 text-slate-400"
+            aria-hidden
+          />
+          <input
+            ref={searchRef}
+            type="search"
+            value={filters.query}
+            onChange={(e) => onChange({ query: e.target.value })}
+            placeholder="ابحث باسم العائلة، رقم الملف، المنطقة، المندوب، أو اسم مريض…"
+            aria-label="بحث في سجل العوائل"
+            className="h-10 w-full rounded-xl border border-slate-200/80 bg-slate-50/70 pr-10 pl-14 text-xs text-slate-900 placeholder:text-slate-400 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-blue-500/15 md:text-sm"
+          />
+          <kbd
+            className="pointer-events-none absolute left-3 hidden rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 sm:inline-block"
+            dir="ltr"
+          >
+            ⌘ K
+          </kbd>
         </div>
 
-        {/* Bottom Row: Segmented Category + Delegate Dropdown + Status + Sort */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Segmented Control */}
+        {/* Bottom Row: Status Pills on Start + Dropdown Controls on End */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          {/* Individual Rounded Status Pills */}
           <div
             role="group"
             aria-label="تصفية حسب الأولوية"
-            className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-slate-200/70 bg-slate-100/70 p-1"
+            className="inline-flex flex-wrap items-center gap-2"
           >
             {SEGMENT_ITEMS.map((item) => {
               const active = filters.category === item.key;
@@ -217,17 +215,17 @@ export function FiltersToolbar({
                   type="button"
                   aria-pressed={active}
                   onClick={() => onChange({ category: item.key })}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition ${
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${
                     active
                       ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
+                      : 'border border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
                   }`}
                 >
                   {item.dot && <span className={`h-1.5 w-1.5 rounded-full ${active ? 'bg-white' : item.dot}`} aria-hidden />}
                   <span>{item.label}</span>
                   <span
                     className={`rounded-full px-1.5 py-0.2 text-[10px] tabular-nums ${
-                      active ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'
+                      active ? 'bg-white/20 text-white' : 'text-slate-400'
                     }`}
                   >
                     {categoryCounts[item.key] ?? 0}
@@ -237,6 +235,7 @@ export function FiltersToolbar({
             })}
           </div>
 
+          <div className="flex flex-wrap items-center gap-2">
           {/* Custom Delegate Picker with Avatar & Family Count */}
           <div className="relative" ref={delegateRef}>
             <button
@@ -330,19 +329,20 @@ export function FiltersToolbar({
           </label>
 
           {/* Sort Select */}
-          <label className="relative inline-flex items-center md:ms-auto">
+          <label className="relative inline-flex items-center">
             <span className="sr-only">الترتيب</span>
-            <ArrowUpDown className="pointer-events-none absolute end-3 h-3.5 w-3.5 text-slate-400" aria-hidden />
+            <ArrowUpDown className="pointer-events-none absolute left-3 h-3.5 w-3.5 text-slate-400" aria-hidden />
             <select
               value={filters.sortBy}
               onChange={(e) => onChange({ sortBy: e.target.value })}
-              className="h-9 appearance-none rounded-xl border border-slate-200/80 bg-white ps-3 pe-8 text-xs font-semibold text-slate-700 transition hover:border-slate-300 focus:border-blue-500 focus:outline-none"
+              className="h-9 appearance-none rounded-xl border border-slate-200/80 bg-white pr-3 pl-8 text-xs font-semibold text-slate-700 transition hover:border-slate-300 focus:border-blue-500 focus:outline-none"
             >
               {Object.entries(SORT_LABELS).map(([key, label]) => (
                 <option key={key} value={key}>ترتيب: {label}</option>
               ))}
             </select>
           </label>
+          </div>
         </div>
       </div>
     </section>
