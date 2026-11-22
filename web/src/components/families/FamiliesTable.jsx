@@ -225,25 +225,20 @@ export function FamiliesTable({
                   </td>
 
                   {/* 1. العائلة */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-4">
-                    <div className="flex items-center gap-3.5">
+                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5">
+                    <div className="flex items-center gap-3">
                       <div className="relative shrink-0">
-                        <span className={`inline-flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold ${cat.avatarBg}`}>
+                        <span className={`inline-flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold ${cat.avatarBg}`}>
                           {familyInitial(family.name)}
                         </span>
                         <span className={`absolute bottom-0 end-0 h-2.5 w-2.5 rounded-full ring-2 ring-white ${cat.dotClass}`} />
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-900">{family.name}</p>
-                        <p className="mt-0.5 truncate text-xs text-slate-400">
-                          {family.region} · {family.socialStatus} · <span className="font-mono" dir="ltr">{family.fileNo}</span>
-                        </p>
-                      </div>
+                      <p className="min-w-0 truncate text-sm font-bold text-slate-900">{family.name}</p>
                     </div>
                   </td>
 
                   {/* 2. الحالة */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
+                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
                     {(() => {
                       const st = STATUS_META[family.category] ?? STATUS_META.stable;
                       return (
@@ -256,7 +251,7 @@ export function FamiliesTable({
                   </td>
 
                   {/* 3. نوع المساعدة */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
+                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {salary > 0 && (
                         <span className="rounded-md border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
@@ -278,15 +273,10 @@ export function FamiliesTable({
                         </span>
                       )}
                     </div>
-                    {(lastAid?.date || lastSalaryDate) && (
-                      <p className="mt-1 text-xs text-slate-400 tabular-nums">
-                        {lastAid?.date ? `${timeAgo(lastAid.date)} · ${lastAid.date}` : `آخر صرف ${timeAgo(lastSalaryDate)}`}
-                      </p>
-                    )}
                   </td>
 
                   {/* 4. الدفع */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
+                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
                     {(() => {
                       const due = totalEntitlement(family);
                       const arrears = family.arrears ?? 0;
@@ -299,31 +289,21 @@ export function FamiliesTable({
                             ? { label: 'متأخر', cls: 'border-rose-500/30 bg-rose-500/12 text-rose-700' }
                             : { label: 'معتمد', cls: 'border-blue-500/30 bg-blue-500/12 text-blue-700' };
                       return (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(due)}</span>
-                            <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${payBadge.cls}`}>
-                              {payBadge.label}
-                            </span>
-                          </div>
-                          <p className="mt-0.5 text-xs text-slate-400 tabular-nums">
-                            {arrears > 0 ? `متبقي ${formatIQD(arrears)}` : lastSalaryDate ? `آخر صرف ${timeAgo(lastSalaryDate)}` : 'معتمد شهرياً'}
-                          </p>
-                        </>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(due)}</span>
+                          <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${payBadge.cls}`}>
+                            {payBadge.label}
+                          </span>
+                        </div>
                       );
                     })()}
                   </td>
 
-                  {/* 4. المندوب */}
-                  <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
+                  {/* 5. المندوب */}
+                  <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-2.5">
                       <DelegateAvatar delegate={family.delegate} size="sm" />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800">{family.delegate?.name}</p>
-                        <p className="mt-0.5 text-xs text-slate-400 tabular-nums" dir="ltr">
-                          {family.delegate?.phone}
-                        </p>
-                      </div>
+                      <p className="min-w-0 truncate text-sm font-semibold text-slate-800">{family.delegate?.name}</p>
                     </div>
                   </td>
 
