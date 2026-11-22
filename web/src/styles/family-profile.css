@@ -258,27 +258,26 @@ a.fp-kpi:focus-visible { outline: 2px solid var(--fp-primary); outline-offset: 2
   transform: translateY(-1px) scale(0.99);
 }
 
-/* Main Family Identity Card: rich soft theme-aware gradient (beats shell.css mobile #fff override) */
-:root .stage .fp-root .fp-card.fp-hero-main {
-  background-color: var(--surface) !important;
-  background-image: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--bar-active) 18%, #ffffff) 0%,
-    color-mix(in srgb, var(--bar-active) 8%, #ffffff) 46%,
-    color-mix(in srgb, var(--brand) 3%, #ffffff) 100%
-  ) !important;
-  border-color: color-mix(in srgb, var(--bar-active) 28%, var(--line)) !important;
-  box-shadow: 0 10px 26px -14px color-mix(in srgb, var(--bar-active) 32%, transparent) !important;
+/* Main Family Identity Card: frosted theme-aware diagonal gradient matching home/delegates summary cards */
+.fp-root .fp-hero-main {
+  border: 1px solid color-mix(in srgb, var(--bar-active) 28%, var(--line));
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--bar-active) 26%, #ffffff) 0%,
+    color-mix(in srgb, var(--bar-active) 11%, #f8fbff) 38%,
+    #ffffff 78%
+  );
+  box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--bar-active) 24%, transparent);
 }
-:root[data-theme="dark"] .stage .fp-root .fp-card.fp-hero-main {
-  background-color: var(--surface) !important;
-  background-image: linear-gradient(
-    155deg,
-    color-mix(in srgb, var(--bar-active) 28%, var(--surface)) 0%,
-    color-mix(in srgb, var(--brand) 14%, var(--surface)) 52%,
-    color-mix(in srgb, var(--paper) 88%, var(--surface)) 100%
-  ) !important;
-  border-color: color-mix(in srgb, var(--bar-active) 34%, var(--line)) !important;
+:root[data-theme="dark"] .fp-root .fp-hero-main {
+  border: 1px solid color-mix(in srgb, var(--bar-active) 34%, var(--line));
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--bar-active) 30%, var(--surface)) 0%,
+    color-mix(in srgb, var(--brand) 16%, var(--surface)) 46%,
+    color-mix(in srgb, var(--paper) 90%, var(--surface)) 100%
+  );
+  box-shadow: 0 14px 32px -12px rgb(0 0 0 / 50%);
 }
 
 /* Delegate Card on FamilyDetailPage: matches .dcard on Delegates page (light & dark) */

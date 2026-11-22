@@ -1889,3 +1889,325 @@
 }
 /* Names under the chart bars: a second line instead of "…" on every screen. */
 .pt-group small { white-space: normal; overflow: visible; text-overflow: clip; text-align: center; line-height: 1.2; }
+
+/* ── Mobile Patients Redesign (<= 767.98px): 2x2 KPIs, hide chart/sidebar, Expenses-style cards + Detail Sheet ── */
+.pt-m-list { display: none; }
+
+@media (max-width: 767.98px) {
+  .pt-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 22px;
+    border: 1px solid color-mix(in srgb, var(--bar-active) 28%, var(--line));
+    background: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--bar-active) 26%, #ffffff) 0%,
+      color-mix(in srgb, var(--bar-active) 11%, #f8fbff) 42%,
+      #ffffff 86%
+    );
+    box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--bar-active) 24%, transparent);
+  }
+  :root[data-theme="dark"] .pt-cards {
+    border-color: color-mix(in srgb, var(--bar-active) 34%, var(--line));
+    background: linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--bar-active) 30%, var(--surface)) 0%,
+      color-mix(in srgb, var(--brand) 16%, var(--surface)) 48%,
+      color-mix(in srgb, var(--paper) 90%, var(--surface)) 100%
+    );
+    box-shadow: 0 14px 32px -12px rgb(0 0 0 / 50%);
+  }
+  .pt-cards .pt-card {
+    padding: 12px 12px;
+    border-radius: 16px;
+    gap: 6px;
+    background: color-mix(in srgb, #ffffff 82%, var(--bar-active) 4%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.88) !important;
+    box-shadow: 0 4px 14px -6px color-mix(in srgb, var(--bar-active) 16%, transparent) !important;
+  }
+  :root[data-theme="dark"] .pt-cards .pt-card {
+    background: color-mix(in srgb, var(--paper) 62%, transparent) !important;
+    border-color: color-mix(in srgb, var(--brand-2) 24%, var(--line)) !important;
+    box-shadow: 0 4px 14px -6px rgb(0 0 0 / 35%) !important;
+  }
+  .pt-card header h2 { font-size: .78rem; }
+  .pt-card-value {
+    font-size: clamp(.95rem, 4.4vw, 1.22rem) !important;
+    white-space: nowrap;
+  }
+  .pt-card small { font-size: .7rem; line-height: 1.3; }
+
+  /* Hide chart & tall side profile card on phones */
+  .pt-profile,
+  .pt-chart,
+  .pt-table-wrap {
+    display: none !important;
+  }
+
+  /* Compact Expenses-style patient cards list */
+  .pt-m-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 12px 14px;
+  }
+  .pt-m-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    padding: 12px 13px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    text-align: start;
+    cursor: pointer;
+    box-shadow: 0 3px 10px -6px rgb(15 23 42 / 14%);
+    transition: transform .15s ease, border-color .15s ease;
+  }
+  .pt-m-card:active { transform: scale(.985); }
+  .pt-m-card-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    flex: 1;
+  }
+  .pt-m-card-icon {
+    width: 40px;
+    height: 40px;
+    flex: none;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-size: .82rem;
+    font-weight: 800;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--bar-active) 12%, var(--surface));
+    color: var(--bar-active);
+    border: 1px solid color-mix(in srgb, var(--bar-active) 22%, transparent);
+  }
+  .pt-m-card-icon img { width: 100%; height: 100%; object-fit: cover; }
+  .pt-m-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .pt-m-card-info strong {
+    font-size: .88rem;
+    font-weight: 800;
+    line-height: 1.3;
+    color: var(--ink);
+  }
+  .pt-m-card-info small {
+    font-size: .72rem;
+    color: var(--ink-3);
+  }
+  .pt-m-card-info small bdi { white-space: nowrap; }
+  .pt-m-card-end {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+  }
+  .pt-m-card-amt {
+    font-size: .86rem;
+    font-weight: 800;
+    color: var(--ink);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .pt-m-card-amt span {
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--ink-3);
+  }
+  .pt-m-card-chev { color: var(--ink-3); flex: none; }
+}
+
+/* Mobile Patient Detail Sheet (Modal) */
+.pt-msheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(15 23 42 / 52%);
+  backdrop-filter: blur(4px);
+}
+.pt-msheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 88dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  color: var(--ink);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  box-shadow: 0 -16px 40px -12px rgb(0 0 0 / 35%);
+  overflow: hidden;
+  animation: pt-msheet-up .2s ease-out;
+}
+@keyframes pt-msheet-up { from { transform: translateY(24px); opacity: 0; } }
+.pt-msheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.pt-msheet-who { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.pt-msheet-avatar { width: 44px; height: 44px; cursor: pointer; }
+.pt-msheet-title { min-width: 0; }
+.pt-msheet-title h3 { margin: 0; font-size: 1rem; font-weight: 800; color: var(--ink); line-height: 1.3; }
+.pt-msheet-title p { margin: 3px 0 0; font-size: .75rem; color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pt-msheet-title a { color: var(--bar-active); text-decoration: none; font-weight: 700; display: inline-flex; align-items: center; gap: 3px; }
+.pt-msheet-close {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.pt-msheet-kpis {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 16px;
+  background: color-mix(in srgb, var(--bar-active) 5%, var(--paper));
+  border-bottom: 1px solid var(--line);
+}
+.pt-msheet-kpis > div {
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pt-msheet-kpis span { font-size: .7rem; color: var(--ink-3); font-weight: 600; }
+.pt-msheet-kpis b { font-size: .92rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.pt-msheet-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.pt-msheet-tabs button {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: .72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.pt-msheet-tabs button.is-on {
+  background: var(--bar-active);
+  border-color: var(--bar-active);
+  color: #ffffff;
+}
+.pt-msheet-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+}
+.pt-msheet-records,
+.pt-msheet-founds { display: flex; flex-direction: column; gap: 9px; }
+.pt-msheet-rec {
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pt-msheet-rec-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pt-msheet-rec-top strong { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; color: var(--ink); }
+.pt-msheet-date { display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; color: var(--ink-3); font-weight: 700; }
+.pt-msheet-found { margin: 0; display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; color: var(--ink-2); }
+.pt-msheet-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pt-msheet-pills span {
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+.pt-msheet-pills .is-cash { background: color-mix(in srgb, #10b981 16%, transparent); color: #059669; }
+.pt-msheet-pills .is-med { background: color-mix(in srgb, #0d9488 16%, transparent); color: #0f766e; }
+.pt-msheet-pills .is-exam { background: color-mix(in srgb, #d97706 16%, transparent); color: #b45309; }
+:root[data-theme="dark"] .pt-msheet-pills .is-cash { color: #34d399; }
+:root[data-theme="dark"] .pt-msheet-pills .is-med { color: #2dd4bf; }
+:root[data-theme="dark"] .pt-msheet-pills .is-exam { color: #fbbf24; }
+.pt-msheet-fitem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+}
+.pt-msheet-fitem strong { display: block; font-size: .82rem; color: var(--ink); }
+.pt-msheet-fitem small { display: block; font-size: .72rem; color: var(--ink-3); margin-top: 2px; }
+.pt-msheet-fitem b { font-size: .86rem; font-weight: 800; color: var(--bar-active); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pt-msheet-fitem b span { font-size: .7rem; color: var(--ink-3); font-weight: 600; }
+.pt-msheet-foot {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.pt-msheet-print {
+  height: 42px;
+  border-radius: 12px;
+  border: 0;
+  background: linear-gradient(135deg, var(--bar-active), var(--brand));
+  color: #ffffff;
+  font-size: .82rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.pt-msheet-full {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: .8rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}

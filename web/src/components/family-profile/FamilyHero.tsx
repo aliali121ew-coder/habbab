@@ -61,14 +61,7 @@ export function FamilyHero({
 
       {/* Top Hero Bento Grid: 8 cols Family Identity (Right) + 4 cols Delegate Card (Left, hidden on phone) */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-        <section className="fp-card fp-hero-main relative flex flex-col justify-between overflow-hidden lg:col-span-8">
-          {/* Theme-aware gradient top accent strip */}
-          <div
-            className="h-1.5 w-full"
-            style={{ backgroundImage: 'linear-gradient(270deg, var(--bar-active) 0%, var(--brand) 100%)' }}
-            aria-hidden
-          />
-
+        <section className="fp-hero-main relative flex flex-col justify-between overflow-hidden rounded-[22px] lg:col-span-8">
           <div className="flex flex-1 flex-col justify-between gap-5 p-5 sm:p-6">
             {/* Family Title + Last Updated */}
             <div className="flex flex-wrap items-center justify-between gap-3">
