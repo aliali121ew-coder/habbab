@@ -219,3 +219,41 @@ a.fp-kpi:focus-visible { outline: 2px solid var(--fp-primary); outline-offset: 2
   .member-saved, .member-saved-mark, .member-saved-text { animation: none; }
   .member-saved-mark circle, .member-saved-mark path { animation: none; stroke-dashoffset: 0; }
 }
+
+/* Interactive KPI cards on FamilyDetailPage: lift, colored border/glow & solid icon flip on hover/active */
+.fp-root .fp-kpi-card {
+  cursor: pointer;
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 220ms ease,
+              box-shadow 220ms ease,
+              background-color 220ms ease;
+}
+.fp-root .fp-kpi-card .fp-kpi-card-icon {
+  background-color: var(--kpi-soft);
+  color: var(--kpi-accent);
+  transition: background-color 220ms ease, color 220ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 220ms ease;
+}
+.fp-root .fp-kpi-card .fp-kpi-card-label {
+  color: var(--fp-ink-3);
+  transition: color 200ms ease;
+}
+.fp-root .fp-kpi-card:hover,
+.fp-root .fp-kpi-card[data-active="true"] {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--kpi-accent) 65%, transparent) !important;
+  box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--kpi-accent) 32%, transparent) !important;
+}
+.fp-root .fp-kpi-card:hover .fp-kpi-card-icon,
+.fp-root .fp-kpi-card[data-active="true"] .fp-kpi-card-icon {
+  background-color: var(--kpi-accent);
+  color: #ffffff;
+  transform: scale(1.06);
+  box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--kpi-accent) 55%, transparent);
+}
+.fp-root .fp-kpi-card:hover .fp-kpi-card-label,
+.fp-root .fp-kpi-card[data-active="true"] .fp-kpi-card-label {
+  color: var(--kpi-accent);
+}
+.fp-root .fp-kpi-card:active {
+  transform: translateY(-1px) scale(0.99);
+}

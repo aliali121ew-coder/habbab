@@ -5,8 +5,10 @@ import { ArrowRight, HandCoins, HeartHandshake } from 'lucide-react';
 import { printWhenReady } from '../components/printWhenReady';
 import { OfficialFamiliesPrintSheet, PaymentModal, VisitModal } from '../components/families/FamilyModalsAndPrint';
 import { AddMemberDialog, type EditableMember, type NewMember } from '../components/family-profile/AddMemberDialog';
+import { FamilyDetailTabs } from '../components/family-profile/FamilyDetailTabs';
 import { FamilyHero } from '../components/family-profile/FamilyHero';
-import { MembersTable, MemberSheet } from '../components/family-profile/MembersTable';
+import { FamilyKpiRow, type FamilyProfileTab, type MembersQuickFilter } from '../components/family-profile/FamilyKpiRow';
+import { MemberSheet } from '../components/family-profile/MembersTable';
 import { ProfileSkeleton } from '../components/family-profile/ProfileSkeleton';
 import { Toast } from '../components/shared/Toast';
 import { DELEGATES, loadFamiliesStore, saveFamiliesStore } from '../data/families';
@@ -28,6 +30,8 @@ export function FamilyDetailPage() {
   // The member being edited (its index in the stored list), when the dialog edits rather than adds.
   const [editingMember, setEditingMember] = useState<{ index: number; data: EditableMember } | null>(null);
   const [printing, setPrinting] = useState(false);
+  const [activeTab, setActiveTab] = useState<FamilyProfileTab>('members');
+  const [memberFilter, setMemberFilter] = useState<MembersQuickFilter>('all');
 
 
   useEffect(() => {
@@ -172,19 +176,39 @@ export function FamilyDetailPage() {
               transition={{ duration: 0.22 }}
               className="space-y-6"
             >
-              {/* 1. Hero Section */}
+              {/* 1. Hero Bento Section (Identity + Dark Navy Delegate Card) */}
               <FamilyHero
                 family={family}
                 officers={CASE_OFFICERS}
                 onCopy={handleCopy}
                 onChangeOfficer={handleChangeOfficer}
+                onOpenPayment={() => setPayOpen(true)}
+                onOpenVisit={() => setVisitOpen(true)}
+                onPrint={() => setPrinting(true)}
               />
 
-              {/* 2. Family Members Table */}
-              <MembersTable
-                members={family.members}
-                onOpen={setSelectedMember}
-                onAdd={() => setAddMemberOpen(true)}
+              {/* 2. 4 Interactive KPI Stat Cards */}
+              <FamilyKpiRow
+                family={family}
+                activeTab={activeTab}
+                memberFilter={memberFilter}
+                onSelect={(tab, filter) => {
+                  setActiveTab(tab);
+                  if (filter) setMemberFilter(filter);
+                }}
+              />
+
+              {/* 3. Tabbed Content Container (Members / Aids / Visits / Housing & Docs) */}
+              <FamilyDetailTabs
+                family={family}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                memberFilter={memberFilter}
+                onMemberFilterChange={setMemberFilter}
+                onOpenMember={setSelectedMember}
+                onAddMember={() => setAddMemberOpen(true)}
+                onOpenPayment={() => setPayOpen(true)}
+                onOpenVisit={() => setVisitOpen(true)}
               />
             </motion.div>
           )}

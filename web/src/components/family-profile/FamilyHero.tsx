@@ -1,5 +1,16 @@
-import { Copy, Home, MapPin, Phone, UserCheck, Users } from 'lucide-react';
-import { WhatsAppMark } from '../../pages/subscribers/WhatsAppButton';
+import {
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  ClipboardCheck,
+  Clock,
+  Copy,
+  HandHeart,
+  Home,
+  MapPin,
+  Printer,
+  Users,
+} from 'lucide-react';
 import { formatIQDParts } from '../../mock/family';
 import type { CaseOfficer, FamilyDetail, FamilyPriority } from '../../types/family';
 import { CaseOfficerCard } from './CaseOfficerCard';
@@ -9,205 +20,297 @@ interface Props {
   officers: CaseOfficer[];
   onCopy: (text: string, label: string) => void;
   onChangeOfficer: (officer: CaseOfficer) => void;
+  onOpenPayment: () => void;
+  onOpenVisit: () => void;
+  onPrint: () => void;
 }
 
 const PRIORITY_META: Record<FamilyPriority, { label: string; bg: string; color: string; dot: string }> = {
-  critical: { label: 'حرجة', bg: 'var(--fp-rose-soft)', color: 'var(--fp-rose)', dot: 'var(--fp-rose)' },
-  intensive: { label: 'متوسطة', bg: 'var(--fp-amber-soft)', color: 'var(--fp-amber)', dot: 'var(--fp-amber)' },
-  stable: { label: 'جيدة', bg: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)', dot: 'var(--fp-emerald)' },
+  critical: { label: 'حالة حرجة', bg: 'var(--fp-rose-soft)', color: 'var(--fp-rose)', dot: 'var(--fp-rose)' },
+  intensive: { label: 'حالة متوسطة', bg: 'var(--fp-amber-soft)', color: 'var(--fp-amber)', dot: 'var(--fp-amber)' },
+  stable: { label: 'حالة جيدة', bg: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)', dot: 'var(--fp-emerald)' },
 };
 
-export function FamilyHero({ family, officers, onCopy, onChangeOfficer }: Props) {
+export function FamilyHero({
+  family,
+  officers,
+  onCopy,
+  onChangeOfficer,
+  onOpenPayment,
+  onOpenVisit,
+  onPrint,
+}: Props) {
   const prio = PRIORITY_META[family.priority];
   const rentFormatted = formatIQDParts(family.rentAmount);
 
-  // Phone summary: how many aids the family received, their total, and the most recent one.
-  const aidCount = family.payments.length;
-  const totalParts = formatIQDParts(family.payments.reduce((sum, p) => sum + p.amount, 0));
-  const last = family.payments.reduce<typeof family.payments[number] | null>((latest, p) => (!latest || p.date > latest.date ? p : latest), null);
-  const lastDate = last ? last.date.slice(0, 10).split('-').map(Number).join('/') : '';
-  // WhatsApp opens the user's own app on the delegate's chat (no business account).
-  const officerDigits = family.officer.phone.replace(/\D/g, '');
-  const officerWa = `https://wa.me/${officerDigits.startsWith('0') ? `964${officerDigits.slice(1)}` : officerDigits}`;
+  const latestUpdate = [
+    family.registeredAt,
+    ...family.visits.map((v) => v.date),
+    ...family.payments.map((p) => p.date),
+  ]
+    .filter(Boolean)
+    .sort()
+    .pop() ?? family.registeredAt;
 
   return (
-    <>
-    {/* Phone: who the family is, then whether this month is covered, then the delegate */}
-    <section className="fp-card overflow-hidden md:hidden">
-      <div className="px-4 pb-4 pt-4" style={{ backgroundImage: `linear-gradient(180deg, ${prio.bg} 0%, transparent 100%)` }}>
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold" style={{ backgroundColor: 'var(--fp-card)', color: prio.color }}>
-              <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: prio.dot }} aria-hidden />
-              {prio.label}
-            </span>
-          </span>
+    <div className="space-y-4">
+      {/* Compact Action Strip (single clean bar, no duplicate breadcrumb) */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="#/families"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition hover:opacity-85"
+            style={{
+              backgroundColor: 'var(--fp-card)',
+              borderColor: 'var(--fp-border)',
+              color: 'var(--fp-ink-2)',
+            }}
+          >
+            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            <span>العوائل المسجلة</span>
+          </a>
+
           <button
             type="button"
             onClick={() => onCopy(family.fileNo, 'رقم الملف')}
-            aria-label={`نسخ رقم الملف ${family.fileNo}`}
-            className="tap inline-flex min-h-[32px] items-center gap-1 font-mono text-xs font-bold"
-            style={{ color: 'var(--fp-ink-3)' }}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 font-mono text-xs font-bold transition hover:opacity-85"
+            style={{
+              backgroundColor: 'var(--fp-muted)',
+              borderColor: 'var(--fp-border)',
+              color: 'var(--fp-ink)',
+            }}
             dir="ltr"
           >
-            {family.fileNo} <Copy className="h-3 w-3" aria-hidden />
+            <span>{family.fileNo}</span>
+            <Copy className="h-3.5 w-3.5 opacity-70" aria-hidden />
           </button>
         </div>
 
-        <h1 id="fp-main-heading-phone" className="mt-3 text-[22px] font-extrabold leading-snug" style={{ color: 'var(--fp-ink)' }}>
-          {family.name}
-        </h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onPrint}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3.5 text-xs font-bold transition hover:opacity-85"
+            style={{
+              backgroundColor: 'var(--fp-card)',
+              borderColor: 'var(--fp-border)',
+              color: 'var(--fp-ink)',
+            }}
+          >
+            <Printer className="h-3.5 w-3.5" aria-hidden />
+            <span>طباعة الملف</span>
+          </button>
 
-        {/* Under the name: address, members, the family's phone, and the delegate in charge with
-            a WhatsApp button beside the name (the delegate card is not shown on the phone). */}
-        <ul className="mt-2.5 grid gap-2 text-[13px]" style={{ color: 'var(--fp-ink-2)' }}>
-          <li className="flex items-start gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />{family.address}</li>
-          <li className="flex items-center gap-2"><Users className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden /><span><bdi>{family.members.length}</bdi> أفراد</span></li>
-          <li className="flex items-center gap-2">
-            <Phone className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
-            {family.phone
-              ? <a href={`tel:${family.phone.replace(/\s/g, '')}`} className="tap font-semibold tabular-nums" style={{ color: 'var(--fp-ink)' }} dir="ltr">{family.phone}</a>
-              : <span style={{ color: 'var(--fp-ink-3)' }}>لم يُسجَّل رقم</span>}
-          </li>
-          <li className="flex items-center gap-2">
-            <UserCheck className="h-4 w-4 shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />
-            <span className="min-w-0">
-              <span style={{ color: 'var(--fp-ink-3)' }}>المندوب: </span>
-              <a href={`#/delegates/${family.officer.id}`} className="tap font-bold" style={{ color: 'var(--fp-ink)' }}>{family.officer.name}</a>
-            </span>
-            <a
-              href={officerWa}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`مراسلة ${family.officer.name} على واتساب`}
-              className="fam-wa-btn"
-            >
-              <WhatsAppMark />
-            </a>
-          </li>
-        </ul>
+          <button
+            type="button"
+            onClick={onOpenVisit}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3.5 text-xs font-bold transition hover:opacity-90"
+            style={{
+              backgroundColor: 'var(--fp-amber-soft)',
+              borderColor: 'color-mix(in srgb, var(--fp-amber) 30%, transparent)',
+              color: 'var(--fp-amber)',
+            }}
+          >
+            <ClipboardCheck className="h-3.5 w-3.5" aria-hidden />
+            <span>تسجيل زيارة</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenPayment}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl px-4 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
+            style={{
+              backgroundImage: 'linear-gradient(135deg, #4f46e5, #6366f1)',
+            }}
+          >
+            <HandHeart className="h-3.5 w-3.5" aria-hidden />
+            <span>صرف مساعدة</span>
+          </button>
+        </div>
       </div>
 
-      {/* Three joined cards, split by a thin line: how many aids, their total, and the last one. */}
-      <dl className="mx-4 grid grid-cols-3 overflow-hidden rounded-2xl text-center tabular-nums" style={{ backgroundColor: 'var(--fp-muted)' }}>
-        <div className="min-w-0 px-2 py-3">
-          <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>عدد المساعدات</dt>
-          <dd className="mt-1 text-[17px] font-extrabold leading-none" style={{ color: 'var(--fp-ink)' }}><bdi>{aidCount}</bdi></dd>
-          <dd className="mt-1 text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>مساعدة</dd>
-        </div>
-        <div className="min-w-0 border-s px-2 py-3" style={{ borderColor: 'var(--fp-border)' }}>
-          <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>المبلغ الكلي</dt>
-          <dd className="mt-1 whitespace-nowrap text-[clamp(13px,4.2vw,17px)] font-extrabold leading-none" style={{ color: 'var(--fp-emerald)' }}><bdi>{totalParts.value}</bdi></dd>
-          <dd className="mt-1 text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>{totalParts.currency}</dd>
-        </div>
-        <div className="min-w-0 border-s px-2 py-3" style={{ borderColor: 'var(--fp-border)' }}>
-          <dt className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>آخر مساعدة</dt>
-          {last ? (
-            <>
-              <dd className="mt-1 whitespace-nowrap text-[clamp(12px,3.8vw,14px)] font-extrabold leading-none" style={{ color: 'var(--fp-ink)' }}><bdi dir="ltr">{lastDate}</bdi></dd>
-              <dd className="mt-1 truncate text-[11px]" style={{ color: 'var(--fp-ink-3)' }}>{last.typeLabel}</dd>
-            </>
-          ) : (
-            <dd className="mt-1 text-[12px]" style={{ color: 'var(--fp-ink-3)' }}>لا يوجد</dd>
-          )}
-        </div>
-      </dl>
+      {/* Top Hero Bento Grid: 8 cols Family Identity (Right) + 4 cols Dark Navy Delegate Card (Left) */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        <section className="fp-card relative overflow-hidden lg:col-span-8">
+          {/* Thin pink-to-indigo top accent strip */}
+          <div
+            className="h-1.5 w-full"
+            style={{ backgroundImage: 'linear-gradient(270deg, #f43f5e 0%, #6366f1 55%, #3b82f6 100%)' }}
+            aria-hidden
+          />
 
-      <div className="h-4" aria-hidden />
-    </section>
+          <div className="space-y-4 p-5 sm:p-6">
+            {/* Top meta pills + last updated */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onCopy(family.fileNo, 'رقم الملف')}
+                  className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 font-mono text-xs font-bold transition hover:opacity-80"
+                  style={{
+                    backgroundColor: 'var(--fp-muted)',
+                    borderColor: 'var(--fp-border)',
+                    color: 'var(--fp-ink)',
+                  }}
+                  dir="ltr"
+                >
+                  {family.fileNo}
+                  <Copy className="h-3 w-3 opacity-65" aria-hidden />
+                </button>
 
-    <section className="fp-card hidden p-6 md:block">
-      <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
-        {/* Right: Avatar + Title + Badges + Facts */}
-        <div className="lg:col-span-8">
-
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => onCopy(family.fileNo, 'رقم الملف')}
-                title="نسخ رقم الملف"
-                className="tap inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-xs font-bold transition hover:opacity-80"
-                style={{
-                  backgroundColor: 'var(--fp-muted-2)',
-                  borderColor: 'var(--fp-border)',
-                  color: 'var(--fp-ink-2)',
-                }}
-                dir="ltr"
-              >
-                <span>{family.fileNo}</span>
-                <Copy className="h-3 w-3" aria-hidden />
-              </button>
-
-              <span
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-bold"
-                style={{ backgroundColor: prio.bg, color: prio.color }}
-              >
                 <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{ backgroundColor: prio.dot }}
-                  aria-hidden
-                />
-                {prio.label}
-              </span>
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold"
+                  style={{ backgroundColor: prio.bg, color: prio.color }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: prio.dot }} aria-hidden />
+                  {prio.label}
+                </span>
+
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+                  style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}
+                >
+                  <Users className="h-3.5 w-3.5" aria-hidden />
+                  {family.socialStatus}
+                </span>
+              </div>
 
               <span
-                className="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold"
-                style={{ backgroundColor: 'var(--fp-muted-2)', color: 'var(--fp-ink-2)' }}
+                className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-semibold"
+                style={{ backgroundColor: 'var(--fp-muted)', color: 'var(--fp-ink-3)' }}
               >
-                {family.socialStatus}
+                <Clock className="h-3.5 w-3.5" aria-hidden />
+                <span>آخر تحديث: <bdi dir="ltr">{latestUpdate}</bdi></span>
               </span>
             </div>
 
+            {/* Family Title */}
             <h1
               id="fp-main-heading"
-              tabIndex={-1}
-              className="mt-2.5 text-2xl font-bold leading-snug tracking-tight focus:outline-none md:text-3xl"
+              className="text-xl font-extrabold tracking-tight sm:text-2xl"
               style={{ color: 'var(--fp-ink)' }}
             >
               {family.name}
             </h1>
 
-            <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
-              <div>
-                <dt className="text-xs font-medium" style={{ color: 'var(--fp-ink-3)' }}>العنوان</dt>
-                <dd className="mt-0.5 text-xs font-bold leading-relaxed sm:text-sm" style={{ color: 'var(--fp-ink)' }}>
-                  {family.address}
-                </dd>
+            {/* Urgent / Case Summary Callout Box */}
+            {family.caseSummary && (
+              <div
+                className="flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-xs leading-relaxed sm:text-[13px]"
+                style={{
+                  backgroundColor: 'color-mix(in srgb, var(--fp-amber-soft) 72%, var(--fp-card))',
+                  borderColor: 'color-mix(in srgb, var(--fp-amber) 28%, transparent)',
+                  color: 'var(--fp-ink-2)',
+                }}
+              >
+                <AlertCircle
+                  className="mt-0.5 h-4 w-4 shrink-0"
+                  style={{ color: 'var(--fp-amber)' }}
+                  aria-hidden
+                />
+                <p>{family.caseSummary}</p>
               </div>
-              <div>
-                <dt className="text-xs font-medium" style={{ color: 'var(--fp-ink-3)' }}>السكن</dt>
-                <dd className="mt-0.5 text-xs font-bold sm:text-sm tabular-nums" style={{ color: 'var(--fp-ink)' }}>
-                  {family.housing} {family.rentAmount > 0 ? `· ${rentFormatted.value} ${rentFormatted.currency}` : ''}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium" style={{ color: 'var(--fp-ink-3)' }}>عدد الأفراد</dt>
-                <dd className="mt-0.5 text-xs font-bold sm:text-sm tabular-nums" style={{ color: 'var(--fp-ink)' }}>
-                  {family.members.length} أفراد
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium" style={{ color: 'var(--fp-ink-3)' }}>تاريخ التسجيل</dt>
-                <dd className="mt-0.5 text-xs font-bold sm:text-sm tabular-nums" style={{ color: 'var(--fp-ink)' }}>
-                  <bdi dir="ltr">{family.registeredAt}</bdi>
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </div>
+            )}
 
-        {/* Left: Case Officer Sub-card */}
+            {/* 2x2 Inner Info Tiles */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div
+                className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
+                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+              >
+                <span
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' }}
+                >
+                  <MapPin className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+                    العنوان السكني
+                  </span>
+                  <strong className="mt-0.5 block truncate text-xs font-bold sm:text-[13px]" style={{ color: 'var(--fp-ink)' }}>
+                    {family.address}
+                  </strong>
+                </div>
+              </div>
+
+              <div
+                className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
+                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+              >
+                <span
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: 'var(--fp-amber-soft)', color: 'var(--fp-amber)' }}
+                >
+                  <Home className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+                    حالة السكن
+                  </span>
+                  <strong className="mt-0.5 block truncate text-xs font-bold sm:text-[13px]" style={{ color: 'var(--fp-ink)' }}>
+                    {family.housing}
+                    {family.rentAmount > 0 && (
+                      <span className="ms-1.5 font-extrabold tabular-nums" style={{ color: 'var(--fp-amber)' }}>
+                        • {rentFormatted.value} {rentFormatted.currency}
+                      </span>
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <div
+                className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
+                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+              >
+                <span
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: 'var(--fp-emerald-soft)', color: 'var(--fp-emerald)' }}
+                >
+                  <Users className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+                    عدد الأفراد
+                  </span>
+                  <strong className="mt-0.5 block truncate text-xs font-bold tabular-nums sm:text-[13px]" style={{ color: 'var(--fp-ink)' }}>
+                    {family.members.length} أفراد مسجلين
+                  </strong>
+                </div>
+              </div>
+
+              <div
+                className="flex items-center gap-3 rounded-xl border px-3.5 py-3"
+                style={{ backgroundColor: 'var(--fp-muted)', borderColor: 'var(--fp-border)' }}
+              >
+                <span
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--fp-ink-3) 14%, transparent)', color: 'var(--fp-ink-2)' }}
+                >
+                  <Calendar className="h-4 w-4" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+                    تاريخ التسجيل
+                  </span>
+                  <strong className="mt-0.5 block truncate text-xs font-bold tabular-nums sm:text-[13px]" style={{ color: 'var(--fp-ink)' }} dir="ltr">
+                    {family.registeredAt}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <div className="lg:col-span-4">
           <CaseOfficerCard
             officer={family.officer}
             officers={officers}
             onChangeOfficer={onChangeOfficer}
-            onCopyPhone={(phone) => onCopy(phone, 'رقم الهاتف')}
+            onCopyPhone={(phone) => onCopy(phone, 'رقم المندوب')}
           />
         </div>
       </div>
-    </section>
-    </>
+    </div>
   );
 }
