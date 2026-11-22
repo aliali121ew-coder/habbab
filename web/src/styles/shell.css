@@ -180,7 +180,8 @@
   color: var(--bar-active);
 }
 
-.page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; margin-block-end: 10px; }
+.page-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 10px 14px; margin-block-end: 10px; }
+.page-head > div:not(.page-actions) { margin-inline-end: auto; min-width: 0; }
 .page-head h1 { font-size: 1.3rem; line-height: 1.25; }
 .page-head p { color: var(--ink-2); font-size: .92rem; }
 .page-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
