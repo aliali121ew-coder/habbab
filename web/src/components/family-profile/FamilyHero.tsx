@@ -192,26 +192,26 @@ export function FamilyHero({
                 </div>
               </div>
 
-              {/* Phone-only compact Delegate tile inside the family card (same style as info tiles) */}
+              {/* Phone-only compact Delegate tile inside the family card (no text truncation) */}
               <div
-                className="flex items-center justify-between gap-2.5 rounded-xl border px-3.5 py-3 md:hidden"
+                className="flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 md:hidden"
                 style={{
                   backgroundColor: 'color-mix(in srgb, var(--fp-card) 74%, var(--fp-muted))',
                   borderColor: 'var(--fp-border)',
                 }}
               >
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <DelegateAvatar
                     delegate={{ id: family.officer.id, name: family.officer.name }}
-                    size="md"
+                    size="sm"
                   />
-                  <div className="min-w-0">
-                    <span className="block text-[11px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[10.5px] font-medium" style={{ color: 'var(--fp-ink-3)' }}>
                       المندوب المسؤول
                     </span>
                     <a
                       href={`#/delegates/${family.officer.id}`}
-                      className="mt-0.5 block truncate text-xs font-bold no-underline"
+                      className="mt-0.5 block text-[12px] font-bold leading-snug no-underline"
                       style={{ color: 'var(--fp-ink)' }}
                     >
                       {family.officer.name}
@@ -224,21 +224,21 @@ export function FamilyHero({
                     href={`tel:${officerDigits}`}
                     onClick={() => onCopy(family.officer.phone, 'رقم المندوب')}
                     aria-label={`اتصال بـ ${family.officer.name}`}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full border no-underline transition hover:opacity-85"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full border no-underline transition hover:opacity-85"
                     style={{
                       backgroundColor: 'var(--fp-card)',
                       borderColor: 'var(--fp-border)',
                       color: 'var(--bar-active)',
                     }}
                   >
-                    <Phone className="h-4 w-4" aria-hidden />
+                    <Phone className="h-3.5 w-3.5" aria-hidden />
                   </a>
                   <a
                     href={officerWaHref}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`واتساب ${family.officer.name}`}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white no-underline transition hover:bg-emerald-700"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white no-underline transition hover:bg-emerald-700"
                   >
                     <WhatsAppMark />
                   </a>

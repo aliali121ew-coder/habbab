@@ -95,11 +95,11 @@ export function FamilyDetailTabs({
     return list;
   }, [family.housing, family.rentAmount, family.socialStatus, medicalCount]);
 
-  const tabs: Array<{ id: FamilyProfileTab; label: string; count?: number; Icon: typeof Users }> = [
-    { id: 'members', label: 'أفراد العائلة', count: family.members.length, Icon: Users },
-    { id: 'aids', label: 'سجل المساعدات', count: family.payments.length, Icon: HandHeart },
-    { id: 'visits', label: 'الزيارات الميدانية', count: family.visits.length, Icon: ClipboardCheck },
-    { id: 'housing', label: 'السكن والمستمسكات', Icon: FileText },
+  const tabs: Array<{ id: FamilyProfileTab; label: string; mobileLabel: string; count?: number; Icon: typeof Users }> = [
+    { id: 'members', label: 'أفراد العائلة', mobileLabel: 'الأفراد', count: family.members.length, Icon: Users },
+    { id: 'aids', label: 'سجل المساعدات', mobileLabel: 'المساعدات', count: family.payments.length, Icon: HandHeart },
+    { id: 'visits', label: 'الزيارات الميدانية', mobileLabel: 'الزيارات', count: family.visits.length, Icon: ClipboardCheck },
+    { id: 'housing', label: 'السكن والمستمسكات', mobileLabel: 'السكن والوثائق', Icon: FileText },
   ];
 
   return (
@@ -128,7 +128,7 @@ export function FamilyDetailTabs({
                 role="tab"
                 aria-selected={active}
                 onClick={() => onTabChange(tab.id)}
-                className="relative flex h-11 items-center justify-between gap-1.5 rounded-xl px-2.5 text-start transition-colors active:scale-[0.98]"
+                className="relative flex h-11 items-center justify-between gap-1 rounded-xl px-2 text-start outline-none transition-colors active:scale-[0.98]"
               >
                 {active && (
                   <motion.span
@@ -144,7 +144,7 @@ export function FamilyDetailTabs({
                   />
                 )}
 
-                <span className="relative z-10 flex min-w-0 items-center gap-1.5">
+                <span className="relative z-10 flex items-center gap-1.5">
                   <span
                     className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg transition-colors"
                     style={
@@ -156,10 +156,10 @@ export function FamilyDetailTabs({
                     <tab.Icon className="h-3.5 w-3.5" aria-hidden />
                   </span>
                   <span
-                    className="truncate text-[11.5px] font-extrabold transition-colors"
+                    className="whitespace-nowrap text-[11.5px] font-extrabold transition-colors"
                     style={{ color: active ? 'var(--bar-active)' : 'var(--fp-ink)' }}
                   >
-                    {tab.label}
+                    {tab.mobileLabel}
                   </span>
                 </span>
 
