@@ -13,6 +13,7 @@ import { FamiliesGrid } from '../components/families/FamiliesGrid';
 import { FamiliesTable } from '../components/families/FamiliesTable';
 import {
   AddFamilyModal,
+  EditAidModal,
   OfficialFamiliesPrintSheet,
   PaymentModal,
   VisitModal,
@@ -43,6 +44,7 @@ export function FamiliesPage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [payingFamily, setPayingFamily] = useState(null);
+  const [editingAidFamily, setEditingAidFamily] = useState(null);
   const [visitingFamily, setVisitingFamily] = useState(null);
   const [printingList, setPrintingList] = useState(null);
 
@@ -117,6 +119,45 @@ export function FamiliesPage() {
         arrears: 0,
         arrearsMonths: 0,
         payments: [payment, ...(fam.payments ?? [])],
+      };
+    });
+    setFamilies(updated);
+    saveFamiliesStore(updated);
+  };
+
+  const handleSaveFamilyAid = (familyId, patch) => {
+    const updated = families.map((fam) => {
+      if (fam.id !== familyId) return fam;
+      const nextFam = {
+        ...fam,
+        category: patch.category,
+        entitlements: patch.entitlements,
+      };
+      const due = totalEntitlement(nextFam);
+      const nextArrears = Math.max(0, due - (fam.paidThisMonth ?? 0));
+      let nextPayments = fam.payments ?? [];
+      if (patch.aidType) {
+        const idx = nextPayments.findIndex((p) => p.type !== 'راتب شهري');
+        if (idx >= 0) {
+          nextPayments = nextPayments.map((p, i) => (i === idx ? { ...p, type: patch.aidType } : p));
+        } else if ((patch.entitlements.aid ?? 0) + (patch.entitlements.medicine ?? 0) > 0) {
+          nextPayments = [
+            {
+              date: new Date().toISOString().slice(0, 10),
+              amount: (patch.entitlements.aid ?? 0) + (patch.entitlements.medicine ?? 0),
+              type: patch.aidType,
+              receivedBy: fam.headName,
+              by: fam.delegate?.name ?? 'الإدارة',
+            },
+            ...nextPayments,
+          ];
+        }
+      }
+      return {
+        ...nextFam,
+        arrears: nextArrears,
+        arrearsMonths: nextArrears === 0 ? 0 : Math.max(1, fam.arrearsMonths ?? 1),
+        payments: nextPayments,
       };
     });
     setFamilies(updated);
@@ -208,6 +249,7 @@ export function FamiliesPage() {
               onSelect={handleSelectFamily}
               onOpenFullFile={handleOpenFullFile}
               onPay={setPayingFamily}
+              onEditAid={setEditingAidFamily}
               onBulkPay={handleBulkPay}
               onBulkPrint={(list) => setPrintingList(list)}
             />
@@ -228,6 +270,11 @@ export function FamiliesPage() {
         family={payingFamily}
         onClose={() => setPayingFamily(null)}
         onConfirm={handleConfirmPayment}
+      />
+      <EditAidModal
+        family={editingAidFamily}
+        onClose={() => setEditingAidFamily(null)}
+        onSave={handleSaveFamilyAid}
       />
       <VisitModal
         family={visitingFamily}

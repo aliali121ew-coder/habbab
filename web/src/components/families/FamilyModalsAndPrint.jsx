@@ -1,10 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Banknote, Calendar, Check, ClipboardCheck, HandCoins, HeartHandshake,
-  Pill, ShoppingBasket, Stethoscope, User, Wallet, X,
+  Pencil, Pill, ShoppingBasket, Stethoscope, User, Wallet, X,
 } from 'lucide-react';
 import { DELEGATES } from '../../data/families';
 import { CATEGORY_CONFIG, formatIQD, totalEntitlement } from '../../utils/format';
+
+const toDigits = (val) => String(val ?? '')
+  .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+  .replace(/[^\d]/g, '');
+
+const formatWithCommas = (val) => {
+  const digits = toDigits(val);
+  return digits ? Number(digits).toLocaleString('en-US') : '';
+};
+
+const parseAmount = (val) => Number(toDigits(val)) || 0;
 
 // The six kinds of aid (the same as the cards at the top of the families page). The ids are what
 // the records store, so the older ones keep their wording; the labels are what people read.
@@ -47,8 +58,8 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
     if (!name.trim()) return;
     const delegate = DELEGATES.find((d) => String(d.id) === delegateId) ?? DELEGATES[0];
     const id = Date.now();
-    const salaryNum = Math.max(0, Number(salary) || 0);
-    const aidNum = Math.max(0, Number(aid) || 0);
+    const salaryNum = Math.max(0, parseAmount(salary));
+    const aidNum = Math.max(0, parseAmount(aid));
 
     onCreate({
       id,
@@ -61,7 +72,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
       address: address.trim() || `بغداد – ${region.trim()}`,
       phone: phone.trim(),
       housing,
-      rent: housing === 'إيجار' || housing === 'سكن مشترك' ? Math.max(0, Number(rent) || 0) : 0,
+      rent: housing === 'إيجار' || housing === 'سكن مشترك' ? Math.max(0, parseAmount(rent)) : 0,
       income: 'مسجل حديثاً قيد المراجعة',
       delegate,
       entitlements: { salary: salaryNum, aid: aidNum, medicine: 0, checkups: 0 },
@@ -220,12 +231,12 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-slate-600">الراتب الشهري (د.ع)</span>
               <input
-                type="number"
-                min={0}
-                step={5000}
+                type="text"
+                inputMode="numeric"
                 dir="ltr"
-                value={salary}
-                onChange={(e) => setSalary(e.target.value)}
+                value={formatWithCommas(salary)}
+                onChange={(e) => setSalary(toDigits(e.target.value))}
+                placeholder="0"
                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-bold tabular-nums"
               />
             </label>
@@ -233,12 +244,12 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-slate-600">المساعدات الشهرية (د.ع)</span>
               <input
-                type="number"
-                min={0}
-                step={5000}
+                type="text"
+                inputMode="numeric"
                 dir="ltr"
-                value={aid}
-                onChange={(e) => setAid(e.target.value)}
+                value={formatWithCommas(aid)}
+                onChange={(e) => setAid(toDigits(e.target.value))}
+                placeholder="0"
                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-bold tabular-nums"
               />
             </label>
@@ -247,12 +258,12 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
               <label className="block sm:col-span-2">
                 <span className="mb-1.5 block text-xs font-semibold text-slate-600">مبلغ الإيجار الشهري (د.ع)</span>
                 <input
-                  type="number"
-                  min={0}
-                  step={5000}
+                  type="text"
+                  inputMode="numeric"
                   dir="ltr"
-                  value={rent}
-                  onChange={(e) => setRent(e.target.value)}
+                  value={formatWithCommas(rent)}
+                  onChange={(e) => setRent(toDigits(e.target.value))}
+                  placeholder="0"
                   className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-bold tabular-nums"
                 />
               </label>
@@ -318,7 +329,7 @@ export function PaymentModal({ family, onClose, onConfirm }) {
 
   if (!family) return null;
 
-  const numericAmount = Math.max(0, Number(amount) || 0);
+  const numericAmount = Math.max(0, parseAmount(amount));
   const presets = [
     ...(family.arrears > 0 ? [{ label: 'سداد المتبقي', val: family.arrears }] : []),
     ...(family.entitlements?.salary > 0 ? [{ label: 'الراتب الشهري', val: family.entitlements.salary }] : []),
@@ -328,7 +339,7 @@ export function PaymentModal({ family, onClose, onConfirm }) {
 
   const submit = (e) => {
     e.preventDefault();
-    const safeAmount = Math.max(1000, Number(amount) || 0);
+    const safeAmount = Math.max(1000, parseAmount(amount));
     onConfirm(family.id, {
       date,
       amount: safeAmount,
@@ -433,13 +444,13 @@ export function PaymentModal({ family, onClose, onConfirm }) {
             <div className="relative">
               <input
                 id="fam-pay-amount"
-                type="number"
+                type="text"
+                inputMode="numeric"
                 required
-                min={1000}
-                step={5000}
                 dir="ltr"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                value={formatWithCommas(amount)}
+                onChange={(e) => setAmount(toDigits(e.target.value))}
+                placeholder="0"
                 className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50/70 pe-14 ps-4 text-lg font-bold text-slate-900 tabular-nums transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-blue-500/15"
               />
               <span className="pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 rounded-lg bg-slate-200/70 px-2 py-0.5 text-xs font-bold text-slate-600">
@@ -513,6 +524,191 @@ export function PaymentModal({ family, onClose, onConfirm }) {
               <span>تأكيد الصرف</span>
             </button>
           </div>
+        </footer>
+      </form>
+    </dialog>
+  );
+}
+
+export function EditAidModal({ family, onClose, onSave }) {
+  const dialogRef = useRef(null);
+  const [category, setCategory] = useState('intensive');
+  const [salary, setSalary] = useState('0');
+  const [aid, setAid] = useState('0');
+  const [medicine, setMedicine] = useState('0');
+  const [aidType, setAidType] = useState('مساعدات');
+
+  useEffect(() => {
+    if (!family) return;
+    setCategory(family.category ?? 'stable');
+    setSalary(String(family.entitlements?.salary ?? 0));
+    setAid(String(family.entitlements?.aid ?? 0));
+    setMedicine(String(family.entitlements?.medicine ?? 0));
+    const nonSalary = (family.payments ?? []).find((p) => p.type !== 'راتب شهري');
+    setAidType(nonSalary?.type ?? 'مساعدات');
+  }, [family]);
+
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!el) return;
+    if (family && !el.open) el.showModal();
+    else if (!family && el.open) el.close();
+  }, [family]);
+
+  if (!family) return null;
+
+  const salaryNum = Math.max(0, parseAmount(salary));
+  const aidNum = Math.max(0, parseAmount(aid));
+  const medNum = Math.max(0, parseAmount(medicine));
+  const checkupsNum = family.entitlements?.checkups ?? 0;
+  const totalDue = salaryNum + aidNum + medNum + checkupsNum;
+
+  const submit = (e) => {
+    e.preventDefault();
+    onSave(family.id, {
+      category,
+      entitlements: {
+        ...(family.entitlements ?? {}),
+        salary: salaryNum,
+        aid: aidNum,
+        medicine: medNum,
+        checkups: checkupsNum,
+      },
+      aidType,
+    });
+    onClose();
+  };
+
+  return (
+    <dialog
+      ref={dialogRef}
+      onClose={onClose}
+      className="m-auto w-[min(520px,calc(100vw-24px))] overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/55 backdrop:backdrop-blur-xs"
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-slate-200/70 bg-gradient-to-l from-blue-600/10 via-indigo-50/40 to-white px-5 py-3.5">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-bl from-blue-600 to-indigo-600 text-white shadow-sm">
+            <Pencil className="h-4 w-4" aria-hidden />
+          </span>
+          <div>
+            <h2 className="text-sm font-bold text-slate-900">تعديل المساعدة والاستحقاقات</h2>
+            <p className="mt-0.5 text-xs text-slate-500">{family.name}</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="إغلاق"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <form onSubmit={submit}>
+        <div className="space-y-4 p-5">
+          {/* Status */}
+          <div>
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">حالة العائلة</span>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: 'critical', label: 'حرجة', active: 'border-rose-500 bg-rose-500/10 text-rose-700' },
+                { key: 'intensive', label: 'متوسطة', active: 'border-amber-500 bg-amber-500/10 text-amber-700' },
+                { key: 'stable', label: 'جيدة', active: 'border-emerald-500 bg-emerald-500/10 text-emerald-700' },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setCategory(opt.key)}
+                  className={`h-9 rounded-xl border text-xs font-bold transition ${
+                    category === opt.key
+                      ? opt.active
+                      : 'border-slate-200 bg-slate-50/70 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Aid Type */}
+          <label className="block">
+            <span className="mb-1.5 block text-xs font-semibold text-slate-600">نوع المساعدة الإضافية</span>
+            <select
+              value={aidType}
+              onChange={(e) => setAidType(e.target.value)}
+              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:bg-white focus:outline-none"
+            >
+              {PAYMENT_TYPES.filter((t) => t.id !== 'راتب شهري').map((item) => (
+                <option key={item.id} value={item.id}>{item.label}</option>
+              ))}
+            </select>
+          </label>
+
+          {/* Amounts with live commas */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">الراتب الشهري</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                value={formatWithCommas(salary)}
+                onChange={(e) => setSalary(toDigits(e.target.value))}
+                placeholder="0"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-sm font-bold text-slate-900 tabular-nums focus:border-blue-500 focus:bg-white focus:outline-none"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">المساعدات</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                value={formatWithCommas(aid)}
+                onChange={(e) => setAid(toDigits(e.target.value))}
+                placeholder="0"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-sm font-bold text-slate-900 tabular-nums focus:border-blue-500 focus:bg-white focus:outline-none"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">الأدوية</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                value={formatWithCommas(medicine)}
+                onChange={(e) => setMedicine(toDigits(e.target.value))}
+                placeholder="0"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-sm font-bold text-slate-900 tabular-nums focus:border-blue-500 focus:bg-white focus:outline-none"
+              />
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-slate-50/70 px-4 py-2.5 text-xs">
+            <span className="font-semibold text-slate-500">إجمالي الاستحقاق الشهري</span>
+            <b className="text-sm font-extrabold text-blue-600 tabular-nums">{formatIQD(totalDue)}</b>
+          </div>
+        </div>
+
+        <footer className="flex items-center justify-end gap-2 border-t border-slate-200/70 bg-slate-50/70 px-5 py-3.5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 items-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 transition hover:bg-slate-100"
+          >
+            إلغاء
+          </button>
+          <button
+            type="submit"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-gradient-to-l from-blue-600 to-indigo-600 px-5 text-xs font-semibold text-white shadow-[0_6px_16px_-6px_rgba(37,99,235,0.65)] transition hover:brightness-105"
+          >
+            <Check className="h-4 w-4" aria-hidden />
+            <span>حفظ التعديل</span>
+          </button>
         </footer>
       </form>
     </dialog>

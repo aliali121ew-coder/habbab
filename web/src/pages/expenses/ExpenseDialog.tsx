@@ -25,6 +25,15 @@ interface Attachment { id: number; name: string; type: string; size: number; url
 interface Change { action: string; detail: string | null; created_at: string; user_name: string | null }
 interface Detail { files: Attachment[]; history: Change[]; created_at: string; created_by_name: string | null }
 
+const toDigits = (raw: string) => raw
+  .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+  .replace(/[^\d]/g, '');
+
+const formatWithCommas = (raw: string) => {
+  const digits = toDigits(raw);
+  return digits ? Number(digits).toLocaleString('en-US') : '';
+};
+
 const FIELD_LABELS: Record<string, string> = {
   category: 'نوع الصرف', amount: 'المبلغ', spent_on: 'التاريخ', details: 'الوصف', beneficiary_name: 'المستفيد',
 };
@@ -140,9 +149,14 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (busy) return;
+    const numericAmount = Number(toDigits(amount)) || 0;
+    if (numericAmount < 1) {
+      setError('يرجى إدخال مبلغ صحيح أكبر من صفر.');
+      return;
+    }
     const body = {
       category,
-      amount: Number(amount),
+      amount: numericAmount,
       spent_on: date,
       details: details.trim(),
       beneficiary_name: name.trim(),
@@ -168,7 +182,7 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
     else setQueued((current) => [...current, ...files].slice(0, 10));
   };
 
-  const value = Number(amount) || 0;
+  const value = Number(toDigits(amount)) || 0;
 
   return (
     <dialog
@@ -259,7 +273,17 @@ export function ExpenseDialog({ entry, defaultDate, currency, onClose, onSaved }
                 <span aria-hidden><Wallet size={14} /></span>المبلغ
                 <small>{value > 0 ? `${formatNumber(value)} ${currency}` : currency}</small>
               </span>
-              <input type="number" inputMode="numeric" dir="ltr" min={1} step={1} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0" required aria-label="المبلغ" data-error="exp-amount-error" />
+              <input
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                value={formatWithCommas(amount)}
+                onChange={(event) => setAmount(toDigits(event.target.value))}
+                placeholder="0"
+                required
+                aria-label="المبلغ"
+                data-error="exp-amount-error"
+              />
               <span id="exp-amount-error" className="exp-field-error">يرجى إدخال مبلغ صحيح أكبر من صفر.</span>
             </label>
           </div>

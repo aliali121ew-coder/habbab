@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   ArrowDown, ArrowLeft, ArrowUp, ChevronLeft, ChevronRight,
-  FileSpreadsheet, HandCoins, Printer, X,
+  FileSpreadsheet, HandCoins, Pencil, Printer, X,
 } from 'lucide-react';
 import {
   CATEGORY_CONFIG,
@@ -58,6 +58,7 @@ export function FamiliesTable({
   onSelect,
   onOpenFullFile,
   onPay,
+  onEditAid,
   onBulkPay,
   onBulkPrint,
   loading = false,
@@ -283,6 +284,15 @@ export function FamiliesTable({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="inline-flex items-center justify-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onEditAid?.(family)}
+                        title="تعديل المساعدة"
+                        aria-label={`تعديل مساعدة ${family.name}`}
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-blue-50 hover:text-blue-600"
+                      >
+                        <Pencil className="h-4 w-4" aria-hidden />
+                      </button>
                       <button
                         type="button"
                         onClick={() => onPay(family)}
