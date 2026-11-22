@@ -39,7 +39,7 @@
 .reg-sheet .sheet-corner.bottom-right { bottom: 12px; right: 12px; }
 
 .reg-page { position: absolute; inset: 34px 50px 32px; display: flex; flex-direction: column; gap: 9px; }
-.reg-head { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding-bottom: 6px; }
+.reg-sheet .reg-head { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 16px; padding-bottom: 6px; }
 .reg-org { display: flex; align-items: center; gap: 12px; }
 .reg-org img { width: 66px; height: 66px; flex: none; border: 2px solid var(--rs-gold); border-radius: 50%; object-fit: contain; background: #fff; }
 .reg-org div { display: flex; flex-direction: column; line-height: 1.45; font-size: 12px; color: var(--rs-muted); }
