@@ -277,26 +277,7 @@ export function FamiliesTable({
 
                   {/* 4. الدفع */}
                   <td className="border-y border-slate-200/70 bg-white px-4 py-3.5 whitespace-nowrap">
-                    {(() => {
-                      const due = totalEntitlement(family);
-                      const arrears = family.arrears ?? 0;
-                      const paid = family.paidThisMonth ?? 0;
-                      const payBadge = arrears <= 0 && paid > 0
-                        ? { label: 'مسدّد', cls: 'border-emerald-500/25 bg-emerald-500/12 text-emerald-700' }
-                        : arrears > 0 && paid > 0
-                          ? { label: 'جزئي', cls: 'border-amber-500/30 bg-amber-500/12 text-amber-700' }
-                          : arrears > 0
-                            ? { label: 'متأخر', cls: 'border-rose-500/30 bg-rose-500/12 text-rose-700' }
-                            : { label: 'معتمد', cls: 'border-blue-500/30 bg-blue-500/12 text-blue-700' };
-                      return (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(due)}</span>
-                          <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${payBadge.cls}`}>
-                            {payBadge.label}
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(totalEntitlement(family))}</span>
                   </td>
 
                   {/* 5. المندوب */}
