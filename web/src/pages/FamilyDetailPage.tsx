@@ -5,8 +5,6 @@ import { ArrowRight, HandCoins, HeartHandshake } from 'lucide-react';
 import { printWhenReady } from '../components/printWhenReady';
 import { OfficialFamiliesPrintSheet, PaymentModal, VisitModal } from '../components/families/FamilyModalsAndPrint';
 import { AddMemberDialog, type EditableMember, type NewMember } from '../components/family-profile/AddMemberDialog';
-import { AidBoard } from '../components/family-profile/AidBoard';
-import { AidSourceSheet, FoundationSheet } from '../components/family-profile/AidSections';
 import { FamilyHero } from '../components/family-profile/FamilyHero';
 import { MembersTable, MemberSheet } from '../components/family-profile/MembersTable';
 import { ProfileSkeleton } from '../components/family-profile/ProfileSkeleton';
@@ -14,15 +12,13 @@ import { Toast } from '../components/shared/Toast';
 import { DELEGATES, loadFamiliesStore, saveFamiliesStore } from '../data/families';
 import { CASE_OFFICERS, getFamilyDetailById } from '../mock/family';
 import { familyIdFromHash } from '../route';
-import type { AidSource, CaseOfficer, FamilyDetail, FamilyMember } from '../types/family';
+import type { CaseOfficer, FamilyDetail, FamilyMember } from '../types/family';
 
 export function FamilyDetailPage() {
   const familyId = familyIdFromHash();
   const [family, setFamily] = useState<FamilyDetail | null>(() => getFamilyDetailById(familyId));
   // Read from this device at once: no waiting screen (it used to hold one for 500 ms each visit).
   const loading = false;
-  const [foundationOpen, setFoundationOpen] = useState(false);
-  const [selectedSource, setSelectedSource] = useState<AidSource | null>(null);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -184,17 +180,7 @@ export function FamilyDetailPage() {
                 onChangeOfficer={handleChangeOfficer}
               />
 
-              {/* 2. Aid Board (Internal + External Sources) */}
-              <AidBoard
-                members={family.members}
-                internal={family.internalAid}
-                external={family.externalAid}
-                onOpenFoundation={() => setFoundationOpen(true)}
-                onOpenSource={setSelectedSource}
-                onOpenMember={setSelectedMember}
-              />
-
-              {/* 3. Family Members Table */}
+              {/* 2. Family Members Table */}
               <MembersTable
                 members={family.members}
                 onOpen={setSelectedMember}
@@ -205,24 +191,6 @@ export function FamilyDetailPage() {
         </div>
 
         {/* Side Sheets */}
-        {foundationOpen && (
-          <FoundationSheet
-            programs={family.internalAid}
-            onOpenProgram={(program) => {
-              setFoundationOpen(false);
-              setSelectedSource(program);
-            }}
-            onClose={() => setFoundationOpen(false)}
-          />
-        )}
-
-        {selectedSource && (
-          <AidSourceSheet
-            source={selectedSource}
-            onClose={() => setSelectedSource(null)}
-          />
-        )}
-
         {selectedMember && (
           <MemberSheet
             member={selectedMember}
