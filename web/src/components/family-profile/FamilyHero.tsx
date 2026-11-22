@@ -1,13 +1,9 @@
 import {
-  ArrowRight,
   Calendar,
-  ClipboardCheck,
   Clock,
-  Copy,
   HandHeart,
   Home,
   MapPin,
-  Printer,
   Users,
 } from 'lucide-react';
 import { formatIQDParts } from '../../mock/family';
@@ -20,8 +16,6 @@ interface Props {
   onCopy: (text: string, label: string) => void;
   onChangeOfficer: (officer: CaseOfficer) => void;
   onOpenPayment: () => void;
-  onOpenVisit: () => void;
-  onPrint: () => void;
 }
 
 export function FamilyHero({
@@ -30,8 +24,6 @@ export function FamilyHero({
   onCopy,
   onChangeOfficer,
   onOpenPayment,
-  onOpenVisit,
-  onPrint,
 }: Props) {
   const rentFormatted = formatIQDParts(family.rentAmount);
 
@@ -46,79 +38,19 @@ export function FamilyHero({
 
   return (
     <div className="space-y-4">
-      {/* Compact Action Strip (single clean bar, no duplicate breadcrumb) */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <a
-            href="#/families"
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold no-underline transition hover:opacity-85"
-            style={{
-              backgroundColor: 'var(--fp-card)',
-              borderColor: 'var(--fp-border)',
-              color: 'var(--fp-ink-2)',
-            }}
-          >
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-            <span>العوائل المسجلة</span>
-          </a>
-
-          <button
-            type="button"
-            onClick={() => onCopy(family.fileNo, 'رقم الملف')}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3 font-mono text-xs font-bold transition hover:opacity-85"
-            style={{
-              backgroundColor: 'var(--fp-muted)',
-              borderColor: 'var(--fp-border)',
-              color: 'var(--fp-ink)',
-            }}
-            dir="ltr"
-          >
-            <span>{family.fileNo}</span>
-            <Copy className="h-3.5 w-3.5 opacity-70" aria-hidden />
-          </button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onPrint}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3.5 text-xs font-bold transition hover:opacity-85"
-            style={{
-              backgroundColor: 'var(--fp-card)',
-              borderColor: 'var(--fp-border)',
-              color: 'var(--fp-ink)',
-            }}
-          >
-            <Printer className="h-3.5 w-3.5" aria-hidden />
-            <span>طباعة الملف</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenVisit}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl border px-3.5 text-xs font-bold transition hover:opacity-90"
-            style={{
-              backgroundColor: 'var(--fp-amber-soft)',
-              borderColor: 'color-mix(in srgb, var(--fp-amber) 30%, transparent)',
-              color: 'var(--fp-amber)',
-            }}
-          >
-            <ClipboardCheck className="h-3.5 w-3.5" aria-hidden />
-            <span>تسجيل زيارة</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onOpenPayment}
-            className="inline-flex h-9 items-center gap-1.5 rounded-xl px-4 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
-            style={{
-              backgroundImage: 'linear-gradient(135deg, var(--bar-active), var(--brand))',
-            }}
-          >
-            <HandHeart className="h-3.5 w-3.5" aria-hidden />
-            <span>صرف مساعدة</span>
-          </button>
-        </div>
+      {/* Primary Quick Action */}
+      <div className="flex items-center justify-end">
+        <button
+          type="button"
+          onClick={onOpenPayment}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl px-4 text-xs font-bold text-white shadow-sm transition hover:opacity-95"
+          style={{
+            backgroundImage: 'linear-gradient(135deg, var(--bar-active), var(--brand))',
+          }}
+        >
+          <HandHeart className="h-3.5 w-3.5" aria-hidden />
+          <span>صرف مساعدة</span>
+        </button>
       </div>
 
       {/* Top Hero Bento Grid: 8 cols Family Identity (Right) + 4 cols Delegate Card (Left) */}

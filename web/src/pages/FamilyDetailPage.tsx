@@ -176,15 +176,13 @@ export function FamilyDetailPage() {
               transition={{ duration: 0.22 }}
               className="space-y-6"
             >
-              {/* 1. Hero Bento Section (Identity + Dark Navy Delegate Card) */}
+              {/* 1. Hero Bento Section (Identity + Delegate Card) */}
               <FamilyHero
                 family={family}
                 officers={CASE_OFFICERS}
                 onCopy={handleCopy}
                 onChangeOfficer={handleChangeOfficer}
                 onOpenPayment={() => setPayOpen(true)}
-                onOpenVisit={() => setVisitOpen(true)}
-                onPrint={() => setPrinting(true)}
               />
 
               {/* 2. 4 Interactive KPI Stat Cards */}
