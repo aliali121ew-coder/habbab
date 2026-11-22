@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { DELEGATES } from '../../data/families';
 import { CATEGORY_CONFIG, formatIQD, totalEntitlement } from '../../utils/format';
+import { useLiveDelegates } from './DelegateChip';
 
 const toDigits = (val) => String(val ?? '')
   .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
@@ -30,6 +31,7 @@ const PAYMENT_TYPES = [
 
 export function AddFamilyModal({ open, onClose, onCreate }) {
   const dialogRef = useRef(null);
+  const delegatesList = useLiveDelegates();
   const [name, setName] = useState('');
   const [headName, setHeadName] = useState('');
   const [region, setRegion] = useState('الكاظمية');
@@ -39,7 +41,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
   const [rent, setRent] = useState('250000');
   const [category, setCategory] = useState('intensive');
   const [socialStatus, setSocialStatus] = useState('أرملة وأيتام');
-  const [delegateId, setDelegateId] = useState(String(DELEGATES[0].id));
+  const [delegateId, setDelegateId] = useState(String(delegatesList[0]?.id ?? DELEGATES[0].id));
   const [salary, setSalary] = useState('250000');
   const [aid, setAid] = useState('150000');
   const [notes, setNotes] = useState('');
@@ -56,7 +58,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    const delegate = DELEGATES.find((d) => String(d.id) === delegateId) ?? DELEGATES[0];
+    const delegate = delegatesList.find((d) => String(d.id) === delegateId) ?? delegatesList[0] ?? DELEGATES[0];
     const id = Date.now();
     const salaryNum = Math.max(0, parseAmount(salary));
     const aidNum = Math.max(0, parseAmount(aid));
@@ -170,8 +172,8 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
                 onChange={(e) => setDelegateId(e.target.value)}
                 className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-semibold"
               >
-                {DELEGATES.map((d) => (
-                  <option key={d.id} value={d.id}>{d.name} ({d.region})</option>
+                {delegatesList.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}{d.region ? ` (${d.region})` : ''}</option>
                 ))}
               </select>
             </label>
@@ -532,7 +534,9 @@ export function PaymentModal({ family, onClose, onConfirm }) {
 
 export function EditAidModal({ family, onClose, onSave }) {
   const dialogRef = useRef(null);
+  const delegatesList = useLiveDelegates();
   const [category, setCategory] = useState('intensive');
+  const [delegateId, setDelegateId] = useState('');
   const [salary, setSalary] = useState('0');
   const [aid, setAid] = useState('0');
   const [medicine, setMedicine] = useState('0');
@@ -541,6 +545,7 @@ export function EditAidModal({ family, onClose, onSave }) {
   useEffect(() => {
     if (!family) return;
     setCategory(family.category ?? 'stable');
+    setDelegateId(String(family.delegate?.id ?? ''));
     setSalary(String(family.entitlements?.salary ?? 0));
     setAid(String(family.entitlements?.aid ?? 0));
     setMedicine(String(family.entitlements?.medicine ?? 0));
@@ -565,8 +570,10 @@ export function EditAidModal({ family, onClose, onSave }) {
 
   const submit = (e) => {
     e.preventDefault();
+    const chosenDelegate = delegatesList.find((d) => String(d.id) === delegateId) ?? family.delegate;
     onSave(family.id, {
       category,
+      delegate: chosenDelegate,
       entitlements: {
         ...(family.entitlements ?? {}),
         salary: salaryNum,
@@ -632,19 +639,37 @@ export function EditAidModal({ family, onClose, onSave }) {
             </div>
           </div>
 
-          {/* Aid Type */}
-          <label className="block">
-            <span className="mb-1.5 block text-xs font-semibold text-slate-600">نوع المساعدة الإضافية</span>
-            <select
-              value={aidType}
-              onChange={(e) => setAidType(e.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:bg-white focus:outline-none"
-            >
-              {PAYMENT_TYPES.filter((t) => t.id !== 'راتب شهري').map((item) => (
-                <option key={item.id} value={item.id}>{item.label}</option>
-              ))}
-            </select>
-          </label>
+          {/* Delegate & Aid Type */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">المندوب المسؤول</span>
+              <select
+                value={delegateId}
+                onChange={(e) => setDelegateId(e.target.value)}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:bg-white focus:outline-none"
+              >
+                {family.delegate && !delegatesList.some((d) => String(d.id) === String(family.delegate.id)) && (
+                  <option value={family.delegate.id}>{family.delegate.name}</option>
+                )}
+                {delegatesList.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">نوع المساعدة الإضافية</span>
+              <select
+                value={aidType}
+                onChange={(e) => setAidType(e.target.value)}
+                className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3 text-xs font-semibold text-slate-800 focus:border-blue-500 focus:bg-white focus:outline-none"
+              >
+                {PAYMENT_TYPES.filter((t) => t.id !== 'راتب شهري').map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           {/* Amounts with live commas */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

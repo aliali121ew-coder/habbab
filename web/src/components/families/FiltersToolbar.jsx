@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ArrowUpDown, Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react';
 import { DELEGATES } from '../../data/families';
 import { PAYMENT_STATUS_LABELS, SORT_LABELS } from '../../utils/format';
-import { DelegateAvatar } from './DelegateChip';
+import { DelegateAvatar, useLiveDelegates } from './DelegateChip';
 
 const SEGMENT_ITEMS = [
   { key: 'all', label: 'الكل', dot: null },
@@ -67,7 +67,9 @@ export function FiltersToolbar({
     active ? 'bg-[var(--bar-active)] text-white shadow-sm' : 'border border-slate-200/80 bg-white text-slate-700'
   }`;
 
-  const activeDelegate = DELEGATES.find((d) => String(d.id) === String(filters.delegateId));
+  const liveDelegates = useLiveDelegates();
+  const delegatesList = liveDelegates;
+  const activeDelegate = delegatesList.find((d) => String(d.id) === String(filters.delegateId));
 
   return (
     <>
@@ -143,7 +145,7 @@ export function FiltersToolbar({
 
           <h3 className="mt-5 text-[13px] font-semibold text-slate-500">المندوب</h3>
           <ul className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-200/80">
-            {[{ id: 'all', name: 'كل المندوبين' }, ...DELEGATES].map((del) => {
+            {[{ id: 'all', name: 'كل المندوبين' }, ...delegatesList].map((del) => {
               const sel = String(filters.delegateId) === String(del.id);
               return (
                 <li key={del.id}>
@@ -246,7 +248,7 @@ export function FiltersToolbar({
                   </span>
                 </>
               ) : (
-                <span>كل المندوبين ({DELEGATES.length})</span>
+                <span>كل المندوبين ({delegatesList.length})</span>
               )}
               <ChevronDown className="h-3.5 w-3.5 text-slate-400" aria-hidden />
             </button>
@@ -275,7 +277,7 @@ export function FiltersToolbar({
                   <span className="text-[11px] text-slate-500 tabular-nums">{categoryCounts.all} عائلة</span>
                 </button>
 
-                {DELEGATES.map((del) => {
+                {delegatesList.map((del) => {
                   const isSel = String(filters.delegateId) === String(del.id);
                   const count = delegateCounts.get(del.id) ?? 0;
                   return (

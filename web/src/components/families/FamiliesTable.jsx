@@ -272,7 +272,7 @@ export function FamiliesTable({
                   {/* 5. المندوب */}
                   <td className="px-4 py-3.5 whitespace-nowrap">
                     <div className="flex items-center gap-2.5">
-                      <DelegateAvatar delegate={family.delegate} size="md" editable />
+                      <DelegateAvatar delegate={family.delegate} size="md" />
                       <p className="min-w-0 truncate text-sm font-semibold text-slate-700">{family.delegate?.name}</p>
                     </div>
                   </td>

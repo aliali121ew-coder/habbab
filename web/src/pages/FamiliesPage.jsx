@@ -131,6 +131,7 @@ export function FamiliesPage() {
       const nextFam = {
         ...fam,
         category: patch.category,
+        delegate: patch.delegate ?? fam.delegate,
         entitlements: patch.entitlements,
       };
       const due = totalEntitlement(nextFam);
