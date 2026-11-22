@@ -239,3 +239,19 @@
     border-color: var(--line);
   }
 }
+
+/* Families (computer) at night: the table header row and the search bar take a light tint of the
+   theme colour, so they sit with the blue card instead of as flat grey bars. */
+@layer utilities {
+  :root[data-theme="dark"] .fam-saas table thead tr.bg-slate-50\/80 {
+    background-color: color-mix(in srgb, var(--bar-active) 16%, var(--surface));
+    border-color: color-mix(in srgb, var(--bar-active) 26%, var(--line));
+  }
+  :root[data-theme="dark"] .fam-saas input[type="search"].bg-slate-50\/70 {
+    background-color: color-mix(in srgb, var(--bar-active) 12%, var(--surface));
+    border-color: color-mix(in srgb, var(--bar-active) 28%, var(--line));
+  }
+  :root[data-theme="dark"] .fam-saas input[type="search"].bg-slate-50\/70:focus {
+    background-color: color-mix(in srgb, var(--bar-active) 18%, var(--surface));
+  }
+}
