@@ -218,3 +218,24 @@
     }
   }
 }
+
+/* Families table (computer) at night: the header row, the row under the pointer and the open row
+   used light colours (bg-slate-50/80, hover:bg-slate-50/70, bg-blue-50/40), which turned into
+   pale grey bands with unreadable text on the dark page. */
+@layer utilities {
+  :root[data-theme="dark"] .fam-saas .bg-slate-50\/80 {
+    background-color: var(--surface-2);
+  }
+  :root[data-theme="dark"] .fam-saas table thead tr {
+    border-color: var(--line);
+  }
+  :root[data-theme="dark"] .fam-saas .hover\:bg-slate-50\/70:hover {
+    background-color: rgb(255 255 255 / 4%);
+  }
+  :root[data-theme="dark"] .fam-saas .bg-blue-50\/40 {
+    background-color: color-mix(in srgb, var(--bar-active) 16%, transparent);
+  }
+  :root[data-theme="dark"] .fam-saas .divide-slate-100 > :not(:last-child) {
+    border-color: var(--line);
+  }
+}
