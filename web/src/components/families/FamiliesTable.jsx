@@ -45,6 +45,13 @@ function SortHeader({ label, colKey, sortCol, sortDir, onSort }) {
   );
 }
 
+const STATUS_ORDER = { critical: 0, intensive: 1, stable: 2 };
+const STATUS_META = {
+  critical: { label: 'حرجة', badge: 'border-rose-500/30 bg-rose-500/12 text-rose-700', dot: 'bg-rose-500' },
+  intensive: { label: 'متوسطة', badge: 'border-amber-500/30 bg-amber-500/12 text-amber-700', dot: 'bg-amber-500' },
+  stable: { label: 'جيدة', badge: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-700', dot: 'bg-emerald-500' },
+};
+
 export function FamiliesTable({
   families,
   selectedId,
@@ -55,7 +62,7 @@ export function FamiliesTable({
   onBulkPrint,
   loading = false,
 }) {
-  const [sortCol, setSortCol] = useState('salary');
+  const [sortCol, setSortCol] = useState('payment');
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage] = useState(1);
   const [checkedIds, setCheckedIds] = useState(() => new Set());
@@ -65,7 +72,7 @@ export function FamiliesTable({
       setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortCol(col);
-      setSortDir(col === 'name' || col === 'delegate' ? 'asc' : 'desc');
+      setSortDir(col === 'name' || col === 'delegate' || col === 'status' ? 'asc' : 'desc');
     }
     setPage(1);
   };
@@ -75,8 +82,9 @@ export function FamiliesTable({
     return [...families].sort((a, b) => {
       switch (sortCol) {
         case 'name': return a.name.localeCompare(b.name, 'ar') * dir;
-        case 'salary': return ((a.entitlements?.salary ?? 0) - (b.entitlements?.salary ?? 0)) * dir;
-        case 'aid': return ((getLastAid(a)?.amount ?? 0) - (getLastAid(b)?.amount ?? 0)) * dir;
+        case 'status': return ((STATUS_ORDER[a.category] ?? 2) - (STATUS_ORDER[b.category] ?? 2)) * dir;
+        case 'aid': return ((getLastAid(a)?.type ?? (a.entitlements?.salary > 0 ? 'راتب شهري' : '')).localeCompare(getLastAid(b)?.type ?? (b.entitlements?.salary > 0 ? 'راتب شهري' : ''), 'ar')) * dir;
+        case 'payment': return (totalEntitlement(a) - totalEntitlement(b)) * dir;
         case 'delegate': return (a.delegate?.name ?? '').localeCompare(b.delegate?.name ?? '', 'ar') * dir;
         default: return 0;
       }
@@ -174,8 +182,9 @@ export function FamiliesTable({
                 />
               </th>
               <SortHeader label="العائلة" colKey="name" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-              <SortHeader label="الراتب" colKey="salary" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
-              <SortHeader label="المساعدات" colKey="aid" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortHeader label="الحالة" colKey="status" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortHeader label="نوع المساعدة" colKey="aid" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+              <SortHeader label="الدفع" colKey="payment" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <SortHeader label="المندوب" colKey="delegate" sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
               <th scope="col" className="px-4 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-400">
                 الإجراءات
@@ -233,46 +242,76 @@ export function FamiliesTable({
                     </div>
                   </td>
 
-                  {/* 2. الراتب (إن وجد) */}
+                  {/* 2. الحالة */}
                   <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
-                    {salary > 0 ? (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(salary)}</span>
-                          <span className="rounded-md border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                            راتب شهري
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-xs text-slate-400 tabular-nums">
-                          {lastSalaryDate ? `آخر صرف ${timeAgo(lastSalaryDate)}` : 'معتمد شهرياً'}
-                        </p>
-                      </>
-                    ) : (
-                      <span className="inline-flex rounded-lg border border-slate-200/80 px-2.5 py-1 text-[11px] font-medium text-slate-400">لا يوجد راتب</span>
+                    {(() => {
+                      const st = STATUS_META[family.category] ?? STATUS_META.stable;
+                      return (
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${st.badge}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${st.dot}`} aria-hidden />
+                          <span>{st.label}</span>
+                        </span>
+                      );
+                    })()}
+                  </td>
+
+                  {/* 3. نوع المساعدة */}
+                  <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {salary > 0 && (
+                        <span className="rounded-md border border-emerald-500/25 bg-emerald-500/12 px-2 py-0.5 text-[11px] font-bold text-emerald-700">
+                          راتب شهري
+                        </span>
+                      )}
+                      {lastAid && (
+                        <span className={`rounded-md border px-2 py-0.5 text-[11px] font-bold ${
+                          /دواء|أدوية|علاج/.test(lastAid.type ?? '')
+                            ? 'border-purple-500/30 bg-purple-500/12 text-purple-700'
+                            : 'border-blue-500/30 bg-blue-500/12 text-blue-700'
+                        }`}>
+                          {lastAid.type}
+                        </span>
+                      )}
+                      {salary <= 0 && !lastAid && (
+                        <span className="inline-flex rounded-lg border border-slate-200/80 px-2.5 py-0.5 text-[11px] font-medium text-slate-400">
+                          لا توجد مساعدات
+                        </span>
+                      )}
+                    </div>
+                    {(lastAid?.date || lastSalaryDate) && (
+                      <p className="mt-1 text-xs text-slate-400 tabular-nums">
+                        {lastAid?.date ? `${timeAgo(lastAid.date)} · ${lastAid.date}` : `آخر صرف ${timeAgo(lastSalaryDate)}`}
+                      </p>
                     )}
                   </td>
 
-                  {/* 3. المساعدات (آخر مساعدة تم إعطاؤها) */}
+                  {/* 4. الدفع */}
                   <td className="border-y border-slate-200/70 bg-white px-4 py-4 whitespace-nowrap">
-                    {lastAid ? (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(lastAid.amount)}</span>
-                          <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${
-                            /دواء|أدوية|علاج/.test(lastAid.type ?? '')
-                              ? 'border-purple-500/30 bg-purple-500/12 text-purple-700'
-                              : 'border-blue-500/30 bg-blue-500/12 text-blue-700'
-                          }`}>
-                            {lastAid.type}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-xs text-slate-400 tabular-nums">
-                          {timeAgo(lastAid.date)} · <span dir="ltr">{lastAid.date}</span>
-                        </p>
-                      </>
-                    ) : (
-                      <span className="inline-flex rounded-lg border border-slate-200/80 px-2.5 py-1 text-[11px] font-medium text-slate-400">لا توجد مساعدات</span>
-                    )}
+                    {(() => {
+                      const due = totalEntitlement(family);
+                      const arrears = family.arrears ?? 0;
+                      const paid = family.paidThisMonth ?? 0;
+                      const payBadge = arrears <= 0 && paid > 0
+                        ? { label: 'مسدّد', cls: 'border-emerald-500/25 bg-emerald-500/12 text-emerald-700' }
+                        : arrears > 0 && paid > 0
+                          ? { label: 'جزئي', cls: 'border-amber-500/30 bg-amber-500/12 text-amber-700' }
+                          : arrears > 0
+                            ? { label: 'متأخر', cls: 'border-rose-500/30 bg-rose-500/12 text-rose-700' }
+                            : { label: 'معتمد', cls: 'border-blue-500/30 bg-blue-500/12 text-blue-700' };
+                      return (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-slate-900 tabular-nums">{formatIQD(due)}</span>
+                            <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${payBadge.cls}`}>
+                              {payBadge.label}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-xs text-slate-400 tabular-nums">
+                            {arrears > 0 ? `متبقي ${formatIQD(arrears)}` : lastSalaryDate ? `آخر صرف ${timeAgo(lastSalaryDate)}` : 'معتمد شهرياً'}
+                          </p>
+                        </>
+                      );
+                    })()}
                   </td>
 
                   {/* 4. المندوب */}
