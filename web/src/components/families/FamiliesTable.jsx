@@ -86,6 +86,12 @@ export function FamiliesTable({
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageRows = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const pageButtons = useMemo(() => {
+    const windowSize = 5;
+    const start = Math.max(1, Math.min(safePage - 2, totalPages - windowSize + 1));
+    const end = Math.min(totalPages, start + windowSize - 1);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [safePage, totalPages]);
 
   const allOnPageChecked = pageRows.length > 0 && pageRows.every((r) => checkedIds.has(r.id));
 
@@ -318,36 +324,49 @@ export function FamiliesTable({
         </table>
       </div>
 
-      {/* Pagination Footer */}
-      <footer className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200/70 bg-white px-4 py-3 text-xs text-slate-500 shadow-xs">
-        <span className="tabular-nums">
-          عرض <b className="text-slate-800">{pageRows.length}</b> من أصل <b className="text-slate-800">{sorted.length}</b> عائلة
-        </span>
-
-        <div className="flex items-center gap-1.5">
+      {/* Numbered Pagination */}
+      {totalPages > 1 && (
+        <nav
+          className="reg-pager rounded-2xl border border-slate-200/70 bg-white shadow-xs"
+          aria-label="ترقيم صفحات العوائل"
+        >
           <button
             type="button"
+            className="pager-btn"
+            aria-label="الصفحة السابقة"
             disabled={safePage <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            aria-label="الصفحة السابقة"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight size={16} aria-hidden />
+            <span className="pager-text">السابق</span>
           </button>
-          <span className="px-2 font-semibold text-slate-700 tabular-nums">
-            {safePage} / {totalPages}
-          </span>
+
+          <div className="pager-pages">
+            {pageButtons.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className={`pager-num${p === safePage ? ' active' : ''}`}
+                aria-current={p === safePage ? 'page' : undefined}
+                onClick={() => setPage(p)}
+              >
+                <bdi>{p}</bdi>
+              </button>
+            ))}
+          </div>
+
           <button
             type="button"
+            className="pager-btn"
+            aria-label="الصفحة التالية"
             disabled={safePage >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            aria-label="الصفحة التالية"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 disabled:opacity-40"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <span className="pager-text">التالي</span>
+            <ChevronLeft size={16} aria-hidden />
           </button>
-        </div>
-      </footer>
+        </nav>
+      )}
 
       {/* Floating Bulk Action Bar */}
       {selectedList.length > 0 && (
