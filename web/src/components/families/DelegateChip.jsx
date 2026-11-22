@@ -1,4 +1,6 @@
-import { MessageCircle, Phone } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Camera, MessageCircle, Phone } from 'lucide-react';
+import { api } from '../../api';
 import { whatsappUrl } from '../../utils/format';
 
 const AVATAR_TONES = [
@@ -9,27 +11,167 @@ const AVATAR_TONES = [
   'bg-slate-600/10 text-slate-700',
 ];
 
-export function DelegateAvatar({ delegate, size = 'sm' }) {
+const PHOTO_STORE_KEY = 'ahbab:delegate-photos-v1';
+const PHOTO_EVENT = 'ahbab:delegate-photos-changed';
+
+let serverPhotoCache = null;
+let serverPhotoPromise = null;
+
+function normName(name) {
+  return String(name ?? '').trim().replace(/\s+/g, ' ');
+}
+
+function loadLocalPhotos() {
+  try {
+    return JSON.parse(window.localStorage.getItem(PHOTO_STORE_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveLocalPhoto(key, dataUrl) {
+  try {
+    const map = loadLocalPhotos();
+    map[key] = dataUrl;
+    window.localStorage.setItem(PHOTO_STORE_KEY, JSON.stringify(map));
+    window.dispatchEvent(new Event(PHOTO_EVENT));
+  } catch {
+    // Ignore storage quota errors.
+  }
+}
+
+function loadServerPhotos() {
+  if (serverPhotoCache) return Promise.resolve(serverPhotoCache);
+  if (!serverPhotoPromise) {
+    serverPhotoPromise = api('/collections/overview')
+      .then((overview) => {
+        const byName = {};
+        const byId = {};
+        for (const d of overview?.delegates ?? []) {
+          if (d?.avatar_url) {
+            if (d.full_name) byName[normName(d.full_name)] = d.avatar_url;
+            if (d.id != null) byId[String(d.id)] = d.avatar_url;
+          }
+        }
+        serverPhotoCache = { byName, byId };
+        return serverPhotoCache;
+      })
+      .catch(() => {
+        serverPhotoCache = { byName: {}, byId: {} };
+        return serverPhotoCache;
+      });
+  }
+  return serverPhotoPromise;
+}
+
+function compressAvatar(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('تعذّر قراءة الصورة'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('ملف غير صالح'));
+      img.onload = () => {
+        const size = 160;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const min = Math.min(img.width, img.height);
+        const sx = (img.width - min) / 2;
+        const sy = (img.height - min) / 2;
+        ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+export function DelegateAvatar({ delegate, size = 'sm', editable = false }) {
+  const [serverPhotos, setServerPhotos] = useState(() => serverPhotoCache ?? { byName: {}, byId: {} });
+  const [localPhotos, setLocalPhotos] = useState(() => loadLocalPhotos());
+  const [imgFailed, setImgFailed] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    let alive = true;
+    void loadServerPhotos().then((data) => { if (alive) setServerPhotos(data); });
+    const onChange = () => setLocalPhotos(loadLocalPhotos());
+    window.addEventListener(PHOTO_EVENT, onChange);
+    return () => {
+      alive = false;
+      window.removeEventListener(PHOTO_EVENT, onChange);
+    };
+  }, []);
+
+  const nameKey = normName(delegate?.name);
+  const idKey = delegate?.id != null ? String(delegate.id) : '';
+  const photoSrc = !imgFailed
+    ? (localPhotos[nameKey] || (idKey && localPhotos[idKey]) || delegate?.avatar || delegate?.avatar_url || serverPhotos.byName[nameKey] || (idKey && serverPhotos.byId[idKey]) || null)
+    : null;
+
+  useEffect(() => { setImgFailed(false); }, [photoSrc]);
+
   const tone = AVATAR_TONES[(delegate?.id ?? 0) % AVATAR_TONES.length];
   const dim = size === 'md' ? 'h-9 w-9 text-xs' : 'h-7 w-7 text-[11px]';
-
-  if (delegate?.avatar) {
-    return (
-      <img
-        src={delegate.avatar}
-        alt={delegate.name}
-        className={`${dim} shrink-0 rounded-full object-cover ring-1 ring-slate-200`}
-      />
-    );
-  }
-
   const initial = delegate?.name?.trim()?.charAt(0) || 'م';
-  return (
+
+  const onFilePick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !nameKey) return;
+    try {
+      const dataUrl = await compressAvatar(file);
+      saveLocalPhoto(nameKey, dataUrl);
+    } catch {
+      // Ignore invalid image files.
+    }
+  };
+
+  const inner = photoSrc ? (
+    <img
+      src={photoSrc}
+      alt={delegate?.name ?? 'صورة المندوب'}
+      onError={() => setImgFailed(true)}
+      className={`${dim} shrink-0 rounded-full object-cover ring-2 ring-white/80 shadow-xs`}
+    />
+  ) : (
     <span
       className={`${dim} ${tone} inline-flex shrink-0 items-center justify-center rounded-full font-bold ring-1 ring-slate-200/80`}
       aria-hidden
     >
       {initial}
+    </span>
+  );
+
+  if (!editable) return inner;
+
+  return (
+    <span
+      className="group/av relative inline-flex shrink-0"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        title={photoSrc ? `تغيير صورة ${delegate?.name}` : `إضافة صورة ${delegate?.name}`}
+        aria-label={photoSrc ? `تغيير صورة المندوب ${delegate?.name}` : `إضافة صورة المندوب ${delegate?.name}`}
+        className="relative inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-blue-600"
+      >
+        {inner}
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-slate-900/50 text-white opacity-0 transition group-hover/av:opacity-100">
+          <Camera className="h-3.5 w-3.5" aria-hidden />
+        </span>
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={onFilePick}
+      />
     </span>
   );
 }
