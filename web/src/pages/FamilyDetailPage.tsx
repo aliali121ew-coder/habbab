@@ -9,7 +9,6 @@ import { AidBoard } from '../components/family-profile/AidBoard';
 import { AidSourceSheet, FoundationSheet } from '../components/family-profile/AidSections';
 import { FamilyHero } from '../components/family-profile/FamilyHero';
 import { MembersTable, MemberSheet } from '../components/family-profile/MembersTable';
-import { PageHeader } from '../components/family-profile/PageHeader';
 import { ProfileSkeleton } from '../components/family-profile/ProfileSkeleton';
 import { Toast } from '../components/shared/Toast';
 import { DELEGATES, loadFamiliesStore, saveFamiliesStore } from '../data/families';
@@ -166,16 +165,8 @@ export function FamilyDetailPage() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 pb-24 pt-6 md:-mx-[18px] md:px-7 md:pb-10">
+      <div dir="rtl" className="fp-root -mx-[14px] -mb-3 min-h-[calc(100dvh-56px)] px-4 pb-24 pt-2 md:-mx-[18px] md:px-7 md:pb-10">
         <div className="mx-auto max-w-[2400px] space-y-6">
-          <PageHeader
-            onRecordPayment={() => setPayOpen(true)}
-            onAddVisit={() => setVisitOpen(true)}
-            onPrint={() => setPrinting(true)}
-            onEdit={() => showToast('وضع التعديل السريع جاهز')}
-            onArchive={() => showToast('تم وضع علامة للمراجعة قبل الأرشفة')}
-          />
-
           {loading ? (
             <ProfileSkeleton />
           ) : (
