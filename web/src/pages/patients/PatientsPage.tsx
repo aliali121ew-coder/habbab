@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowLeft, Building2, CalendarDays, Camera, ChevronLeft, FileText, HandCoins, HeartPulse, MapPin, Phone, Pill, Printer, Search, Stethoscope, UserCheck, UserRound, UsersRound, X,
+  ArrowLeft, Building2, CalendarCheck, CalendarDays, HandHeart, Camera, ChevronLeft, FileText, HandCoins, HeartPulse, MapPin, Phone, Pill, Printer, Search, Stethoscope, UserCheck, UserRound, UsersRound, X,
 } from 'lucide-react';
 import type { Me } from '../../api';
 import { formatNumber } from '../../format';
@@ -137,6 +137,10 @@ export function PatientsPage({ me }: { me: Me }) {
       .reduce((sum, record) => sum + record.medicine, 0),
     exams: all.reduce((sum, item) => sum + item.exams, 0),
     visits: PATIENTS.reduce((sum, patient) => sum + patient.records.length, 0),
+    // Each non-zero cash, medicine or exams entry in a visit counts as one aid.
+    aids: PATIENTS.flatMap((patient) => patient.records)
+      .reduce((sum, record) => sum + [record.cash, record.medicine, record.exams].filter((value) => value > 0).length, 0),
+    foundations: new Set(PATIENTS.flatMap((patient) => patient.records.map((record) => record.foundation))).size,
   };
 
   const selected = PATIENTS.find((patient) => patient.id === selectedId) ?? PATIENTS[0];
@@ -190,7 +194,17 @@ export function PatientsPage({ me }: { me: Me }) {
         <article className="pt-card">
           <header><h2>عدد المرضى</h2><UsersRound size={18} className="ink-violet" aria-hidden /></header>
           <p className="pt-card-value"><bdi>{formatNumber(headline.patients)}</bdi> <span className="ink-violet">مريض</span></p>
-          <small><bdi>{formatNumber(headline.visits)}</bdi> مراجعة مسجلة</small>
+          <small>عبر <bdi>{formatNumber(headline.foundations)}</bdi> مؤسسات</small>
+        </article>
+        <article className="pt-card">
+          <header><h2>عدد المساعدات</h2><HandHeart size={18} className="ink-violet" aria-hidden /></header>
+          <p className="pt-card-value"><bdi>{formatNumber(headline.aids)}</bdi> <span className="ink-violet">مساعدة</span></p>
+          <small>نقد ودواء وكشفيات</small>
+        </article>
+        <article className="pt-card">
+          <header><h2>عدد الزيارات</h2><CalendarCheck size={18} className="ink-teal" aria-hidden /></header>
+          <p className="pt-card-value"><bdi>{formatNumber(headline.visits)}</bdi> <span className="ink-teal">زيارة</span></p>
+          <small>مراجعات مسجلة للمرضى</small>
         </article>
         <article className="pt-card">
           <header><h2>شراء دواء</h2><Pill size={18} className="ink-teal" aria-hidden /></header>

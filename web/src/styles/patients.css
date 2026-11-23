@@ -136,7 +136,7 @@
 
 .pt-cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1919,7 +1919,7 @@
     box-shadow: 0 14px 32px -12px rgb(0 0 0 / 50%);
   }
   .pt-cards .pt-card {
-    padding: 12px 12px;
+    padding: 12px 10px;
     border-radius: 16px;
     gap: 6px;
     background: color-mix(in srgb, #ffffff 82%, var(--bar-active) 4%) !important;
@@ -1931,7 +1931,9 @@
     border-color: color-mix(in srgb, var(--brand-2) 24%, var(--line)) !important;
     box-shadow: 0 4px 14px -6px rgb(0 0 0 / 35%) !important;
   }
-  .pt-card header h2 { font-size: .78rem; }
+  .pt-card header { gap: 6px; }
+  .pt-card header h2 { font-size: clamp(.7rem, 3.1vw, .78rem); white-space: nowrap; min-width: 0; }
+  .pt .pt-card header svg { flex: none; width: 28px; height: 28px; padding: 6px; }
   .pt-card-value {
     font-size: clamp(.95rem, 4.4vw, 1.22rem) !important;
     white-space: nowrap;
