@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
 import type { AppEnv, Env } from './env';
 import { runMonthlyJobs } from './jobs';
@@ -73,8 +73,30 @@ app.route('/api', api);
 
 app.notFound((c) => c.json({ error: 'غير موجود' }, 404));
 
+// The section a request belongs to, as the activity log names it.
+const SECTIONS: Record<string, string> = {
+  subscribers: 'المشتركون', collections: 'التحصيل والمندوبون', delegates: 'المندوبون', closings: 'الإقفال الشهري',
+  programs: 'البرامج', transactions: 'الحركات المالية', expenses: 'المصاريف', prescriptions: 'الوصفات',
+  users: 'الحسابات', branding: 'الإعدادات', system: 'المؤسسات', families: 'العوائل',
+};
+
+// A save or change refused for lack of permission (403) is written to the foundation's activity
+// log as «تعديل مرفوض», with the section and the reason, so the manager can see who tried what.
+function logDenied(c: Context<AppEnv>, reason: string) {
+  const user = c.get('user');
+  if (!user || ['GET', 'HEAD'].includes(c.req.method)) return;
+  const section = c.req.path.split('/')[2] ?? '';
+  const detail = JSON.stringify({ label: SECTIONS[section] ?? section, note: reason, changes: undefined });
+  c.executionCtx.waitUntil(c.env.DB.prepare(
+    "INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id, detail) VALUES (?, ?, 'denied', ?, NULL, ?)",
+  ).bind(user.foundation, user.id, section || 'app', detail).run().catch(() => undefined));
+}
+
 app.onError((error, c) => {
-  if (error instanceof HTTPException) return c.json({ error: error.message }, error.status);
+  if (error instanceof HTTPException) {
+    if (error.status === 403) logDenied(c, error.message);
+    return c.json({ error: error.message }, error.status);
+  }
   const message = error instanceof Error ? error.message : '';
   // The codes let a client tell these apart without reading the Arabic message (offline sync).
   if (message.includes('MONTH_CLOSED')) return c.json({ error: 'هذا الشهر مقفل ولا يقبل التعديل', code: 'month_closed' }, 409);

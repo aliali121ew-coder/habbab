@@ -8,6 +8,7 @@ import { all, auditDetail, auditInsertedStmt, auditStmt, batch, diff, fid, first
 import { cursorParam, fail, idParam, readJson } from '../lib/http';
 import { currentMonth } from '../lib/text';
 import { zPassword } from './auth';
+import { signFileLink } from './prescriptions';
 
 const zRole = z.enum(['admin', 'accountant', 'delegate', 'health']);
 
@@ -203,43 +204,105 @@ export const audit = new Hono<AppEnv>();
 
 audit.use('*', requireRole('admin'));
 
-// The activity log's filters: each group is a set of actions.
-const AUDIT_GROUPS: Record<string, string[]> = {
-  create: ['create', 'create_delegate', 'enroll', 'attach', 'create_foundation'],
-  update: ['update', 'update_profile', 'update_photo', 'update_status', 'update_letterhead', 'update_image', 'update_foundation', 'change_password'],
-  delete: ['delete', 'deactivate', 'unenroll', 'detach', 'remove_image', 'undo_payment'],
-  money: ['pay', 'undo_payment', 'close_month', 'reopen_month'],
-  access: ['login', 'login_failed', 'reveal', 'reveal_phone', 'view', 'system_enter'],
+// The activity log's categories, as SQL over action and entity.
+const ACCESS = "('login', 'login_failed', 'system_enter')";
+const FILES = "('attach', 'detach', 'update_photo', 'update_image', 'remove_image')";
+const MONEY = "('pay', 'undo_payment', 'close_month', 'reopen_month')";
+const AUDIT_CATEGORIES: Record<string, string> = {
+  login: `a.action IN ${ACCESS}`,
+  accounts: `a.action NOT IN ${ACCESS} AND a.action NOT IN ${FILES} AND a.action <> 'denied'
+    AND (a.entity = 'user' OR a.action IN ('create_foundation', 'update_foundation'))`,
+  money: `a.action <> 'denied' AND (a.action IN ${MONEY} OR (a.entity IN ('transaction', 'expense') AND a.action NOT IN ${FILES}))`,
+  data: `a.action <> 'denied' AND a.action NOT IN ${ACCESS} AND a.action NOT IN ${FILES} AND a.action NOT IN ${MONEY}
+    AND a.entity NOT IN ('user', 'transaction', 'expense')`,
+  files: `a.action IN ${FILES}`,
+  denied: "a.action = 'denied'",
 };
-const zDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+/** Actions that change something (for the «عمليات حفظ» figure). */
+const READ_ONLY = "('login', 'login_failed', 'system_enter', 'view', 'reveal', 'reveal_phone', 'denied')";
+const zSince = z.string().regex(/^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?)?$/);
 
-// سجل العمليات: every save and change in this foundation, newest first, 30 a page, with who did it.
+interface AuditRow {
+  id: number; action: string; entity: string; entity_id: number | null; detail: string | null; created_at: string;
+  user_id: number | null; user_name: string | null; user_role: string | null; avatar_key: string | null;
+}
+
+// Entries written before details were kept name no record: look the record up so the page can
+// still say whom it was about (a subscriber's name, an expense's beneficiary and amount, …).
+async function recordLabels(c: Context<AppEnv>, rows: AuditRow[]) {
+  const bare = rows.filter((r) => r.entity_id !== null && !(r.detail ?? '').includes('"label"'));
+  const ids = (entity: string) => JSON.stringify([...new Set(bare.filter((r) => r.entity === entity).map((r) => r.entity_id))]);
+  const pick = async (entity: string, sql: string) => (bare.some((r) => r.entity === entity)
+    ? all<{ id: number; label: string; amount: number | null }>(c, sql, fid(c), ids(entity)) : []);
+  const [subs, exps, users, txs, rxs, progs] = await Promise.all([
+    pick('subscriber', 'SELECT id, full_name AS label, NULL AS amount FROM subscribers WHERE foundation_id = ? AND id IN (SELECT value FROM json_each(?))'),
+    pick('expense', 'SELECT id, beneficiary_name AS label, amount FROM expenses WHERE foundation_id = ? AND id IN (SELECT value FROM json_each(?))'),
+    pick('user', 'SELECT id, full_name AS label, NULL AS amount FROM users WHERE foundation_id = ? AND id IN (SELECT value FROM json_each(?))'),
+    pick('transaction', 'SELECT id, party_name AS label, amount FROM transactions WHERE foundation_id = ? AND id IN (SELECT value FROM json_each(?))'),
+    pick('prescription', 'SELECT id, patient_name AS label, NULL AS amount FROM prescriptions WHERE foundation_id = ? AND id IN (SELECT value FROM json_each(?))'),
+    pick('program', 'SELECT id, name AS label, NULL AS amount FROM programs WHERE foundation_id = ? AND id IN (SELECT value FROM json_each(?))'),
+  ]);
+  const by: Record<string, Map<number, { label: string; amount: number | null }>> = {
+    subscriber: new Map(subs.map((r) => [r.id, r])), expense: new Map(exps.map((r) => [r.id, r])),
+    user: new Map(users.map((r) => [r.id, r])), transaction: new Map(txs.map((r) => [r.id, r])),
+    prescription: new Map(rxs.map((r) => [r.id, r])), program: new Map(progs.map((r) => [r.id, r])),
+  };
+  return (row: Pick<AuditRow, 'entity' | 'entity_id'>) => (row.entity_id === null ? null : by[row.entity]?.get(row.entity_id) ?? null);
+}
+
+// سجل العمليات: every save and change in this foundation, newest first, 30 a page, with who did
+// it. Filters: category, user, since (ISO), and free text over the details and the user's name.
 audit.get('/', async (c) => {
   const cursor = cursorParam(c.req.query('cursor'));
-  const group = c.req.query('group');
+  const category = c.req.query('category');
   const userId = c.req.query('user') ? idParam(c.req.query('user')!) : null;
-  const from = c.req.query('from') ? zDay.parse(c.req.query('from')) : null;
-  const to = c.req.query('to') ? zDay.parse(c.req.query('to')) : null;
+  const since = c.req.query('since') ? zSince.parse(c.req.query('since')) : null;
+  const q = (c.req.query('q') ?? '').trim().slice(0, 60);
 
   const where = ['a.foundation_id = ?', 'a.id < ?'];
   const params: unknown[] = [fid(c), cursor];
-  if (group && AUDIT_GROUPS[group]) {
-    where.push(`a.action IN (${AUDIT_GROUPS[group].map(() => '?').join(', ')})`);
-    params.push(...AUDIT_GROUPS[group]);
-  }
+  if (category && AUDIT_CATEGORIES[category]) where.push(`(${AUDIT_CATEGORIES[category]})`);
   if (userId !== null) { where.push('a.user_id = ?'); params.push(userId); }
-  if (from) { where.push('a.created_at >= ?'); params.push(`${from}T00:00:00`); }
-  if (to) { where.push('a.created_at <= ?'); params.push(`${to}T23:59:59.999Z`); }
+  if (since) { where.push('a.created_at >= ?'); params.push(since); }
+  if (q) { where.push('(a.detail LIKE ? OR u.full_name LIKE ?)'); params.push(`%${q}%`, `%${q}%`); }
 
-  const rows = await all<{ id: number }>(
+  const rows = await all<AuditRow>(
     c,
     // scope-ok: `where` starts with a.foundation_id = ?
-    `SELECT a.id, a.action, a.entity, a.entity_id, a.detail, a.created_at, a.user_id, u.full_name AS user_name, u.role AS user_role
+    `SELECT a.id, a.action, a.entity, a.entity_id, a.detail, a.created_at, a.user_id,
+       u.full_name AS user_name, u.role AS user_role, u.avatar_key
      FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
      WHERE ${where.join(' AND ')} ORDER BY a.id DESC LIMIT ${PAGE_SIZE}`,
     ...params,
   );
-  return c.json({ items: rows, next: nextCursor(rows) });
+  const labelOf = await recordLabels(c, rows);
+  const avatars = new Map<string, string>();
+  for (const key of new Set(rows.map((r) => r.avatar_key).filter((k): k is string => !!k))) avatars.set(key, await signFileLink(c, key));
+  return c.json({
+    items: rows.map(({ avatar_key, ...row }) => ({ ...row, user_avatar: avatar_key ? avatars.get(avatar_key) ?? null : null, record: labelOf(row) })),
+    next: nextCursor(rows),
+  });
+});
+
+// The four figures above the log, for the chosen period.
+audit.get('/stats', async (c) => {
+  const since = c.req.query('since') ? zSince.parse(c.req.query('since')) : '1970-01-01';
+  const row = await first<{ logins: number; login_users: number; failed: number; failed_users: number; saves: number; save_users: number; denied: number; denied_users: number }>(
+    c,
+    `SELECT
+       SUM(action = 'login') AS logins, COUNT(DISTINCT CASE WHEN action = 'login' THEN user_id END) AS login_users,
+       SUM(action = 'login_failed') AS failed, COUNT(DISTINCT CASE WHEN action = 'login_failed' THEN user_id END) AS failed_users,
+       SUM(action NOT IN ${READ_ONLY}) AS saves, COUNT(DISTINCT CASE WHEN action NOT IN ${READ_ONLY} THEN user_id END) AS save_users,
+       SUM(action = 'denied') AS denied, COUNT(DISTINCT CASE WHEN action = 'denied' THEN user_id END) AS denied_users
+     FROM audit_log WHERE foundation_id = ? AND created_at >= ?`,
+    fid(c), since,
+  );
+  return c.json({
+    logins: row?.logins ?? 0, login_users: row?.login_users ?? 0,
+    failed: row?.failed ?? 0, failed_users: row?.failed_users ?? 0,
+    saves: row?.saves ?? 0, save_users: row?.save_users ?? 0,
+    denied: row?.denied ?? 0, denied_users: row?.denied_users ?? 0,
+  });
 });
 
 // Who appears in the log's user filter: this foundation's accounts, active or not.
