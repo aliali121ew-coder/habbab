@@ -378,40 +378,11 @@ export function PatientsPage({ me }: { me: Me }) {
               <aside className="pt-msheet">
                 {/* Gradient Hero Header */}
                 <div className="pt-msheet-hero">
-                  <div className="pt-msheet-head">
-                    <div className="pt-msheet-who">
-                      <label className={`pt-msheet-photo tone-${mobileSheetPatient.tone}`} title="اضغط لإضافة أو تغيير الصورة">
-                        {photos[mobileSheetPatient.id]
-                          ? <img src={photos[mobileSheetPatient.id]} alt={mobileSheetPatient.name} />
-                          : <AvatarSilhouette female={isFemale(mobileSheetPatient)} />}
-                        <span className="pt-msheet-cam" aria-hidden><Camera size={13} /></span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          aria-label={`صورة ${mobileSheetPatient.name}`}
-                          onChange={(event) => {
-                            const file = event.target.files?.[0];
-                            event.target.value = '';
-                            void pickPhoto(mobileSheetPatient.id, file);
-                          }}
-                          hidden
-                        />
-                      </label>
-                      <div className="pt-msheet-title">
-                        <a
-                          href={`#/patients/${mobileSheetPatient.id}`}
-                          className="pt-msheet-name-link"
-                          onClick={() => setMobileSheetPatient(null)}
-                        >
-                          <h3>{mobileSheetPatient.name}</h3>
-                          <ArrowLeft size={16} aria-hidden />
-                        </a>
-                        <div className="pt-msheet-badges">
-                          <span className="pt-msheet-cond"><HeartPulse size={11} aria-hidden /> {mobileSheetPatient.condition}</span>
-                          <span className="pt-msheet-age"><bdi>{mobileSheetPatient.age}</bdi> سنة</span>
-                          <span className="pt-msheet-file" dir="ltr">{mobileSheetPatient.file}</span>
-                        </div>
-                      </div>
+                  {/* Row 1: File Code & Age (Right) + Close Button (Left) */}
+                  <div className="pt-msheet-topbar">
+                    <div className="pt-msheet-topmeta">
+                      <span className="pt-msheet-file" dir="ltr">{mobileSheetPatient.file}</span>
+                      <span className="pt-msheet-age"><bdi>{mobileSheetPatient.age}</bdi> سنة</span>
                     </div>
                     <button
                       type="button"
@@ -419,29 +390,61 @@ export function PatientsPage({ me }: { me: Me }) {
                       onClick={() => setMobileSheetPatient(null)}
                       aria-label="إغلاق"
                     >
-                      <X size={18} aria-hidden />
+                      <X size={17} aria-hidden />
                     </button>
                   </div>
 
-                  {/* Address + Contact Actions */}
-                  <div className="pt-msheet-meta">
-                    <span className="pt-msheet-addr">
-                      <MapPin size={13} aria-hidden />
-                      <span>{mobileSheetPatient.address}</span>
-                    </span>
-                    {phoneDigits && (
-                      <div className="pt-msheet-contact">
-                        <a href={`tel:${phoneDigits}`} className="pt-msheet-call" aria-label={`اتصال بـ ${mobileSheetPatient.name}`}>
-                          <Phone size={13} aria-hidden />
-                          <bdi dir="ltr">{mobileSheetPatient.phone}</bdi>
-                        </a>
-                        <a href={waHref} target="_blank" rel="noopener noreferrer" className="pt-msheet-wa" aria-label={`واتساب ${mobileSheetPatient.name}`}>
-                          <WhatsAppMark />
-                          <span>واتساب</span>
-                        </a>
-                      </div>
-                    )}
+                  {/* Row 2: Photo + Name + Diagnosis + Address */}
+                  <div className="pt-msheet-who">
+                    <label className={`pt-msheet-photo tone-${mobileSheetPatient.tone}`} title="اضغط لإضافة أو تغيير الصورة">
+                      {photos[mobileSheetPatient.id]
+                        ? <img src={photos[mobileSheetPatient.id]} alt={mobileSheetPatient.name} />
+                        : <AvatarSilhouette female={isFemale(mobileSheetPatient)} />}
+                      <span className="pt-msheet-cam" aria-hidden><Camera size={12} /></span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        aria-label={`صورة ${mobileSheetPatient.name}`}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = '';
+                          void pickPhoto(mobileSheetPatient.id, file);
+                        }}
+                        hidden
+                      />
+                    </label>
+
+                    <div className="pt-msheet-title">
+                      <a
+                        href={`#/patients/${mobileSheetPatient.id}`}
+                        className="pt-msheet-name-link"
+                        onClick={() => setMobileSheetPatient(null)}
+                      >
+                        <h3>{mobileSheetPatient.name}</h3>
+                      </a>
+                      <span className="pt-msheet-cond">
+                        <HeartPulse size={11} aria-hidden /> {mobileSheetPatient.condition}
+                      </span>
+                      <span className="pt-msheet-addr">
+                        <MapPin size={12} aria-hidden />
+                        <span>{mobileSheetPatient.address}</span>
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Row 3: Equal 2-Column Contact Bar */}
+                  {phoneDigits && (
+                    <div className="pt-msheet-contact">
+                      <a href={`tel:${phoneDigits}`} className="pt-msheet-call" aria-label={`اتصال بـ ${mobileSheetPatient.name}`}>
+                        <Phone size={14} aria-hidden />
+                        <bdi dir="ltr">{mobileSheetPatient.phone}</bdi>
+                      </a>
+                      <a href={waHref} target="_blank" rel="noopener noreferrer" className="pt-msheet-wa" aria-label={`واتساب ${mobileSheetPatient.name}`}>
+                        <WhatsAppMark />
+                        <span>واتساب</span>
+                      </a>
+                    </div>
+                  )}
                 </div>
 
                 {/* Scrollable Body */}
