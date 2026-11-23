@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
-import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditDetail, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth, zText } from '../lib/http';
 import { currentMonth } from '../lib/text';
 
@@ -91,7 +91,7 @@ transactions.post('/', requireRole('admin', 'accountant'), async (c) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       fid(c), body.type, body.amount, body.tx_date.slice(0, 7), body.tx_date, subscriberId, partyName, delegateId,
       body.type === 'program_aid' ? body.program_id : null, body.receipt_no ?? null, body.note ?? null, c.get('user').id),
-    auditInsertedStmt(c, 'create', 'transaction'),
+    auditInsertedStmt(c, 'create', 'transaction', auditDetail(partyName, undefined, JSON.stringify({ type: body.type, amount: body.amount }))),
   ]);
   return c.json({ ok: true }, 201);
 });
@@ -99,10 +99,13 @@ transactions.post('/', requireRole('admin', 'accountant'), async (c) => {
 transactions.delete('/:id', requireRole('admin', 'accountant'), async (c) => {
   const id = idParam(c.req.param('id'));
   const user = c.get('user');
+  const row = await first<{ party_name: string; type: string; amount: number }>(c,
+    'SELECT party_name, type, amount FROM transactions WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c));
+  if (!row) fail(404, 'السجل غير موجود');
   await batch(c, [
     stmt(c, 'UPDATE transactions SET deleted_at = ?, deleted_by = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL',
       new Date().toISOString(), user.id, id, fid(c)),
-    auditStmt(c, 'delete', 'transaction', id),
+    auditStmt(c, 'delete', 'transaction', id, auditDetail(row.party_name, undefined, JSON.stringify({ type: row.type, amount: row.amount }))),
   ]);
   return c.json({ ok: true });
 });

@@ -52,13 +52,26 @@ const showValue = (key: string, value: unknown) => {
   return String(value);
 };
 
+// Entries since the activity log hold {label, changes, note}; older ones a file name or the bare changes.
+function readDetail(detail: string | null): { changes: Record<string, [unknown, unknown]>; note: string } {
+  try {
+    const parsed = JSON.parse(detail ?? '{}') as Record<string, unknown>;
+    if ('label' in parsed || 'changes' in parsed || 'note' in parsed) {
+      return { changes: (parsed.changes as Record<string, [unknown, unknown]>) ?? {}, note: String(parsed.note ?? '') };
+    }
+    return { changes: parsed as Record<string, [unknown, unknown]>, note: '' };
+  } catch {
+    return { changes: {}, note: detail ?? '' };
+  }
+}
+
 function describe(change: Change): string[] {
   if (change.action === 'create') return ['أنشأ القيد'];
   if (change.action === 'delete') return ['حذف القيد'];
-  if (change.action === 'attach') return [`أرفق «${change.detail ?? ''}»`];
-  if (change.action === 'detach') return [`حذف المرفق «${change.detail ?? ''}»`];
+  if (change.action === 'attach') return [`أرفق «${readDetail(change.detail).note}»`];
+  if (change.action === 'detach') return [`حذف المرفق «${readDetail(change.detail).note}»`];
   try {
-    const fields = JSON.parse(change.detail ?? '{}') as Record<string, [unknown, unknown]>;
+    const fields = readDetail(change.detail).changes;
     const lines = Object.entries(fields)
       .filter(([key]) => key in FIELD_LABELS)
       .map(([key, [before, after]]) => `${FIELD_LABELS[key]}: ${showValue(key, before)} ← ${showValue(key, after)}`);

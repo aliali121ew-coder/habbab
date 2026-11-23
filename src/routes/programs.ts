@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { invalidateRefData } from '../lib/cache';
-import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditDetail, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, readJson, zId } from '../lib/http';
 
 interface MemberRow {
@@ -25,7 +25,7 @@ programs.post('/', requireRole('admin'), async (c) => {
   }));
   await batch(c, [
     stmt(c, 'INSERT INTO programs (foundation_id, name) VALUES (?, ?)', fid(c), name),
-    auditInsertedStmt(c, 'create', 'program'),
+    auditInsertedStmt(c, 'create', 'program', auditDetail(name)),
   ]);
   invalidateRefData(c);
   return c.json({ ok: true }, 201);
@@ -56,7 +56,7 @@ programs.post('/:id/members', requireRole('admin', 'delegate'), async (c) => {
     first<{ full_name: string; delegate_id: number | null }>(
       c, 'SELECT full_name, delegate_id FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', body.subscriber_id, fid(c),
     ),
-    first<{ id: number }>(c, 'SELECT id FROM programs WHERE id = ? AND foundation_id = ?', programId, fid(c)),
+    first<{ id: number; name: string }>(c, 'SELECT id, name FROM programs WHERE id = ? AND foundation_id = ?', programId, fid(c)),
   ]);
   if (!program) fail(404, 'البرنامج غير موجود');
   if (!subscriber || (user.role === 'delegate' && subscriber.delegate_id !== user.id)) fail(404, 'المشترك غير موجود');
@@ -65,7 +65,7 @@ programs.post('/:id/members', requireRole('admin', 'delegate'), async (c) => {
     stmt(c, `INSERT INTO subscriber_programs (foundation_id, subscriber_id, program_id, subscriber_name, delegate_id, monthly_amount)
              VALUES (?, ?, ?, ?, ?, ?)`,
       fid(c), body.subscriber_id, programId, subscriber.full_name, subscriber.delegate_id, body.monthly_amount),
-    auditInsertedStmt(c, 'enroll', 'subscriber_program'),
+    auditInsertedStmt(c, 'enroll', 'subscriber_program', auditDetail(subscriber.full_name, undefined, program.name)),
   ]);
   return c.json({ ok: true }, 201);
 });
@@ -73,15 +73,16 @@ programs.post('/:id/members', requireRole('admin', 'delegate'), async (c) => {
 programs.delete('/:id/members/:memberId', requireRole('admin', 'delegate'), async (c) => {
   const memberId = idParam(c.req.param('memberId'));
   const user = c.get('user');
-  const member = await first<{ delegate_id: number | null }>(
-    c, 'SELECT delegate_id FROM subscriber_programs WHERE id = ? AND foundation_id = ? AND ended_at IS NULL', memberId, fid(c),
+  const member = await first<{ delegate_id: number | null; subscriber_name: string; program: string | null }>(
+    c, `SELECT m.delegate_id, m.subscriber_name, p.name AS program FROM subscriber_programs m LEFT JOIN programs p ON p.id = m.program_id
+        WHERE m.id = ? AND m.foundation_id = ? AND m.ended_at IS NULL`, memberId, fid(c),
   );
   if (!member || (user.role === 'delegate' && member.delegate_id !== user.id)) fail(404, 'السجل غير موجود');
 
   await batch(c, [
     stmt(c, 'UPDATE subscriber_programs SET ended_at = ? WHERE id = ? AND foundation_id = ? AND ended_at IS NULL',
       new Date().toISOString().slice(0, 10), memberId, fid(c)),
-    auditStmt(c, 'unenroll', 'subscriber_program', memberId),
+    auditStmt(c, 'unenroll', 'subscriber_program', memberId, auditDetail(member.subscriber_name, undefined, member.program ?? undefined)),
   ]);
   return c.json({ ok: true });
 });

@@ -33,7 +33,9 @@ const pages = {
   subscribers: () => import('./pages/subscribers/SubscribersPage'),
   system: () => import('./pages/system/SystemPage'),
   settings: () => import('./pages/settings/SettingsPage'),
+  activity: () => import('./pages/activity/ActivityPage'),
 };
+const ActivityPage = lazy(() => pages.activity().then((m) => ({ default: m.ActivityPage })));
 const SystemPage = lazy(() => pages.system().then((m) => ({ default: m.SystemPage })));
 const SettingsPage = lazy(() => pages.settings().then((m) => ({ default: m.SettingsPage })));
 const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.DelegatesPage })));
@@ -122,6 +124,8 @@ export function App() {
         ? <SystemPage me={me} />
         : !hasFeature(me, routeFeature(route) ?? ROLE_FEATURE[me.role])
         ? <StateMessage kind="empty" title="هذه الصفحة غير مفعّلة لمؤسستك" hint="يفعّلها مدير النظام من صفحة المؤسسات." />
+        : route === 'soon:activity' && me.role === 'admin'
+        ? <ActivityPage me={me} />
         : route === 'soon:settings' && me.role === 'admin'
         ? <SettingsPage />
         : route === 'soon:reports' && me.role === 'admin'

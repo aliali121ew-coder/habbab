@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { decryptText, encryptText, hmac } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditDetail, auditInsertedStmt, auditStmt, batch, diff, fid, first, nextCursor, PAGE_SIZE, SECRET, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zDate, zId, zText } from '../lib/http';
 import { maskNationalId, maskPhone, normalizeDigits, normalizeName, prefixRange } from '../lib/text';
 
@@ -154,7 +154,7 @@ subscribers.post('/', requireRole('admin', 'delegate'), async (c) => {
       nationalId ? nationalId.slice(-4) : null,
       status, status === 'deceased' ? body.death_date ?? null : null, delegateId,
       body.family_size ?? 1, body.monthly_fee ?? 0, body.address ?? null, body.notes ?? null, user.id),
-    auditInsertedStmt(c, 'create', 'subscriber'),
+    auditInsertedStmt(c, 'create', 'subscriber', auditDetail(body.full_name)),
   ];
   const results = await batch(c, statements);
   return c.json({ id: (results[0].results[0] as { id: number }).id }, 201);
@@ -171,10 +171,10 @@ subscribers.get('/:id', requireRole('admin', 'delegate'), async (c) => {
 
 subscribers.post('/:id/reveal', requireRole('admin', 'delegate'), async (c) => {
   const id = idParam(c.req.param('id'));
-  const row = await loadScoped<{ delegate_id: number | null; phone: string | null; national_id_enc: string | null }>(
-    c, 'delegate_id, phone, national_id_enc', id,
+  const row = await loadScoped<{ delegate_id: number | null; full_name: string; phone: string | null; national_id_enc: string | null }>(
+    c, 'delegate_id, full_name, phone, national_id_enc', id,
   );
-  await batch(c, [auditStmt(c, 'reveal', 'subscriber', id)]);
+  await batch(c, [auditStmt(c, 'reveal', 'subscriber', id, auditDetail(row.full_name))]);
   return c.json({
     phone: row.phone,
     national_id: row.national_id_enc ? await decryptText(c.env.DATA_KEY, row.national_id_enc) : null,
@@ -184,7 +184,10 @@ subscribers.post('/:id/reveal', requireRole('admin', 'delegate'), async (c) => {
 subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
   const id = idParam(c.req.param('id'));
   const body = await readJson(c, z.object(fields).partial().strict());
-  const current = await loadScoped<{ delegate_id: number | null; full_name: string }>(c, 'delegate_id, full_name', id);
+  const current = await loadScoped<{
+    delegate_id: number | null; full_name: string; phone: string | null; status: string; death_date: string | null;
+    family_size: number; monthly_fee: number; address: string | null; notes: string | null;
+  }>(c, 'delegate_id, full_name, phone, status, death_date, family_size, monthly_fee, address, notes', id);
   if (body.delegate_id !== undefined && delegateScope(c) !== null) fail(403, 'لا يمكن للمندوب نقل المشتركين');
 
   const set: string[] = ['updated_at = ?'];
@@ -209,9 +212,19 @@ subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
   }
   if (body.status === 'alive') put('death_date', null);
 
+  // The log keeps each change as [before, after]; a new delegate is named, the national ID never is.
+  const { national_id: nationalId, ...plain } = body;
+  const changes = diff(current, plain);
+  if (nationalId !== undefined) changes.national_id = [SECRET, SECRET];
+  if (changes.delegate_id) {
+    const names = await all<{ id: number; full_name: string }>(c,
+      'SELECT id, full_name FROM users WHERE foundation_id = ? AND id IN (?, ?)', fid(c), current.delegate_id ?? 0, body.delegate_id ?? 0);
+    const nameOf = (value: unknown) => names.find((row) => row.id === value)?.full_name ?? null;
+    changes.delegate_id = [nameOf(current.delegate_id), nameOf(body.delegate_id)];
+  }
   const statements = [
     stmt(c, `UPDATE subscribers SET ${set.join(', ')} WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL`, ...params, id, fid(c)),
-    auditStmt(c, 'update', 'subscriber', id, Object.keys(body).join(',')),
+    auditStmt(c, 'update', 'subscriber', id, auditDetail(current.full_name, changes)),
   ];
   const name = body.full_name ?? current.full_name;
   const delegateId = body.delegate_id === undefined ? current.delegate_id : body.delegate_id;
@@ -226,9 +239,10 @@ subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
 
 subscribers.delete('/:id', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
+  const current = await loadScoped<{ delegate_id: number | null; full_name: string }>(c, 'delegate_id, full_name', id);
   await batch(c, [
     stmt(c, 'UPDATE subscribers SET deleted_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', new Date().toISOString(), id, fid(c)),
-    auditStmt(c, 'delete', 'subscriber', id),
+    auditStmt(c, 'delete', 'subscriber', id, auditDetail(current.full_name)),
   ]);
   return c.json({ ok: true });
 });

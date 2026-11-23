@@ -4,7 +4,7 @@ import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { edgeCached, invalidateRefData, refData } from '../lib/cache';
 import { hashPassword } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditDetail, auditInsertedStmt, auditStmt, batch, diff, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, readJson } from '../lib/http';
 import { currentMonth } from '../lib/text';
 import { zPassword } from './auth';
@@ -155,7 +155,7 @@ users.post('/', async (c) => {
   await batch(c, [
     stmt(c, 'INSERT INTO users (foundation_id, username, full_name, role, password_hash) VALUES (?, ?, ?, ?, ?)',
       fid(c), body.username, body.full_name, body.role, await hashPassword(body.password)),
-    auditInsertedStmt(c, 'create', 'user'),
+    auditInsertedStmt(c, 'create', 'user', auditDetail(body.full_name, undefined, body.role)),
   ]);
   invalidateRefData(c);
   return c.json({ ok: true }, 201);
@@ -185,10 +185,15 @@ users.patch('/:id', async (c) => {
   if (!set.length) fail(422, 'لا توجد تعديلات');
   // Any security-relevant change ends the user's existing sessions at next refresh.
   set.push('token_version = token_version + 1', 'failed_logins = 0', 'locked_until = NULL');
+  const current = await first<{ full_name: string; role: string; active: number }>(c,
+    'SELECT full_name, role, active FROM users WHERE id = ? AND foundation_id = ?', id, fid(c));
+  if (!current) fail(404, 'المستخدم غير موجود');
+  const { password, active, ...rest } = body;
+  const changes = diff(current, { ...rest, ...(active === undefined ? {} : { active: active ? 1 : 0 }), ...(password ? { password: 'x' } : {}) }, ['password']);
 
   await batch(c, [
     stmt(c, `UPDATE users SET ${set.join(', ')} WHERE id = ? AND foundation_id = ?`, ...params, id, fid(c)),
-    auditStmt(c, 'update', 'user', id, Object.keys(body).join(',')),
+    auditStmt(c, 'update', 'user', id, auditDetail(current.full_name, changes)),
   ]);
   invalidateRefData(c);
   return c.json({ ok: true });
@@ -198,14 +203,48 @@ export const audit = new Hono<AppEnv>();
 
 audit.use('*', requireRole('admin'));
 
+// The activity log's filters: each group is a set of actions.
+const AUDIT_GROUPS: Record<string, string[]> = {
+  create: ['create', 'create_delegate', 'enroll', 'attach', 'create_foundation'],
+  update: ['update', 'update_profile', 'update_photo', 'update_status', 'update_letterhead', 'update_image', 'update_foundation', 'change_password'],
+  delete: ['delete', 'deactivate', 'unenroll', 'detach', 'remove_image', 'undo_payment'],
+  money: ['pay', 'undo_payment', 'close_month', 'reopen_month'],
+  access: ['login', 'login_failed', 'reveal', 'reveal_phone', 'view', 'system_enter'],
+};
+const zDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+// سجل العمليات: every save and change in this foundation, newest first, 30 a page, with who did it.
 audit.get('/', async (c) => {
   const cursor = cursorParam(c.req.query('cursor'));
+  const group = c.req.query('group');
+  const userId = c.req.query('user') ? idParam(c.req.query('user')!) : null;
+  const from = c.req.query('from') ? zDay.parse(c.req.query('from')) : null;
+  const to = c.req.query('to') ? zDay.parse(c.req.query('to')) : null;
+
+  const where = ['a.foundation_id = ?', 'a.id < ?'];
+  const params: unknown[] = [fid(c), cursor];
+  if (group && AUDIT_GROUPS[group]) {
+    where.push(`a.action IN (${AUDIT_GROUPS[group].map(() => '?').join(', ')})`);
+    params.push(...AUDIT_GROUPS[group]);
+  }
+  if (userId !== null) { where.push('a.user_id = ?'); params.push(userId); }
+  if (from) { where.push('a.created_at >= ?'); params.push(`${from}T00:00:00`); }
+  if (to) { where.push('a.created_at <= ?'); params.push(`${to}T23:59:59.999Z`); }
+
   const rows = await all<{ id: number }>(
     c,
-    `SELECT a.id, a.action, a.entity, a.entity_id, a.detail, a.created_at, u.full_name AS user_name
+    // scope-ok: `where` starts with a.foundation_id = ?
+    `SELECT a.id, a.action, a.entity, a.entity_id, a.detail, a.created_at, a.user_id, u.full_name AS user_name, u.role AS user_role
      FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
-     WHERE a.foundation_id = ? AND a.id < ? ORDER BY a.id DESC LIMIT ${PAGE_SIZE}`,
-    fid(c), cursor,
+     WHERE ${where.join(' AND ')} ORDER BY a.id DESC LIMIT ${PAGE_SIZE}`,
+    ...params,
   );
   return c.json({ items: rows, next: nextCursor(rows) });
+});
+
+// Who appears in the log's user filter: this foundation's accounts, active or not.
+audit.get('/users', async (c) => {
+  const rows = await all<{ id: number; full_name: string; role: string }>(c,
+    'SELECT id, full_name, role FROM users WHERE foundation_id = ? ORDER BY full_name LIMIT 500', fid(c));
+  return c.json({ items: rows });
 });

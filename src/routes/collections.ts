@@ -4,7 +4,7 @@ import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { invalidateRefData, kvCached, refData } from '../lib/cache';
 import { hashPassword } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditDetail, auditInsertedStmt, auditStmt, batch, diff, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth } from '../lib/http';
 import { currentMonth, maskPhone } from '../lib/text';
 import { zPassword } from './auth';
@@ -358,26 +358,26 @@ function whatsappNumber(phone: string) {
 // recorded in the audit log. Messaging subscribers is the administration's job alone.
 collections.post('/subscriber/:id/whatsapp', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
-  const row = await first<{ phone: string | null }>(
-    c, 'SELECT phone FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c),
+  const row = await first<{ phone: string | null; full_name: string }>(
+    c, 'SELECT phone, full_name FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c),
   );
   if (!row) fail(404, 'المشترك غير موجود');
   if (!row.phone) fail(422, 'لا يوجد رقم هاتف لهذا المشترك');
   const phone = whatsappNumber(row.phone);
-  await batch(c, [auditStmt(c, 'reveal_phone', 'subscriber', id, 'whatsapp')]);
+  await batch(c, [auditStmt(c, 'reveal_phone', 'subscriber', id, auditDetail(row.full_name, undefined, 'واتساب'))]);
   return c.json({ phone });
 });
 
 // The delegate's own number, for sending them their register. Admin only, and audited.
 collections.post('/delegates/:id/whatsapp', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
-  const row = await first<{ phone: string | null }>(
-    c, "SELECT phone FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate' AND active = 1", id, fid(c),
+  const row = await first<{ phone: string | null; full_name: string }>(
+    c, "SELECT phone, full_name FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate' AND active = 1", id, fid(c),
   );
   if (!row) fail(404, 'المندوب غير موجود');
   if (!row.phone) fail(422, 'لا يوجد رقم هاتف لهذا المندوب');
   const phone = whatsappNumber(row.phone);
-  await batch(c, [auditStmt(c, 'reveal_phone', 'user', id, 'whatsapp')]);
+  await batch(c, [auditStmt(c, 'reveal_phone', 'user', id, auditDetail(row.full_name, undefined, 'واتساب'))]);
   return c.json({ phone });
 });
 
@@ -399,7 +399,8 @@ collections.post('/pay', async (c) => {
        VALUES (?, 'delegate_receipt', ?, ?, ?, ?, ?, ?, ?, ?)`,
       fid(c), body.amount, body.tx_date.slice(0, 7), body.tx_date, body.subscriber_id, subscriber.full_name,
       subscriber.delegate_id, body.period, c.get('user').id),
-    auditInsertedStmt(c, 'create', 'transaction'),
+    auditStmt(c, 'pay', 'subscriber', body.subscriber_id,
+      auditDetail(subscriber.full_name, undefined, JSON.stringify({ period: body.period, amount: body.amount }))),
   ]);
   return c.json({ ok: true }, 201);
 });
@@ -407,10 +408,14 @@ collections.post('/pay', async (c) => {
 // Reversal is admin-only: a delegate who collected money cannot erase the record.
 collections.post('/undo', requireRole('admin'), async (c) => {
   const body = await readJson(c, z.object({ subscriber_id: zId, period: zMonth }));
+  const paid = await first<{ full_name: string; amount: number }>(c,
+    `SELECT s.full_name, t.amount FROM transactions t JOIN subscribers s ON s.id = t.subscriber_id
+     WHERE t.subscriber_id = ? AND t.foundation_id = ? AND t.period = ? AND t.deleted_at IS NULL`, body.subscriber_id, fid(c), body.period);
   await batch(c, [
     stmt(c, 'UPDATE transactions SET deleted_at = ?, deleted_by = ? WHERE subscriber_id = ? AND foundation_id = ? AND period = ? AND deleted_at IS NULL',
       new Date().toISOString(), c.get('user').id, body.subscriber_id, fid(c), body.period),
-    auditStmt(c, 'undo_payment', 'subscriber', body.subscriber_id, body.period),
+    auditStmt(c, 'undo_payment', 'subscriber', body.subscriber_id,
+      auditDetail(paid?.full_name, undefined, JSON.stringify({ period: body.period, amount: paid?.amount ?? null }))),
   ]);
   return c.json({ ok: true });
 });
@@ -493,7 +498,7 @@ collections.post('/delegates', requireRole('admin'), async (c) => {
       birthDate,
       currentYear,
     ),
-    auditInsertedStmt(c, 'create_delegate', 'user'),
+    auditInsertedStmt(c, 'create_delegate', 'user', auditDetail(body.full_name)),
   ]);
 
   const id = (created[0].results[0] as { id: number }).id;
@@ -549,7 +554,8 @@ collections.patch('/delegates/:id/profile', requireRole('admin'), async (c) => {
     birth_date: zDate.or(z.literal('')).transform((value) => value || null).nullable().optional(),
     joined_year: z.coerce.number().int().min(1990, 'سنة غير صالحة').max(new Date().getUTCFullYear(), 'سنة غير صالحة').nullable().optional(),
   }));
-  if (!(await findDelegate(c, id))) fail(404, 'المندوب غير موجود');
+  const current = await findDelegate(c, id);
+  if (!current) fail(404, 'المندوب غير موجود');
 
   const set: string[] = [];
   const params: unknown[] = [];
@@ -559,7 +565,7 @@ collections.patch('/delegates/:id/profile', requireRole('admin'), async (c) => {
   if (!set.length) fail(422, 'لا توجد تعديلات');
   await batch(c, [
     stmt(c, `UPDATE users SET ${set.join(', ')} WHERE id = ? AND foundation_id = ?`, ...params, id, fid(c)),
-    auditStmt(c, 'update_profile', 'user', id, set.map((s) => s.split(' ')[0]).join(',')),
+    auditStmt(c, 'update_profile', 'user', id, auditDetail(current.full_name, diff(current as unknown as Record<string, unknown>, body))),
   ]);
   if (body.full_name !== undefined) invalidateRefData(c);
   return c.json({ ok: true });
@@ -569,10 +575,11 @@ collections.patch('/delegates/:id/profile', requireRole('admin'), async (c) => {
 // subscribers and payments stay in the register. The users page can switch them back on.
 collections.delete('/delegates/:id', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
-  if (!(await findDelegate(c, id))) fail(404, 'المندوب غير موجود');
+  const current = await findDelegate(c, id);
+  if (!current) fail(404, 'المندوب غير موجود');
   await batch(c, [
     stmt(c, 'UPDATE users SET active = 0, token_version = token_version + 1 WHERE id = ? AND foundation_id = ?', id, fid(c)),
-    auditStmt(c, 'deactivate', 'user', id),
+    auditStmt(c, 'deactivate', 'user', id, auditDetail(current.full_name)),
   ]);
   invalidateRefData(c);
   return c.json({ ok: true });
@@ -585,15 +592,15 @@ collections.post('/delegates/:id/photo', async (c) => {
   const form = await c.req.formData().catch(() => fail(400, 'صيغة الطلب غير صحيحة'));
   const image = await readImage(form.get('image'), 300 * 1024);
   if (!image) fail(422, 'الصورة مطلوبة');
-  const delegate = await first<{ avatar_key: string | null }>(c,
-    "SELECT avatar_key FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", id, fid(c));
+  const delegate = await first<{ avatar_key: string | null; full_name: string }>(c,
+    "SELECT avatar_key, full_name FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", id, fid(c));
   if (!delegate) fail(404, 'المندوب غير موجود');
 
   const key = `avatars/${crypto.randomUUID()}.bin`;
   await putEncrypted(c, key, image);
   await batch(c, [
     stmt(c, 'UPDATE users SET avatar_key = ? WHERE id = ? AND foundation_id = ?', key, id, fid(c)),
-    auditStmt(c, 'update_photo', 'user', id),
+    auditStmt(c, 'update_photo', 'user', id, auditDetail(delegate.full_name)),
   ]);
   if (delegate.avatar_key) c.executionCtx.waitUntil(c.env.FILES.delete(delegate.avatar_key));
   return c.json({ avatar_url: await signFileLink(c, key) });

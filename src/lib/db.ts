@@ -44,12 +44,31 @@ export function auditStmt(c: Ctx, action: string, entity: string, entityId: numb
 }
 
 // For a row inserted by the previous statement in the same batch.
-export function auditInsertedStmt(c: Ctx, action: string, entity: string) {
+export function auditInsertedStmt(c: Ctx, action: string, entity: string, detail?: string) {
   return stmt(
     c,
-    'INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id) VALUES (?, ?, ?, ?, last_insert_rowid())',
-    fid(c), c.get('user').id, action, entity,
+    'INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, last_insert_rowid(), ?)',
+    fid(c), c.get('user').id, action, entity, detail ?? null,
   );
+}
+
+/** A field whose value is never written to the log (only that it changed). */
+export const SECRET = '••';
+
+// What the activity log shows for an entry: the record's name, and for an edit each changed
+// field as [before, after]. Stored as JSON in audit_log.detail; older entries hold plain text.
+export function auditDetail(label: string | null | undefined, changes?: Record<string, [unknown, unknown]>, note?: string): string {
+  return JSON.stringify({ label: label ?? undefined, changes: changes && Object.keys(changes).length ? changes : undefined, note });
+}
+
+/** Each field of `next` that differs from `current`, as [before, after]; secret fields as «••». */
+export function diff<T extends Record<string, unknown>>(current: T, next: Partial<T>, secret: string[] = []): Record<string, [unknown, unknown]> {
+  const out: Record<string, [unknown, unknown]> = {};
+  for (const [key, value] of Object.entries(next)) {
+    if (value === undefined || value === current[key]) continue;
+    out[key] = secret.includes(key) ? [SECRET, SECRET] : [current[key] ?? null, value];
+  }
+  return out;
 }
 
 export function nextCursor<T extends { id: number }>(rows: T[]): number | null {

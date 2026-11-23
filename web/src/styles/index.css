@@ -30,6 +30,7 @@
 @import './delegate-panel.css' layer(base);
 @import './system.css' layer(base);
 @import './settings.css' layer(base);
+@import './activity.css' layer(base);
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);

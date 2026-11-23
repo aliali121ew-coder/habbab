@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { decryptBytes } from '../lib/crypto';
-import { auditStmt, batch, fid, first, stmt } from '../lib/db';
+import { auditDetail, auditStmt, batch, diff, fid, first, stmt } from '../lib/db';
 import { fail, readJson } from '../lib/http';
 import { putEncrypted } from './prescriptions';
 
@@ -106,9 +106,12 @@ branding.patch('/', requireRole('admin'), async (c) => {
   if (body.stamp_place !== undefined) { set.push('stamp_place = ?'); params.push(body.stamp_place || null); }
   if (body.phones !== undefined) { set.push('phones = ?'); params.push(JSON.stringify(body.phones)); }
   if (!set.length) fail(422, 'لا توجد تعديلات');
+  const current = await loadRow(c);
+  const before = current ? { ...current, phones: current.phones ? (JSON.parse(current.phones) as string[]).join(' - ') : null } : {};
+  const after = { ...body, ...(body.phones ? { phones: body.phones.join(' - ') } : {}) };
   await batch(c, [
     stmt(c, `UPDATE foundations SET ${set.join(', ')} WHERE id = ?`, ...params, fid(c)),
-    auditStmt(c, 'update_letterhead', 'foundation', fid(c), Object.keys(body).join(',')),
+    auditStmt(c, 'update_letterhead', 'foundation', fid(c), auditDetail(current?.name, diff(before as Record<string, unknown>, after))),
   ]);
   return c.json({ ok: true });
 });
@@ -131,7 +134,7 @@ branding.put('/image/:kind', requireRole('admin'), async (c) => {
   try {
     await batch(c, [
       stmt(c, `UPDATE foundations SET ${COLUMN[kind]} = ? WHERE id = ?`, key, fid(c)),
-      auditStmt(c, 'update_image', 'foundation', fid(c), kind),
+      auditStmt(c, 'update_image', 'foundation', fid(c), auditDetail(previous?.name, undefined, kind)),
     ]);
   } catch (error) {
     c.executionCtx.waitUntil(c.env.FILES.delete(key));
@@ -148,7 +151,7 @@ branding.delete('/image/:kind', requireRole('admin'), async (c) => {
   const previous = await loadRow(c);
   await batch(c, [
     stmt(c, `UPDATE foundations SET ${COLUMN[kind]} = NULL WHERE id = ?`, fid(c)),
-    auditStmt(c, 'remove_image', 'foundation', fid(c), kind),
+    auditStmt(c, 'remove_image', 'foundation', fid(c), auditDetail(previous?.name, undefined, kind)),
   ]);
   const old = previous?.[COLUMN[kind] as keyof Row];
   if (old) c.executionCtx.waitUntil(c.env.FILES.delete(old));

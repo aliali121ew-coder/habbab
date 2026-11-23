@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { decryptBytes, decryptText, encryptBytes, encryptText, fromB64Url, hmac, hmacVerify, toB64Url } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditDetail, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zDate, zId, zText } from '../lib/http';
 
 const MAX_IMAGE = 300 * 1024;
@@ -123,7 +123,7 @@ prescriptions.post('/', async (c) => {
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         fid(c), body.subscriber_id, patient.full_name, body.rx_date, await encryptText(c.env.DATA_KEY, details),
         imageKey, thumbKey, c.get('user').id),
-      auditInsertedStmt(c, 'create', 'prescription'),
+      auditInsertedStmt(c, 'create', 'prescription', auditDetail(patient.full_name)),
     ]);
   } catch (error) {
     const orphans = [imageKey, thumbKey].filter((key): key is string => key !== null);
@@ -144,7 +144,7 @@ prescriptions.get('/:id', async (c) => {
     id, fid(c),
   );
   if (!row) fail(404, 'السجل غير موجود');
-  await batch(c, [auditStmt(c, 'view', 'prescription', id)]);
+  await batch(c, [auditStmt(c, 'view', 'prescription', id, auditDetail(row.patient_name))]);
   const { details_enc, image_key, ...rest } = row;
   return c.json({
     ...rest,
@@ -156,19 +156,25 @@ prescriptions.get('/:id', async (c) => {
 prescriptions.patch('/:id/status', async (c) => {
   const id = idParam(c.req.param('id'));
   const { status } = await readJson(c, z.object({ status: zStatus }));
+  const row = await first<{ patient_name: string; status: string }>(c,
+    'SELECT patient_name, status FROM prescriptions WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c));
+  if (!row) fail(404, 'السجل غير موجود');
   await batch(c, [
     stmt(c, 'UPDATE prescriptions SET status = ?, updated_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL',
       status, new Date().toISOString(), id, fid(c)),
-    auditStmt(c, 'update_status', 'prescription', id, status),
+    auditStmt(c, 'update_status', 'prescription', id, auditDetail(row.patient_name, { status: [row.status, status] })),
   ]);
   return c.json({ ok: true });
 });
 
 prescriptions.delete('/:id', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
+  const row = await first<{ patient_name: string }>(c,
+    'SELECT patient_name FROM prescriptions WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c));
+  if (!row) fail(404, 'السجل غير موجود');
   await batch(c, [
     stmt(c, 'UPDATE prescriptions SET deleted_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', new Date().toISOString(), id, fid(c)),
-    auditStmt(c, 'delete', 'prescription', id),
+    auditStmt(c, 'delete', 'prescription', id, auditDetail(row.patient_name)),
   ]);
   return c.json({ ok: true });
 });

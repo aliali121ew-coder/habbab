@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
-import { all, auditInsertedStmt, auditStmt, batch, fid, first, stmt } from '../lib/db';
+import { all, auditDetail, auditInsertedStmt, auditStmt, batch, fid, first, stmt } from '../lib/db';
 import { fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth, zText } from '../lib/http';
 import { currentMonth } from '../lib/text';
 import { putEncrypted, signFileLink } from './prescriptions';
@@ -169,7 +169,7 @@ expenses.post('/', async (c) => {
       `INSERT INTO expenses (foundation_id, category, amount, month, spent_on, details, beneficiary_id, beneficiary_name, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       fid(c), body.category, body.amount, body.spent_on.slice(0, 7), body.spent_on, body.details, person.id, person.name, c.get('user').id),
-    auditInsertedStmt(c, 'create', 'expense'),
+    auditInsertedStmt(c, 'create', 'expense', auditDetail(person.name, undefined, JSON.stringify({ category: body.category, amount: body.amount }))),
   ]);
   // The new id lets the dialog attach receipts straight after saving.
   return c.json({ ok: true, id: inserted.meta.last_row_id }, 201);
@@ -211,17 +211,19 @@ expenses.patch('/:id', async (c) => {
   }
   await batch(c, [
     stmt(c, `UPDATE expenses SET ${set.join(', ')} WHERE id = ? AND foundation_id = ?`, ...params, id, fid(c)),
-    auditStmt(c, 'update', 'expense', id, JSON.stringify(changes)),
+    auditStmt(c, 'update', 'expense', id, auditDetail(current.beneficiary_name, changes)),
   ]);
   return c.json({ ok: true });
 });
 
 expenses.delete('/:id', async (c) => {
   const id = idParam(c.req.param('id'));
-  if (!(await first(c, 'SELECT id FROM expenses WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c)))) fail(404, 'القيد غير موجود');
+  const row = await first<{ beneficiary_name: string | null; category: string; amount: number }>(c,
+    'SELECT beneficiary_name, category, amount FROM expenses WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c));
+  if (!row) fail(404, 'القيد غير موجود');
   await batch(c, [
     stmt(c, 'UPDATE expenses SET deleted_at = ? WHERE id = ? AND foundation_id = ?', new Date().toISOString(), id, fid(c)),
-    auditStmt(c, 'delete', 'expense', id),
+    auditStmt(c, 'delete', 'expense', id, auditDetail(row.beneficiary_name, undefined, JSON.stringify({ category: row.category, amount: row.amount }))),
   ]);
   return c.json({ ok: true });
 });
@@ -251,7 +253,7 @@ expenses.post('/:id/files', async (c) => {
     await batch(c, [
       stmt(c, 'INSERT INTO expense_files (foundation_id, expense_id, file_key, name, type, size, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
         fid(c), id, key, name, type, bytes.length, c.get('user').id),
-      auditStmt(c, 'attach', 'expense', id, name),
+      auditStmt(c, 'attach', 'expense', id, auditDetail(null, undefined, name)),
     ]);
   } catch (error) {
     c.executionCtx.waitUntil(c.env.FILES.delete(key));
@@ -268,7 +270,7 @@ expenses.delete('/:id/files/:fileId', async (c) => {
   if (!file) fail(404, 'المرفق غير موجود');
   await batch(c, [
     stmt(c, 'UPDATE expense_files SET deleted_at = ? WHERE id = ? AND foundation_id = ?', new Date().toISOString(), fileId, fid(c)),
-    auditStmt(c, 'detach', 'expense', id, file.name),
+    auditStmt(c, 'detach', 'expense', id, auditDetail(null, undefined, file.name)),
   ]);
   return c.json({ ok: true });
 });
