@@ -102,7 +102,7 @@ export function PhoneDelegateCard({ person, currency, menu }: { person: Delegate
         <span className="pd-photo">
           <span aria-hidden>{initialOf(person.full_name)}</span>
           {/* Covers the initial; if the photo fails to load it hides itself and the initial shows. */}
-          {person.avatar_url && <img src={person.avatar_url} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} />}
+          {person.avatar_url && <img src={person.avatar_url} alt="" width={320} height={320} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = 'none'; }} />}
         </span>
         <div className="pd-card-info">
           <h3>{person.full_name}</h3>

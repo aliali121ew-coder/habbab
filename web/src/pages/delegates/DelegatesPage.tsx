@@ -52,7 +52,7 @@ function DelegateCard({ person, onProfile, onDelete }: CardProps) {
       <div className="dcard-head">
         <div className="dcard-media">
           {person.avatar_url
-            ? <img src={person.avatar_url} alt={`صورة ${person.full_name}`} />
+            ? <img src={person.avatar_url} alt={`صورة ${person.full_name}`} width={320} height={320} loading="lazy" decoding="async" />
             : <span className="dcard-initial" aria-hidden>{initialOf(person.full_name)}</span>}
         </div>
         <div className="dcard-info">

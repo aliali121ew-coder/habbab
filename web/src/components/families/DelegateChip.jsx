@@ -100,6 +100,10 @@ export function DelegateAvatar({ delegate, size = 'sm' }) {
       <img
         src={photoSrc}
         alt={delegate?.name ?? 'صورة المندوب'}
+        width={320}
+        height={320}
+        loading="lazy"
+        decoding="async"
         onError={() => setImgFailed(true)}
         className={`${dim} shrink-0 rounded-full object-cover ring-2 ring-white/80 shadow-xs`}
       />
