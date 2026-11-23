@@ -41,6 +41,7 @@ const DB_TABLES: TableMeta[] = [
   { name: 'patients', label: 'المرضى', group: 'health' },
   { name: 'patient_aids', label: 'مساعدات المرضى', group: 'health' },
   { name: 'prescriptions', label: 'الوصفات الطبية', group: 'health' },
+  { name: 'help_requests', label: 'طلبات المساعدة', group: 'core' },
   { name: 'audit_log', label: 'سجل العمليات', group: 'stats' },
   { name: 'stats_totals', label: 'إجماليات الإحصاء', group: 'stats' },
   { name: 'stats_daily', label: 'إحصاء يومي', group: 'stats' },

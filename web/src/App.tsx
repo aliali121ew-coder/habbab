@@ -34,8 +34,12 @@ const pages = {
   system: () => import('./pages/system/SystemPage'),
   settings: () => import('./pages/settings/SettingsPage'),
   activity: () => import('./pages/activity/ActivityPage'),
+  worship: () => import('./pages/worship/WorshipPage'),
+  requests: () => import('./pages/requests/RequestsPage'),
 };
 const ActivityPage = lazy(() => pages.activity().then((m) => ({ default: m.ActivityPage })));
+const WorshipPage = lazy(() => pages.worship().then((m) => ({ default: m.WorshipPage })));
+const RequestsPage = lazy(() => pages.requests().then((m) => ({ default: m.RequestsPage })));
 const SystemPage = lazy(() => pages.system().then((m) => ({ default: m.SystemPage })));
 const SettingsPage = lazy(() => pages.settings().then((m) => ({ default: m.SettingsPage })));
 const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.DelegatesPage })));
@@ -131,6 +135,10 @@ export function App() {
         ? <ActivityPage me={me} />
         : route === 'soon:settings' && me.role === 'admin'
         ? <SettingsPage me={me} />
+        : route === 'soon:requests' && me.role === 'admin'
+        ? <RequestsPage />
+        : route === 'soon:worship' && me.role === 'admin'
+        ? <WorshipPage />
         : route === 'soon:reports' && me.role === 'admin'
         ? <ReportsPage me={me} />
         : typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'

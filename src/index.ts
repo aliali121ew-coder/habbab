@@ -8,6 +8,7 @@ import { system } from './routes/system';
 import { branding } from './routes/branding';
 import { families } from './routes/families';
 import { patients } from './routes/patients';
+import { requests } from './routes/requests';
 import { fail } from './lib/http';
 import { audit, dashboard, delegates, meta, users } from './routes/admin';
 import { auth } from './routes/auth';
@@ -70,6 +71,8 @@ api.use('/families/*', requireFeature('families'));
 api.route('/families', families);
 api.use('/patients/*', requireFeature('patients'));
 api.route('/patients', patients);
+api.use('/requests/*', requireFeature('requests'));
+api.route('/requests', requests);
 api.route('/system', system);
 api.route('/branding', branding);
 api.route('/dashboard', dashboard);
@@ -93,7 +96,7 @@ app.notFound((c) => c.json({ error: 'غير موجود' }, 404));
 const SECTIONS: Record<string, string> = {
   subscribers: 'المشتركون', collections: 'التحصيل والمندوبون', delegates: 'المندوبون', closings: 'الإقفال الشهري',
   programs: 'البرامج', transactions: 'الحركات المالية', expenses: 'المصاريف', prescriptions: 'الوصفات',
-  users: 'الحسابات', branding: 'الإعدادات', system: 'المؤسسات', families: 'العوائل', patients: 'المرضى',
+  users: 'الحسابات', branding: 'الإعدادات', system: 'المؤسسات', families: 'العوائل', patients: 'المرضى', requests: 'طلبات المساعدة',
 };
 
 // A save or change refused for lack of permission (403) is written to the foundation's activity
