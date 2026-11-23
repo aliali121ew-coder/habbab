@@ -97,7 +97,7 @@ const LIST_LABELS: Record<ListKey, string> = {
 
 export function PatientsPage({ me }: { me: Me }) {
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState(PATIENTS[0].id);
+  const [selectedId, setSelectedId] = useState(PATIENTS[0]?.id ?? 0);
   const [mobileSheetPatient, setMobileSheetPatient] = useState<Patient | null>(null);
   const [mobileSheetTab, setMobileSheetTab] = useState<'records' | 'foundations'>('records');
   const [activeFoundationModal, setActiveFoundationModal] = useState<{
@@ -143,8 +143,10 @@ export function PatientsPage({ me }: { me: Me }) {
     foundations: new Set(PATIENTS.flatMap((patient) => patient.records.map((record) => record.foundation))).size,
   };
 
-  const selected = PATIENTS.find((patient) => patient.id === selectedId) ?? PATIENTS[0];
-  const detail = totals(selected);
+  // Undefined while the register is empty: the side card is then left out.
+  const selected: Patient | undefined = PATIENTS.find((patient) => patient.id === selectedId) ?? PATIENTS[0];
+  const detail = selected ? totals(selected) : null;
+  const emptyText = PATIENTS.length === 0 ? 'لا يوجد مرضى مسجّلون بعد.' : 'لا يوجد مريض يطابق البحث.';
   const [photos, setPhotos] = useState<Record<number, string>>(() => {
     try { return JSON.parse(localStorage.getItem('ahbab:patient-photos') || '{}') as Record<number, string>; }
     catch { return {}; }
@@ -266,9 +268,9 @@ export function PatientsPage({ me }: { me: Me }) {
                 {rows.map(({ patient, cash, medicine, exams, last }, index) => (
                   <tr
                     key={patient.id}
-                    className={patient.id === selected.id ? 'on' : undefined}
+                    className={patient.id === selected?.id ? 'on' : undefined}
                     onClick={() => setSelectedId(patient.id)}
-                    aria-selected={patient.id === selected.id}
+                    aria-selected={patient.id === selected?.id}
                   >
                     <td className="pt-idx">{index + 1}</td>
                     <td>
@@ -296,7 +298,7 @@ export function PatientsPage({ me }: { me: Me }) {
                 ))}
               </tbody>
             </table>
-            {rows.length === 0 && <p className="pt-empty">لا يوجد مريض يطابق البحث.</p>}
+            {rows.length === 0 && <p className="pt-empty">{emptyText}</p>}
           </div>
 
           {/* Mobile-only compact cards matching Expenses style */}
@@ -339,11 +341,11 @@ export function PatientsPage({ me }: { me: Me }) {
                 </button>
               );
             })}
-            {rows.length === 0 && <p className="pt-empty">لا يوجد مريض يطابق البحث.</p>}
+            {rows.length === 0 && <p className="pt-empty">{emptyText}</p>}
           </div>
         </section>
 
-        <aside className="pt-profile" aria-label={`ملف ${selected.name}`}>
+        {selected && detail && <aside className="pt-profile" aria-label={`ملف ${selected.name}`}>
           <div className="pt-band">
             <label className={`pt-photo pt-photo-pick tone-${selected.tone}`} title="اضغط لإضافة أو تغيير الصورة">
               {photos[selected.id]
@@ -395,7 +397,7 @@ export function PatientsPage({ me }: { me: Me }) {
 
             <FoundationChart patient={selected} />
           </div>
-        </aside>
+        </aside>}
       </div>
 
       {mobileSheetPatient && createPortal(

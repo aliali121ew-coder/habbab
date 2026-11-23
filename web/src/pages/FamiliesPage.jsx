@@ -221,7 +221,9 @@ export function FamiliesPage() {
           <div>
             {!loading && filtered.length === 0 ? (
               <div className="md:p-6">
-                <EmptyState variant="no-results" onReset={clearAllFilters} />
+                {families.length === 0
+                  ? <EmptyState title="لا توجد عوائل مسجّلة بعد" description="أضف أول عائلة من زر «إضافة عائلة»." />
+                  : <EmptyState variant="no-results" onReset={clearAllFilters} />}
               </div>
             ) : (
             <>

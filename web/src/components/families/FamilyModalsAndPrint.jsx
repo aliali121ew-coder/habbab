@@ -41,7 +41,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
   const [rent, setRent] = useState('250000');
   const [category, setCategory] = useState('intensive');
   const [socialStatus, setSocialStatus] = useState('أرملة وأيتام');
-  const [delegateId, setDelegateId] = useState(String(delegatesList[0]?.id ?? DELEGATES[0].id));
+  const [delegateId, setDelegateId] = useState(String(delegatesList[0]?.id ?? ''));
   const [salary, setSalary] = useState('250000');
   const [aid, setAid] = useState('150000');
   const [notes, setNotes] = useState('');
@@ -58,7 +58,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    const delegate = delegatesList.find((d) => String(d.id) === delegateId) ?? delegatesList[0] ?? DELEGATES[0];
+    const delegate = delegatesList.find((d) => String(d.id) === delegateId) ?? delegatesList[0] ?? null;
     const id = Date.now();
     const salaryNum = Math.max(0, parseAmount(salary));
     const aidNum = Math.max(0, parseAmount(aid));
@@ -89,7 +89,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
       patients: [],
       payments: [],
       visits: [
-        { date: '2026-11-15', delegateName: delegate.name, note: 'فتح الملف وتدقيق البيانات الأولية.' },
+        { date: new Date().toISOString().slice(0, 10), delegateName: delegate?.name ?? '', note: 'فتح الملف وتدقيق البيانات الأولية.' },
       ],
     });
     setName('');
