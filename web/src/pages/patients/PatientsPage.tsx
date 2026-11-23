@@ -309,16 +309,18 @@ export function PatientsPage({ me }: { me: Me }) {
                     </span>
                     <div className="pt-m-card-info">
                       <strong>{patient.name}</strong>
-                      <small>
-                        <bdi>{patient.records.length}</bdi> {patient.records.length === 1 ? 'مراجعة' : 'مراجعات'} • <DateText iso={last.date} />
-                      </small>
+                      <small><HeartPulse size={11} aria-hidden /> {patient.condition}</small>
                     </div>
+                    <ChevronLeft size={16} className="pt-m-card-chev" aria-hidden />
                   </div>
-                  <div className="pt-m-card-end">
+                  <div className="pt-m-card-foot">
+                    <span className="pt-m-card-meta">
+                      <span><FileText size={12} aria-hidden /><bdi>{patient.records.length}</bdi> {patient.records.length === 1 ? 'مراجعة' : 'مراجعات'}</span>
+                      <span><CalendarDays size={12} aria-hidden /><DateText iso={last.date} /></span>
+                    </span>
                     <b className="pt-m-card-amt">
                       <bdi>{formatNumber(grandTotal)}</bdi> <span>{me.currency}</span>
                     </b>
-                    <ChevronLeft size={16} className="pt-m-card-chev" aria-hidden />
                   </div>
                 </button>
               );
