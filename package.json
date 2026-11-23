@@ -21,6 +21,7 @@
     "test:register": "node tests/register.mjs",
     "test:isolation": "node tests/isolation.mjs",
     "test:features": "node tests/features.mjs",
+    "test:families": "node tests/families.mjs",
     "check:scope": "node scripts/check-foundation-scope.mjs",
     "release": "node scripts/release.mjs"
   },

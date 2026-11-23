@@ -8,7 +8,7 @@ import { api, type Feature, type Me, type Overview } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { AidHeroBanner } from '../../components/shared/AidHeroBanner';
 import { SAMPLE_DONATIONS } from '../../data/donations';
-import { loadFamiliesStore } from '../../data/families';
+import { useFamilies } from '../../data/families';
 import { formatNumber, MONTH_NAMES, monthIndex } from '../../format';
 import { AidDisbursementsTable } from './AidDisbursementsTable';
 // The phone's money overview draws a chart (recharts, the heaviest library): its own file, so the
@@ -105,11 +105,12 @@ export function HomePage({ me }: { me: Me }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  const families = useMemo(() => loadFamiliesStore() as {
+  // This month's families figures (payments and visits) come with the list from the server.
+  const families = useFamilies(me.features.includes('families')).families as {
     arrears: number;
     visits?: { date: string }[];
     payments?: { date: string; amount: number }[];
-  }[], []);
+  }[];
 
   if (error && !overview) return <StateMessage kind="error" title="تعذّر تحميل الصفحة الرئيسية" hint={error} onRetry={load} />;
   if (!overview) {

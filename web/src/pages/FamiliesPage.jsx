@@ -2,9 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AVAILABLE_MONTHS,
-  loadFamiliesStore,
-  saveFamiliesStore,
+  bulkPayFamilies,
+  createFamily,
+  matchFamily,
+  payFamily,
+  updateFamily,
+  uploadFamilyPhoto,
+  useFamilies,
+  visitFamily,
 } from '../data/families';
+import { MatchDialog } from '../components/families/MatchDialog';
 import { useFamiliesFilter } from '../hooks/useFamiliesFilter';
 import { printWhenReady } from '../components/printWhenReady';
 import { ActiveFilterChips } from '../components/families/ActiveFilterChips';
@@ -33,14 +40,20 @@ const DEFAULT_FILTERS = {
 };
 
 export function FamiliesPage() {
-  const [families, setFamilies] = useState(() => loadFamiliesStore());
+  // From the server; every change below is saved there first, then the list is read again.
+  const { families, loading, error, reload } = useFamilies();
   const [selectedMonth, setSelectedMonth] = useState(AVAILABLE_MONTHS[0].id);
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [viewMode, setViewMode] = useState('table');
-  const [selectedId, setSelectedId] = useState(() => loadFamiliesStore()[0]?.id ?? null);
-  // The families are read from this device synchronously, so there is nothing to wait for:
-  // the page shows them at once (it used to hold empty boxes for 600 ms on every visit).
-  const loading = false;
+  const [selectedId, setSelectedId] = useState(null);
+  // A new family whose head's name is on file at another foundation, waiting for the answer.
+  const [pendingMatch, setPendingMatch] = useState(null);
+  const [notice, setNotice] = useState('');
+  const fail = (failure) => setNotice(failure?.message || 'تعذّر الحفظ، حاول مرة أخرى');
+  const save = async (work) => {
+    setNotice('');
+    try { await work(); await reload(); } catch (failure) { fail(failure); }
+  };
 
   const [addOpen, setAddOpen] = useState(false);
   const [payingFamily, setPayingFamily] = useState(null);
@@ -77,101 +90,35 @@ export function FamiliesPage() {
     window.location.hash = `#/families/${family.id}`;
   };
 
-  const handleCreateFamily = (newFamily) => {
-    const updated = [newFamily, ...families];
-    setFamilies(updated);
-    saveFamiliesStore(updated);
-    setSelectedId(newFamily.id);
+  // Before saving a new family, ask the server whether another foundation holds a family under
+  // the same head's four-part name; if so, the user says whether it is the same family.
+  const handleCreateFamily = async (newFamily) => {
+    setNotice('');
+    try {
+      const matches = await matchFamily(newFamily.headName);
+      if (matches.length) { setPendingMatch({ family: newFamily, matches }); return; }
+      const id = await createFamily(newFamily);
+      await reload();
+      setSelectedId(id);
+    } catch (failure) { fail(failure); }
+  };
+  const finishCreate = async (linkTo) => {
+    const { family } = pendingMatch;
+    setPendingMatch(null);
+    await save(async () => { const id = await createFamily(family, linkTo); setSelectedId(id); });
   };
 
-  const handleConfirmPayment = (familyId, payment) => {
-    const updated = families.map((fam) => {
-      if (fam.id !== familyId) return fam;
-      const due = totalEntitlement(fam);
-      const nextPaid = fam.paidThisMonth + payment.amount;
-      const nextArrears = Math.max(0, due - nextPaid);
-      return {
-        ...fam,
-        paidThisMonth: nextPaid,
-        arrears: nextArrears,
-        arrearsMonths: nextArrears === 0 ? 0 : fam.arrearsMonths,
-        payments: [payment, ...(fam.payments ?? [])],
-      };
-    });
-    setFamilies(updated);
-    saveFamiliesStore(updated);
-  };
+  const handleConfirmPayment = (familyId, payment) => save(() => payFamily(familyId, payment));
 
-  const handleBulkPay = (targetList) => {
-    const ids = new Set(targetList.map((f) => f.id));
-    const updated = families.map((fam) => {
-      if (!ids.has(fam.id) || fam.arrears <= 0) return fam;
-      const payment = {
-        date: '2026-11-15',
-        amount: fam.arrears,
-        type: 'راتب شهري',
-        receivedBy: fam.headName,
-        by: fam.delegate?.name ?? 'الصرف الجماعي',
-      };
-      return {
-        ...fam,
-        paidThisMonth: fam.paidThisMonth + fam.arrears,
-        arrears: 0,
-        arrearsMonths: 0,
-        payments: [payment, ...(fam.payments ?? [])],
-      };
-    });
-    setFamilies(updated);
-    saveFamiliesStore(updated);
-  };
+  const handleBulkPay = (targetList) => save(() => bulkPayFamilies(targetList.filter((f) => f.arrears > 0).map((f) => f.id)));
 
-  const handleSaveFamilyAid = (familyId, patch) => {
-    const updated = families.map((fam) => {
-      if (fam.id !== familyId) return fam;
-      const nextFam = {
-        ...fam,
-        category: patch.category,
-        delegate: patch.delegate ?? fam.delegate,
-        entitlements: patch.entitlements,
-      };
-      const due = totalEntitlement(nextFam);
-      const nextArrears = Math.max(0, due - (fam.paidThisMonth ?? 0));
-      let nextPayments = fam.payments ?? [];
-      if (patch.aidType) {
-        const idx = nextPayments.findIndex((p) => p.type !== 'راتب شهري');
-        if (idx >= 0) {
-          nextPayments = nextPayments.map((p, i) => (i === idx ? { ...p, type: patch.aidType } : p));
-        } else if ((patch.entitlements.aid ?? 0) + (patch.entitlements.medicine ?? 0) > 0) {
-          nextPayments = [
-            {
-              date: new Date().toISOString().slice(0, 10),
-              amount: (patch.entitlements.aid ?? 0) + (patch.entitlements.medicine ?? 0),
-              type: patch.aidType,
-              receivedBy: fam.headName,
-              by: fam.delegate?.name ?? 'الإدارة',
-            },
-            ...nextPayments,
-          ];
-        }
-      }
-      return {
-        ...nextFam,
-        arrears: nextArrears,
-        arrearsMonths: nextArrears === 0 ? 0 : Math.max(1, fam.arrearsMonths ?? 1),
-        payments: nextPayments,
-      };
-    });
-    setFamilies(updated);
-    saveFamiliesStore(updated);
-  };
+  const handleSaveFamilyAid = (familyId, patch) => save(() => updateFamily(familyId, {
+    category: patch.category,
+    ...(patch.delegate ? { delegateId: patch.delegate.id } : {}),
+    entitlements: patch.entitlements,
+  }));
 
-  const handleConfirmVisit = (familyId, visit) => {
-    const updated = families.map((fam) => (fam.id === familyId
-      ? { ...fam, lastVisit: visit.date, visits: [visit, ...(fam.visits ?? [])] }
-      : fam));
-    setFamilies(updated);
-    saveFamiliesStore(updated);
-  };
+  const handleConfirmVisit = (familyId, visit) => save(() => visitFamily(familyId, visit));
 
   const monthLabel = AVAILABLE_MONTHS.find((m) => m.id === selectedMonth)?.label ?? AVAILABLE_MONTHS[0].label;
 
@@ -188,6 +135,12 @@ export function FamiliesPage() {
           onPrint={() => setPrintingList(filtered)}
           onAddFamily={() => setAddOpen(true)}
         />
+
+        {(notice || error) && (
+          <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700">
+            {notice || `تعذّر تحميل العوائل: ${error}`}
+          </p>
+        )}
 
         <KpiCards
           families={families}
@@ -229,11 +182,7 @@ export function FamiliesPage() {
             <>
             <div className="md:hidden">
               <FamilyMobileList
-                onPhoto={(familyId, photo) => {
-                  const updated = families.map((fam) => (fam.id === familyId ? { ...fam, photo } : fam));
-                  setFamilies(updated);
-                  saveFamiliesStore(updated);
-                }}
+                onPhoto={(familyId, blob) => save(() => uploadFamilyPhoto(familyId, blob))}
                 families={filtered}
                 loading={loading}
                 onOpenFullFile={handleOpenFullFile}
@@ -295,6 +244,16 @@ export function FamiliesPage() {
         onClose={() => setVisitingFamily(null)}
         onConfirm={handleConfirmVisit}
       />
+
+      {pendingMatch && (
+        <MatchDialog
+          headName={pendingMatch.family.headName}
+          matches={pendingMatch.matches}
+          onSame={(match) => void finishCreate(match.id)}
+          onDifferent={() => void finishCreate(undefined)}
+          onCancel={() => setPendingMatch(null)}
+        />
+      )}
 
       {/* A4 Print Portal */}
       {printingList && createPortal(

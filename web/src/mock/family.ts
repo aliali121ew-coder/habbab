@@ -1,8 +1,6 @@
-import { DELEGATES, loadFamiliesStore } from '../data/families';
 import type {
   AidCategory,
   AidSource,
-  CaseOfficer,
   FamilyDetail,
   FamilyMember,
   FamilyPatientRecord,
@@ -33,14 +31,6 @@ export function toInitials(name: string): string {
   return `${words[0].charAt(0)} ${words[1].charAt(0)}`;
 }
 
-export const CASE_OFFICERS: CaseOfficer[] = DELEGATES.map((d) => ({
-  id: d.id,
-  name: d.name,
-  zone: `مندوب ${d.region}`,
-  phone: d.phone,
-  initials: toInitials(d.name),
-}));
-
 const TYPE_MAP: Record<string, { type: AidCategory; label: string }> = {
   'راتب شهري': { type: 'salary', label: 'راتب شهري' },
   'مساعدات': { type: 'aid', label: 'مساعدات مالية' },
@@ -53,14 +43,6 @@ const INTERNAL_PROGRAMS = [
   { key: 'aid', paymentType: 'مساعدات', name: 'المساعدات المالية', aidType: 'مساعدة نقدية', frequency: 'شهري' },
   { key: 'medicine', paymentType: 'أدوية', name: 'برنامج الأدوية', aidType: 'دواء عبر الوحدة الصحية', frequency: 'شهري' },
   { key: 'checkups', paymentType: 'كشفية', name: 'الكشفيات الطبية', aidType: 'كشفيات وفحوصات', frequency: 'حسب المراجعة' },
-] as const;
-
-// Sample organizations: other charities and programs that also support some families.
-const EXTERNAL_ORGS = [
-  { name: 'مؤسسة الرحمة الخيرية', aidType: 'سلة غذائية', amount: 85_000, frequency: 'شهري', months: 1, person: 'أبو حسن الحسيني', phone: '0770 318 2290' },
-  { name: 'شبكة الرعاية الاجتماعية', aidType: 'راتب إعانة', amount: 175_000, frequency: 'كل شهرين', months: 2, person: 'قسم الحالات — الرصافة', phone: '0780 441 7716' },
-  { name: 'جمعية الأيادي البيضاء', aidType: 'كسوة ولوازم مدرسية', amount: 120_000, frequency: 'فصلي', months: 3, person: 'أم زينب العامري', phone: '0771 902 5583' },
-  { name: 'مستوصف النور الخيري', aidType: 'خصم علاج 50%', amount: 60_000, frequency: 'شهري', months: 1, person: 'د. سلام الخزرجي', phone: '0790 227 6401' },
 ] as const;
 
 const monthsBack = (iso: string, n: number) => {
@@ -78,7 +60,7 @@ function buildInternalAid(
     const due = raw.entitlements?.[program.key] ?? 0;
     if (due <= 0) return [];
     const own = payments.filter((p) => p.type === program.paymentType);
-    const paid = own.filter((p) => p.date.startsWith('2026-11')).reduce((sum, p) => sum + p.amount, 0);
+    const paid = own.filter((p) => p.date.startsWith(new Date().toISOString().slice(0, 7))).reduce((sum, p) => sum + p.amount, 0);
     return [{
       id: `int-${program.key}`,
       kind: 'internal' as const,
@@ -103,37 +85,6 @@ function buildInternalAid(
   });
 }
 
-function buildExternalAid(familyId: number): AidSource[] {
-  const count = familyId % 4 === 0 ? 0 : 1 + (familyId % 3);
-  return Array.from({ length: count }, (_, i) => {
-    const org = EXTERNAL_ORGS[(familyId + i) % EXTERNAL_ORGS.length];
-    const paused = (familyId + i) % 5 === 0;
-    const last = paused ? '2026-06-15' : monthsBack('2026-11-03', i);
-    return {
-      id: `ext-${familyId}-${i}`,
-      kind: 'external' as const,
-      name: org.name,
-      aidType: org.aidType,
-      monthlyAmount: org.amount,
-      frequency: org.frequency,
-      since: monthsBack('2026-11-01', 14 + i * 5),
-      lastReceived: last,
-      status: paused ? 'paused' as const : 'active' as const,
-      contact: { person: org.person, phone: org.phone },
-      beneficiaryIds: [],
-      note: paused
-        ? 'الدعم متوقف منذ منتصف السنة بانتظار تحديث بيانات العائلة لدى الجهة.'
-        : 'يُستلم مباشرة من الجهة، وتتحقق المؤسسة منه في الزيارة الميدانية.',
-      history: Array.from({ length: 4 }, (_, h) => ({
-        id: `ext-${familyId}-${i}-${h}`,
-        date: monthsBack(last, h * org.months),
-        title: org.aidType,
-        amount: org.amount,
-        note: 'تأكيد الاستلام من العائلة',
-      })),
-    };
-  });
-}
 
 // Who each provider actually helps: cash goes to the head of the family, medical programs
 // to the members on the patient registry, school aid to the students.
@@ -149,16 +100,46 @@ function assignBeneficiaries(sources: AidSource[], members: FamilyMember[]): Aid
   });
 }
 
-export function getFamilyDetailById(id: number): FamilyDetail | null {
-  const store = loadFamiliesStore();
-  const raw = store.find((f) => f.id === id);
-  if (!raw) return null;
+const AR_MONTHS = ['كانون الثاني', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'تشرين الأول', 'تشرين الثاني', 'كانون الأول'];
+const SHORT_MONTHS = ['ك2', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'ت1', 'ت2', 'ك1'];
 
+interface SharedAid { foundation_id: number; foundation: string; paid_on: string; amount: number; type: string }
+
+// What other foundations that confirmed the same family gave it: one card per foundation, its
+// payments as the card's history. Only type, amount, date and the foundation's name are known.
+function sharedAid(familyId: number, shared: SharedAid[]): AidSource[] {
+  const byFoundation = new Map<number, SharedAid[]>();
+  for (const row of shared) byFoundation.set(row.foundation_id, [...(byFoundation.get(row.foundation_id) ?? []), row]);
+  return [...byFoundation.values()].map((rows, i) => {
+    const last = rows[0];
+    const recent = rows.filter((r) => r.paid_on >= monthsBack(new Date().toISOString().slice(0, 10), 3));
+    return {
+      id: `ext-${familyId}-${i}`,
+      kind: 'external' as const,
+      name: last.foundation,
+      aidType: [...new Set(rows.map((r) => r.type))].slice(0, 2).join('، '),
+      monthlyAmount: Math.round(recent.reduce((sum, r) => sum + r.amount, 0) / 3),
+      frequency: `${rows.length} ${rows.length === 1 ? 'مساعدة' : 'مساعدات'}`,
+      since: rows[rows.length - 1].paid_on,
+      lastReceived: last.paid_on,
+      status: recent.length ? 'active' as const : 'paused' as const,
+      beneficiaryIds: [],
+      note: 'مسجّلة لدى المؤسسة نفسها، وتظهر هنا لأن الملفين مرتبطان بنفس العائلة.',
+      history: rows.map((r, h) => ({ id: `ext-${familyId}-${i}-${h}`, date: r.paid_on, title: r.type, amount: r.amount, note: last.foundation })),
+    };
+  });
+}
+
+/** A family as the server returns it (GET /api/families/:id), shaped for the family file. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function toFamilyDetail(raw: any): FamilyDetail {
   const { salary = 0, aid = 0, medicine = 0, checkups = 0 } = raw.entitlements ?? {};
   const totalDue = salary + aid + medicine + checkups;
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const registeredAt = String(raw.createdAt ?? '').slice(0, 10) || new Date().toISOString().slice(0, 10);
 
-  const members: FamilyMember[] = (raw.members ?? []).map((m: { name: string; relation: string; age: number; status: string; chronic?: string; gender?: 'ذكر' | 'أنثى'; phone?: string; notes?: string }, idx: number) => ({
-    id: `mem-${raw.id}-${idx}`,
+  const members: FamilyMember[] = (raw.members ?? []).map((m: { id: number; name: string; relation: string; age: number; status: string; chronic?: string; gender?: 'ذكر' | 'أنثى'; phone?: string; notes?: string }) => ({
+    id: `mem-${raw.id}-${m.id}`,
     name: m.name,
     initials: toInitials(m.name),
     relation: m.relation,
@@ -172,22 +153,18 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
     patientId: raw.patients?.find((p: { id?: number; name: string }) => p.name === m.name)?.id,
   }));
 
-  // Rich patient defaults matching the exact patients registry figures
-  const patients: FamilyPatientRecord[] = (raw.patients ?? []).map((p: { id?: number; name: string; diagnosis: string; lastVisit: string; medicineCost: number; examsCost?: number }, idx: number) => {
-    const isZainab = p.id === 2;
-    const isSara = p.id === 10;
-    return {
-      id: p.id ?? idx + 1,
-      name: p.name,
-      initials: toInitials(p.name),
-      lastVisit: isZainab ? '2026-10-14' : isSara ? '2026-10-24' : p.lastVisit,
-      deliveredCash: isZainab ? 1_235_000 : isSara ? 970_000 : (p.medicineCost + (p.examsCost ?? 0)),
-      medicineCost: isZainab ? 930_000 : isSara ? 1_095_000 : p.medicineCost,
-      examsCost: isZainab ? 140_000 : isSara ? 215_000 : (p.examsCost ?? 65_000),
-      doctor: isZainab ? 'د. مريم التميمي' : isSara ? 'د. علي الموسوي' : 'د. حسن الجبوري',
-      diagnosis: p.diagnosis,
-    };
-  });
+  // The patients register moves to the server in phase 4; until then a family lists none.
+  const patients: FamilyPatientRecord[] = (raw.patients ?? []).map((p: { id?: number; name: string; diagnosis: string; lastVisit: string; medicineCost: number; examsCost?: number; doctor?: string }, idx: number) => ({
+    id: p.id ?? idx + 1,
+    name: p.name,
+    initials: toInitials(p.name),
+    lastVisit: p.lastVisit,
+    deliveredCash: p.medicineCost + (p.examsCost ?? 0),
+    medicineCost: p.medicineCost,
+    examsCost: p.examsCost ?? 0,
+    doctor: p.doctor ?? '',
+    diagnosis: p.diagnosis,
+  }));
 
   const payments: FamilyPaymentRecord[] = (raw.payments ?? []).map((p: { date: string; amount: number; type: string; receivedBy: string; by: string }, idx: number) => {
     const mapped = TYPE_MAP[p.type] ?? { type: 'aid', label: p.type };
@@ -210,7 +187,7 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
       type: 'aid',
       typeLabel: 'دعم الإيجار المتبقي',
       amount: raw.arrears,
-      date: '2026-11-01',
+      date: `${thisMonth}-01`,
       officer: raw.delegate?.name ?? 'المندوب',
       title: 'مستحق متأخر للشهر الحالي',
       note: raw.rent > 0 ? 'تغطية إيجار السكن ومستلزمات أساسية' : 'رصيد دعم متبقٍ',
@@ -224,17 +201,18 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
     officerName: v.delegateName,
     summary: v.note,
     rating: (raw.category === 'critical' ? 'تحتاج متابعة' : 'مستقرة') as 'مستقرة' | 'تحتاج متابعة' | 'حرجة',
-    photosCount: idx === 0 ? 2 : 0,
+    photosCount: 0,
   }));
 
-  const monthlyHistory = [
-    { month: 'حزيران', due: Math.round(totalDue * 0.88), paid: Math.round(totalDue * 0.88) },
-    { month: 'تموز', due: Math.round(totalDue * 0.9), paid: Math.round(totalDue * 0.85) },
-    { month: 'آب', due: Math.round(totalDue * 0.94), paid: Math.round(totalDue * 0.94) },
-    { month: 'أيلول', due: Math.round(totalDue * 0.96), paid: Math.round(totalDue * 0.82) },
-    { month: 'ت1', due: totalDue, paid: Math.round(totalDue * 0.91) },
-    { month: 'ت2', due: totalDue, paid: raw.paidThisMonth },
-  ];
+  // The last six months as recorded: what was due and what the foundation actually paid.
+  const monthlyHistory = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(d.getMonth() - (5 - i));
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const paid = (raw.payments ?? []).filter((p: { date: string }) => p.date.startsWith(key)).reduce((sum: number, p: { amount: number }) => sum + p.amount, 0);
+    return { month: SHORT_MONTHS[d.getMonth()], due: key < registeredAt.slice(0, 7) ? 0 : totalDue, paid };
+  });
 
   const alerts: FamilyDetail['alerts'] = [
     ...(raw.arrears > 0
@@ -296,12 +274,12 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
       : []),
   ];
 
-  const officer = CASE_OFFICERS.find((o) => o.id === raw.delegate?.id) ?? {
-    id: raw.delegate?.id ?? 1,
-    name: raw.delegate?.name ?? 'كرار حيدر',
-    zone: `مندوب ${raw.region}`,
-    phone: raw.delegate?.phone ?? '0770 000 0000',
-    initials: toInitials(raw.delegate?.name ?? 'ك ح'),
+  const officer = {
+    id: raw.delegate?.id ?? 0,
+    name: raw.delegate?.name ?? 'بدون مندوب',
+    zone: raw.delegate?.region ? `مندوب ${raw.delegate.region}` : 'لم يُسند بعد',
+    phone: raw.delegate?.phone ?? '',
+    initials: toInitials(raw.delegate?.name ?? '؟'),
   };
 
   return {
@@ -316,7 +294,7 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
     region: raw.region,
     housing: raw.housing,
     rentAmount: raw.rent,
-    registeredAt: '2023-11-02',
+    registeredAt,
     incomeNote: raw.income,
     caseSummary: raw.notes,
     officer,
@@ -325,14 +303,14 @@ export function getFamilyDetailById(id: number): FamilyDetail | null {
     arrears: raw.arrears,
     arrearsMonths: raw.arrearsMonths,
     trendPercent: raw.arrears > 0 ? -0.9 : 12,
-    monthLabel: 'تشرين الثاني 2026',
+    monthLabel: `${AR_MONTHS[new Date().getMonth()]} ${new Date().getFullYear()}`,
     members,
     patients,
     payments,
     visits,
     monthlyHistory,
-    internalAid: assignBeneficiaries(buildInternalAid(raw, '2023-11-02'), members),
-    externalAid: assignBeneficiaries(buildExternalAid(raw.id), members),
+    internalAid: assignBeneficiaries(buildInternalAid(raw, registeredAt), members),
+    externalAid: assignBeneficiaries(sharedAid(raw.id, raw.shared ?? []), members),
     alerts,
     activities,
   };

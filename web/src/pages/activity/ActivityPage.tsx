@@ -58,6 +58,9 @@ const FIELD: Record<string, string> = {
   category: 'نوع الصرف', amount: 'المبلغ', spent_on: 'التاريخ', details: 'الوصف', beneficiary_name: 'المستفيد',
   role: 'الدور', active: 'الحساب', password: 'كلمة المرور', birth_date: 'تاريخ الميلاد', joined_year: 'سنة الانضمام',
   stamp_place: 'المكان تحت الختم', phones: 'الهواتف', accountant_name: 'اسم المحاسب', manager_name: 'اسم المدير', features: 'الصفحات',
+  head_name: 'رب الأسرة', social_status: 'الحالة الاجتماعية', region: 'المنطقة', housing: 'السكن', rent: 'الإيجار', income: 'الدخل',
+  ent_salary: 'الراتب الشهري', ent_aid: 'المساعدات', ent_medicine: 'الدواء', ent_checkups: 'الكشفيات', relation: 'الصلة', age: 'العمر',
+  gender: 'الجنس', chronic: 'مرض مزمن',
 };
 
 interface Detail { label?: string; changes?: Record<string, [unknown, unknown]>; note?: string; text?: string }
@@ -86,7 +89,8 @@ function showValue(key: string, value: unknown, currency: string): string {
   if (key === 'status') return value === 'alive' ? 'حي' : value === 'deceased' ? 'متوفى' : RX_STATUS[String(value)] ?? String(value);
   if (key === 'active') return Number(value) ? 'فعّال' : 'موقوف';
   if (key === 'role') return ROLE[String(value)] ?? String(value);
-  if (key === 'amount' || key === 'monthly_fee') return `${formatNumber(Number(value))} ${currency}`;
+  if (['amount', 'monthly_fee', 'rent', 'ent_salary', 'ent_aid', 'ent_medicine', 'ent_checkups'].includes(key)) return `${formatNumber(Number(value))} ${currency}`;
+  if (key === 'category' && ['critical', 'intensive', 'stable'].includes(String(value))) return { critical: 'حرجة', intensive: 'متوسطة', stable: 'مستقرة' }[String(value)]!;
   if (Array.isArray(value)) return value.join('، ');
   return String(value);
 }
@@ -146,6 +150,16 @@ function describe(entry: Entry, currency: string): Said {
     case 'update_image:foundation': return base('update', FileText, `تغيير ${KIND_IMAGE[String(detail.note ?? detail.text)] ?? 'صورة'}`, 'الملفات');
     case 'remove_image:foundation': return base('delete', FileText, `إزالة ${KIND_IMAGE[String(detail.note ?? detail.text)] ?? 'صورة'}`, 'الملفات');
     case 'system_enter:foundation': return base('access', LogIn, 'دخول مدير النظام إلى المؤسسة', 'الدخول');
+    case 'create:family': return base('create', Plus, 'إضافة عائلة', 'البيانات', [detail.note]);
+    case 'update:family': return base('update', Pencil, 'تعديل ملف عائلة', 'البيانات');
+    case 'pay:family': return base('money', Banknote, 'صرف لعائلة', 'المالية', [String(note.type ?? ''), money]);
+    case 'visit:family': return base('create', Eye, 'زيارة ميدانية لعائلة', 'البيانات', [detail.note]);
+    case 'add_member:family': return base('create', Plus, 'إضافة فرد إلى عائلة', 'البيانات', [detail.note]);
+    case 'update_member:family': return base('update', Pencil, `تعديل بيانات ${detail.note ?? 'فرد'}`, 'البيانات');
+    case 'remove_member:family': return base('delete', Trash2, 'إزالة فرد من عائلة', 'البيانات', [detail.note]);
+    case 'update_photo:family': return base('update', FileText, 'تغيير صورة عائلة', 'الملفات');
+    case 'link:family': return base('update', Database, 'ربط العائلة بمؤسسة أخرى', 'البيانات');
+    case 'unlink:family': return base('delete', Database, 'فك ربط العائلة', 'البيانات');
     case 'create_foundation:foundation': return base('create', Plus, 'إنشاء مؤسسة', 'الحسابات', [detail.text]);
     case 'update_foundation:foundation': return base('update', Pencil, 'تعديل إعدادات المؤسسة', 'الحسابات');
     default:

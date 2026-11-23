@@ -19,14 +19,6 @@ const dayMonth = (date) => `${date.slice(0, 4)}/${Number(date.slice(5, 7))}/${Nu
  * start with the initials and the family's priority; the name with a small arrow,
  * the only way into the file; area and members; the last aid and how many this month.
  */
-// A Blob → "data:image/…" so the photo can be kept with the family on this device.
-const toDataUrl = (blob) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => resolve(reader.result);
-  reader.onerror = () => reject(new Error('تعذّر حفظ الصورة'));
-  reader.readAsDataURL(blob);
-});
-
 export function FamilyMobileList({ families, loading, onOpenFullFile, onPhoto }) {
   // The family whose photo is being chosen, and the chosen file waiting in the framer.
   const fileInput = useRef(null);
@@ -103,7 +95,8 @@ export function FamilyMobileList({ families, loading, onOpenFullFile, onPhoto })
         source={framing}
         onCancel={() => setFraming(null)}
         onDone={async (framed) => {
-          onPhoto?.(photoFor, await toDataUrl(framed));
+          // The framed photo goes to the server (encrypted in storage, like delegate photos).
+          await onPhoto?.(photoFor, framed);
           setFraming(null);
         }}
       />

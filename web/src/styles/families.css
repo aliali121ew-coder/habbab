@@ -2196,3 +2196,37 @@ button.fam-ref-initials:active { transform: scale(.96); }
   .fam-ref-stats > div + div { border-inline-start: 0; border-top: 1px solid color-mix(in srgb, var(--bar-active) 14%, transparent); }
   .fam-ref-stats > div:first-child dd { flex-direction: row; align-items: baseline; gap: 6px; }
 }
+
+/* Match dialog: asked before saving a family whose head's four-part name is filed at another foundation. */
+.fam-match {
+  margin: auto;
+  width: min(520px, calc(100vw - 24px));
+  max-width: none;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  font-family: 'Noto Kufi Arabic', sans-serif;
+}
+.fam-match::backdrop { background: rgb(15 23 42 / 0.45); }
+.fam-match-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.fam-match-yes { white-space: nowrap; }
+.fam-match-foot { display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 560px) {
+  .fam-match-row { grid-template-columns: auto minmax(0, 1fr); }
+  .fam-match-yes { grid-column: 1 / -1; width: 100%; }
+  .fam-match-foot { flex-direction: column-reverse; }
+  .fam-match-foot button { width: 100%; }
+}
+:root[data-theme="dark"] .fam-match { background: var(--surface); color: var(--ink); }
+:root[data-theme="dark"] .fam-match :is(.border-slate-100, .border-slate-200) { border-color: var(--line); }
+:root[data-theme="dark"] .fam-match :is(.bg-slate-50, .bg-slate-100) { background: var(--surface-2); }
+:root[data-theme="dark"] .fam-match .bg-amber-50 { background: color-mix(in srgb, #f59e0b 18%, transparent); }
+:root[data-theme="dark"] .fam-match :is(.text-slate-800, .text-slate-700) { color: var(--ink); }
+:root[data-theme="dark"] .fam-match :is(.text-slate-600, .text-slate-500) { color: var(--ink-2); }
+:root[data-theme="dark"] .fam-match .text-slate-400 { color: var(--ink-3); }
+:root[data-theme="dark"] .fam-match .fam-match-no { background: var(--surface-2); }
+:root[data-theme="dark"] .fam-match :is(.fam-match-cancel, .fam-match-no, button[aria-label]):hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }

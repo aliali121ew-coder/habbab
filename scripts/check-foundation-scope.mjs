@@ -8,7 +8,7 @@ import { join } from 'node:path';
 const SCOPED = [
   'users', 'subscribers', 'programs', 'subscriber_programs', 'transactions', 'prescriptions',
   'monthly_closings', 'audit_log', 'expenses', 'expense_files', 'stats_totals', 'stats_daily',
-  'stats_monthly', 'delegate_period',
+  'stats_monthly', 'delegate_period', 'families', 'family_members', 'family_payments', 'family_visits',
 ];
 const tableRe = new RegExp(`\\b(FROM|INTO|UPDATE|JOIN)\\s+(${SCOPED.join('|')})\\b`, 'i');
 

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowLeft,
+  Building2,
   Calendar as CalendarIcon,
   CheckCircle2,
   ClipboardCheck,
@@ -605,6 +606,38 @@ export function FamilyDetailTabs({
                   </span>
                 </button>
               </>
+            )}
+
+            {family.externalAid.length > 0 && (
+              <section className="fp-shared" aria-labelledby="fp-shared-title">
+                <header className="fp-shared-head">
+                  <span className="fp-shared-icon" aria-hidden><Building2 className="h-4 w-4" /></span>
+                  <div className="min-w-0">
+                    <h3 id="fp-shared-title">مساعدات من مؤسسات أخرى</h3>
+                    <p>العائلة نفسها مسجّلة عند مؤسسة أخرى، وهذه مساعداتها لها.</p>
+                  </div>
+                </header>
+                {family.externalAid.map((source) => (
+                  <div key={source.id} className="fp-shared-org">
+                    <div className="fp-shared-org-head">
+                      <strong>{source.name}</strong>
+                      <span>{source.frequency}</span>
+                    </div>
+                    <ul>
+                      {source.history.map((row) => {
+                        const amount = formatIQDParts(row.amount);
+                        return (
+                          <li key={row.id}>
+                            <span className="fp-shared-type">{row.title}</span>
+                            <bdi dir="ltr" className="fp-shared-date">{row.date}</bdi>
+                            <strong className="fp-shared-amount">{amount.value} {amount.currency}</strong>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </section>
             )}
           </div>
         )}

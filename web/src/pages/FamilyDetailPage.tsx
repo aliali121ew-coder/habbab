@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MotionConfig, motion } from 'framer-motion';
 import { ArrowRight, HeartHandshake } from 'lucide-react';
 import { printWhenReady } from '../components/printWhenReady';
 import { OfficialFamiliesPrintSheet, PaymentModal, VisitModal } from '../components/families/FamilyModalsAndPrint';
+import { useLiveDelegates } from '../components/families/DelegateChip';
 import { AddMemberDialog, type EditableMember, type NewMember } from '../components/family-profile/AddMemberDialog';
 import { FamilyDetailTabs } from '../components/family-profile/FamilyDetailTabs';
 import { FamilyHero } from '../components/family-profile/FamilyHero';
@@ -11,32 +12,46 @@ import { FamilyKpiRow, type FamilyProfileTab, type MembersQuickFilter } from '..
 import { MemberSheet } from '../components/family-profile/MembersTable';
 import { ProfileSkeleton } from '../components/family-profile/ProfileSkeleton';
 import { Toast } from '../components/shared/Toast';
-import { DELEGATES, loadFamiliesStore, saveFamiliesStore } from '../data/families';
-import { CASE_OFFICERS, getFamilyDetailById } from '../mock/family';
+import { addMember, getFamily, payFamily, removeMember, updateFamily, updateMember, visitFamily } from '../data/families';
+import { toFamilyDetail, toInitials } from '../mock/family';
 import { familyIdFromHash } from '../route';
-import type { CaseOfficer, FamilyDetail, FamilyMember } from '../types/family';
+import type { CaseOfficer, FamilyMember } from '../types/family';
+
+// Member ids on the page are "mem-<family>-<member id on the server>".
+const memberIdOf = (member: FamilyMember) => Number(member.id.split('-').pop());
 
 export function FamilyDetailPage() {
   const familyId = familyIdFromHash();
-  const [family, setFamily] = useState<FamilyDetail | null>(() => getFamilyDetailById(familyId));
-  // Read from this device at once: no waiting screen (it used to hold one for 500 ms each visit).
-  const loading = false;
+  // The family as the server returns it; the page's own shape is derived from it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [raw, setRaw] = useState<any | null>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>('loading');
+  const family = useMemo(() => (raw ? toFamilyDetail(raw) : null), [raw]);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const [payOpen, setPayOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
-  // The member being edited (its index in the stored list), when the dialog edits rather than adds.
-  const [editingMember, setEditingMember] = useState<{ index: number; data: EditableMember } | null>(null);
+  const [editingMember, setEditingMember] = useState<{ id: number; data: EditableMember } | null>(null);
   const [printing, setPrinting] = useState(false);
   const [activeTab, setActiveTab] = useState<FamilyProfileTab>('members');
   const [memberFilter, setMemberFilter] = useState<MembersQuickFilter>('all');
 
+  const delegates = useLiveDelegates() as { id: number; name: string; phone: string; region: string }[];
+  const officers: CaseOfficer[] = delegates.map((d) => ({
+    id: d.id, name: d.name, zone: d.region ? `مندوب ${d.region}` : 'مندوب', phone: d.phone, initials: toInitials(d.name),
+  }));
 
-  useEffect(() => {
-    setFamily(getFamilyDetailById(familyId));
+  const load = useCallback(async () => {
+    try {
+      setRaw(await getFamily(familyId));
+      setStatus('ready');
+    } catch {
+      setStatus('missing');
+    }
   }, [familyId]);
+  useEffect(() => { setStatus('loading'); void load(); }, [load]);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -57,6 +72,17 @@ export function FamilyDetailPage() {
 
   const showToast = (msg: string) => setToast(msg);
 
+  // Saves on the server, then reads the family again so every figure comes from the record.
+  const save = async (work: () => Promise<unknown>, done: string) => {
+    try {
+      await work();
+      await load();
+      showToast(done);
+    } catch (failure) {
+      showToast((failure as Error).message || 'تعذّر الحفظ، حاول مرة أخرى');
+    }
+  };
+
   const handleCopy = async (value: string, label: string) => {
     try {
       await navigator.clipboard?.writeText(value);
@@ -66,85 +92,33 @@ export function FamilyDetailPage() {
     showToast(`تم نسخ ${label}: ${value}`);
   };
 
-  const rawStoreFamily = loadFamiliesStore().find((f) => f.id === familyId) ?? null;
+  const handleChangeOfficer = (officer: CaseOfficer) =>
+    void save(() => updateFamily(familyId, { delegateId: officer.id }), `تم إسناد الملف إلى ${officer.name}`);
 
-  const handleChangeOfficer = (officer: CaseOfficer) => {
-    const store = loadFamiliesStore();
-    const matchedDelegate = DELEGATES.find((d) => d.id === officer.id);
-    if (matchedDelegate) {
-      const updated = store.map((f) => (f.id === familyId ? { ...f, delegate: matchedDelegate } : f));
-      saveFamiliesStore(updated);
-    }
-    setFamily((prev) => (prev ? { ...prev, officer } : prev));
-    showToast(`تم إسناد الملف إلى ${officer.name}`);
-  };
+  const handleConfirmPayment = (_id: number, payment: { date: string; amount: number; type: string; receivedBy: string; by: string }) =>
+    void save(() => payFamily(familyId, payment), 'تم تسجيل الدفعة المالية بنجاح');
 
-  const handleConfirmPayment = (_id: number, payment: { date: string; amount: number; type: string; receivedBy: string; by: string }) => {
-    const store = loadFamiliesStore();
-    const updated = store.map((f) => {
-      if (f.id !== familyId) return f;
-      const due = (f.entitlements?.salary ?? 0) + (f.entitlements?.aid ?? 0) + (f.entitlements?.medicine ?? 0) + (f.entitlements?.checkups ?? 0);
-      const nextPaid = f.paidThisMonth + payment.amount;
-      const nextArrears = Math.max(0, due - nextPaid);
-      return {
-        ...f,
-        paidThisMonth: nextPaid,
-        arrears: nextArrears,
-        arrearsMonths: nextArrears === 0 ? 0 : f.arrearsMonths,
-        payments: [payment, ...(f.payments ?? [])],
-      };
-    });
-    saveFamiliesStore(updated);
-    setFamily(getFamilyDetailById(familyId));
-    showToast('تم تسجيل الدفعة المالية بنجاح');
-  };
-
-  const handleConfirmVisit = (_id: number, visit: { date: string; delegateName: string; note: string }) => {
-    const store = loadFamiliesStore();
-    const updated = store.map((f) => (f.id === familyId
-      ? { ...f, lastVisit: visit.date, visits: [visit, ...(f.visits ?? [])] }
-      : f));
-    saveFamiliesStore(updated);
-    setFamily(getFamilyDetailById(familyId));
-    showToast('تم تسجيل زيارة المندوب بنجاح');
-  };
+  const handleConfirmVisit = (_id: number, visit: { date: string; delegateName: string; note: string }) =>
+    void save(() => visitFamily(familyId, visit), 'تم تسجيل زيارة المندوب بنجاح');
 
   const handleAddMember = (member: NewMember) => {
-    const store = loadFamiliesStore();
-    const updated = store.map((f) => (f.id === familyId ? { ...f, members: [...(f.members ?? []), member] } : f));
-    saveFamiliesStore(updated);
-    setFamily(getFamilyDetailById(familyId));
     setAddMemberOpen(false);
-    showToast(`تمت إضافة ${member.name} إلى أفراد العائلة`);
+    void save(() => addMember(familyId, member), `تمت إضافة ${member.name} إلى أفراد العائلة`);
   };
 
   const handleEditMember = (member: NewMember) => {
     if (!editingMember) return;
-    const { index } = editingMember;
-    const store = loadFamiliesStore();
-    const updated = store.map((f) => (f.id === familyId
-      ? { ...f, members: (f.members ?? []).map((m: EditableMember, i: number) => (i === index ? { ...m, ...member } : m)) }
-      : f));
-    saveFamiliesStore(updated);
-    setFamily(getFamilyDetailById(familyId));
+    const { id } = editingMember;
     setEditingMember(null);
-    showToast(`تم حفظ تعديلات ${member.name}`);
+    void save(() => updateMember(familyId, id, member), `تم حفظ تعديلات ${member.name}`);
   };
 
-  // Member ids are "mem-<family>-<index>", the index in the stored members list.
   const handleRemoveMember = (member: FamilyMember) => {
-    const index = Number(member.id.split('-').pop());
-    const store = loadFamiliesStore();
-    const updated = store.map((f) => (f.id === familyId
-      ? { ...f, members: (f.members ?? []).filter((_: unknown, i: number) => i !== index) }
-      : f));
-    saveFamiliesStore(updated);
-    setFamily(getFamilyDetailById(familyId));
     setSelectedMember(null);
-    showToast(`تمت إزالة ${member.name} من أفراد العائلة`);
+    void save(() => removeMember(familyId, memberIdOf(member)), `تمت إزالة ${member.name} من أفراد العائلة`);
   };
 
-  if (!family) {
+  if (status === 'missing' || (status === 'ready' && !family)) {
     return (
       <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 py-12 md:-mx-[18px]">
         <div className="fp-card mx-auto max-w-md p-8 text-center">
@@ -167,7 +141,7 @@ export function FamilyDetailPage() {
     <MotionConfig reducedMotion="user">
       <div dir="rtl" className="fp-root -mx-[14px] -mb-3 min-h-[calc(100dvh-56px)] px-4 pb-8 pt-2 md:-mx-[18px] md:px-7 md:pb-10">
         <div className="mx-auto max-w-[2400px] space-y-6">
-          {loading ? (
+          {status === 'loading' || !family ? (
             <ProfileSkeleton />
           ) : (
             <motion.div
@@ -176,16 +150,14 @@ export function FamilyDetailPage() {
               transition={{ duration: 0.22 }}
               className="space-y-6"
             >
-              {/* 1. Hero Bento Section (Identity + Delegate Card) */}
               <FamilyHero
                 family={family}
-                officers={CASE_OFFICERS}
+                officers={officers}
                 onCopy={handleCopy}
                 onChangeOfficer={handleChangeOfficer}
                 onOpenPayment={() => setPayOpen(true)}
               />
 
-              {/* 2. 4 Interactive KPI Stat Cards */}
               <FamilyKpiRow
                 family={family}
                 activeTab={activeTab}
@@ -196,7 +168,6 @@ export function FamilyDetailPage() {
                 }}
               />
 
-              {/* 3. Tabbed Content Container (Members / Aids / Visits / Housing & Docs) */}
               <FamilyDetailTabs
                 family={family}
                 activeTab={activeTab}
@@ -212,49 +183,39 @@ export function FamilyDetailPage() {
           )}
         </div>
 
-        {/* Side Sheets */}
-        {selectedMember && (
+        {family && selectedMember && (
           <MemberSheet
             member={selectedMember}
             patient={family.patients.find((p) => p.id === selectedMember.patientId)}
             onClose={() => setSelectedMember(null)}
             onRemove={handleRemoveMember}
             onEdit={(member) => {
-              const index = Number(member.id.split('-').pop());
-              const stored = loadFamiliesStore().find((f) => f.id === familyId)?.members?.[index];
+              const id = memberIdOf(member);
+              const stored = raw?.members?.find((m: { id: number }) => m.id === id);
               if (!stored) return;
               setSelectedMember(null);
-              setEditingMember({ index, data: stored });
+              setEditingMember({ id, data: stored });
             }}
           />
         )}
 
-        {/* Modals */}
-        {payOpen && rawStoreFamily && (
-          <PaymentModal
-            family={rawStoreFamily}
-            onClose={() => setPayOpen(false)}
-            onConfirm={handleConfirmPayment}
-          />
+        {payOpen && raw && (
+          <PaymentModal family={raw} onClose={() => setPayOpen(false)} onConfirm={handleConfirmPayment} />
         )}
 
-        {visitOpen && rawStoreFamily && (
-          <VisitModal
-            family={rawStoreFamily}
-            onClose={() => setVisitOpen(false)}
-            onConfirm={handleConfirmVisit}
-          />
+        {visitOpen && raw && (
+          <VisitModal family={raw} onClose={() => setVisitOpen(false)} onConfirm={handleConfirmVisit} />
         )}
 
-        {addMemberOpen && (
+        {family && addMemberOpen && (
           <AddMemberDialog familyName={family.name} onClose={() => setAddMemberOpen(false)} onSave={handleAddMember} />
         )}
-        {editingMember && (
+        {family && editingMember && (
           <AddMemberDialog familyName={family.name} member={editingMember.data} onClose={() => setEditingMember(null)} onSave={handleEditMember} />
         )}
 
-        {printing && rawStoreFamily && createPortal(
-          <OfficialFamiliesPrintSheet families={[rawStoreFamily]} monthLabel={family.monthLabel} />,
+        {printing && raw && family && createPortal(
+          <OfficialFamiliesPrintSheet families={[raw]} monthLabel={family.monthLabel} />,
           document.body,
         )}
 

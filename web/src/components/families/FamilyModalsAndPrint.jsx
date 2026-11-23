@@ -81,7 +81,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
       paidThisMonth: 0,
       arrears: salaryNum + aidNum,
       arrearsMonths: 1,
-      lastVisit: '2026-11-15',
+      lastVisit: new Date().toISOString().slice(0, 10),
       notes: notes.trim() || 'ملف عائلة مسجل حديثاً، بانتظار استكمال الكشف الميداني.',
       members: [
         { name: headName.trim() || name.trim(), relation: 'رب الأسرة', age: 40, status: socialStatus },
@@ -139,6 +139,18 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
                 placeholder="مثال: عائلة الأرملة نادية سالم العزاوي"
                 className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-sm text-slate-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-blue-500/15"
               />
+            </label>
+
+            <label className="block sm:col-span-2">
+              <span className="mb-1.5 block text-xs font-semibold text-slate-600">اسم رب الأسرة الرباعي</span>
+              <input
+                type="text"
+                value={headName}
+                onChange={(e) => setHeadName(e.target.value)}
+                placeholder="مثال: نادية سالم حميد العزاوي"
+                className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-sm text-slate-900 transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-blue-500/15"
+              />
+              <span className="mt-1 block text-[11px] text-slate-500">يُستخدم لمعرفة إن كانت العائلة مسجّلة عند مؤسسة أخرى.</span>
             </label>
 
             <div className="sm:col-span-2">
