@@ -1,7 +1,7 @@
 import { HandCoins, MapPin, Phone, Pill, Stethoscope, UsersRound } from 'lucide-react';
 import { formatNumber, today } from '../../format';
 import { useBranding } from '../../branding';
-import { FOUNDATIONS, type Patient } from './sample';
+import type { Patient } from './sample';
 
 const shortDate = (iso: string) => `${iso.slice(0, 4)}-${Number(iso.slice(5, 7))}-${Number(iso.slice(8, 10))}`;
 
@@ -10,7 +10,7 @@ export interface ReportRow {
   cash: number;
   medicine: number;
   exams: number;
-  last: Patient['records'][number];
+  last: Pick<Patient['records'][number], 'date' | 'doctor' | 'delegate'>;
 }
 
 interface Props {
@@ -56,7 +56,7 @@ export function PatientsReportSheet({ rows, currency, query, sortLabel }: Props)
         <div>
           <span className="rec-strip-icon"><UsersRound size={15} aria-hidden /></span>
           <dl><dt>عدد المرضى</dt><dd><bdi>{rows.length}</bdi></dd></dl>
-          <small><bdi>{visits}</bdi> مراجعة · <bdi>{foundations}</bdi> من <bdi>{FOUNDATIONS.length}</bdi> مؤسسات</small>
+          <small><bdi>{visits}</bdi> مراجعة · <bdi>{foundations}</bdi> مؤسسات</small>
         </div>
         <div>
           <span className="rec-strip-icon"><HandCoins size={15} aria-hidden /></span>

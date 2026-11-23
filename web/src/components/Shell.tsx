@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  Building2, Check, ChevronLeft, Crown, HeartHandshake, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, Sun, Users, UsersRound, X, type LucideIcon,
+  Building2, Check, ChevronLeft, Crown, HeartHandshake, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, ServerCog, Sun, Users, UsersRound, X, type LucideIcon,
 } from 'lucide-react';
 import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
@@ -118,6 +118,7 @@ function crumbsFor(route: ReturnType<typeof useRoute>): Crumb[] | null {
   if (route === 'family-detail') return [HOME, { label: 'العوائل المتعففة', href: '#/families' }, { label: 'ملف العائلة' }];
   if (route === 'patients') return [HOME, { label: 'المرضى' }];
   if (route === 'patient-detail') return [HOME, { label: 'المرضى', href: '#/patients' }, { label: 'ملف المريض' }];
+  if (route === 'system') return [HOME, { label: 'إدارة النظام' }];
   if (typeof route === 'string' && route.startsWith('soon:')) {
     const page = SOON_PAGES.find((p) => p.slug === route.slice(5));
     return [HOME, { label: page?.label ?? 'قسم جديد' }];
@@ -129,7 +130,7 @@ function crumbsFor(route: ReturnType<typeof useRoute>): Crumb[] | null {
 // keeps the previous foundation's figures or offline copies.
 export async function enterFoundation(foundationId: number) {
   await api('/system/enter', { method: 'POST', body: { foundation_id: foundationId } });
-  clearLocalRecords();
+  await clearLocalRecords();
   location.hash = '#/';
   location.reload();
 }
@@ -203,13 +204,13 @@ export function Shell({ me, onSignedOut, children }: Props) {
               <div className="rail-section">مدير النظام</div>
               <a
                 href="#/system"
-                title="المؤسسات"
+                title="إدارة النظام"
                 className={route === 'system' ? 'active' : undefined}
                 aria-current={route === 'system' ? 'page' : undefined}
                 onClick={() => setOpen(false)}
               >
-                <span className="rail-nav-icon" aria-hidden><Building2 size={18} /></span>
-                <span>المؤسسات</span>
+                <span className="rail-nav-icon" aria-hidden><ServerCog size={18} /></span>
+                <span>إدارة النظام</span>
               </a>
             </div>
           )}

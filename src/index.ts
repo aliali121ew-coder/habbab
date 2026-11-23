@@ -7,6 +7,7 @@ import { requireFeature } from './lib/features';
 import { system } from './routes/system';
 import { branding } from './routes/branding';
 import { families } from './routes/families';
+import { patients } from './routes/patients';
 import { fail } from './lib/http';
 import { audit, dashboard, delegates, meta, users } from './routes/admin';
 import { auth } from './routes/auth';
@@ -25,13 +26,23 @@ app.use('/api/*', async (c, next) => {
   if (mutating) {
     // SameSite=Strict is the main defence; this blocks cross-site forms on older browsers.
     const origin = c.req.header('origin');
-    if (c.req.header('x-app') !== '1' || (origin && new URL(origin).host !== new URL(c.req.url).host)) {
+    let sameOrigin = true;
+    if (origin !== undefined) {
+      try {
+        sameOrigin = new URL(origin).origin === new URL(c.req.url).origin;
+      } catch {
+        sameOrigin = false;
+      }
+    }
+    if (c.req.header('x-app') !== '1' || !sameOrigin) {
       fail(403, 'طلب غير مسموح');
     }
   }
   await next();
   c.header('cache-control', c.res.headers.get('cache-control') ?? 'no-store');
   c.header('x-content-type-options', 'nosniff');
+  c.header('x-frame-options', 'DENY');
+  c.header('referrer-policy', 'no-referrer');
   if (c.env.ENVIRONMENT !== 'production') {
     c.header('x-d1-rows', `read=${c.get('d1Read') ?? 0};written=${c.get('d1Written') ?? 0}`);
   }
@@ -57,6 +68,8 @@ api.use('/expenses/*', requireFeature('expenses'));
 api.use('/prescriptions/*', requireFeature('patients'));
 api.use('/families/*', requireFeature('families'));
 api.route('/families', families);
+api.use('/patients/*', requireFeature('patients'));
+api.route('/patients', patients);
 api.route('/system', system);
 api.route('/branding', branding);
 api.route('/dashboard', dashboard);
@@ -80,7 +93,7 @@ app.notFound((c) => c.json({ error: 'غير موجود' }, 404));
 const SECTIONS: Record<string, string> = {
   subscribers: 'المشتركون', collections: 'التحصيل والمندوبون', delegates: 'المندوبون', closings: 'الإقفال الشهري',
   programs: 'البرامج', transactions: 'الحركات المالية', expenses: 'المصاريف', prescriptions: 'الوصفات',
-  users: 'الحسابات', branding: 'الإعدادات', system: 'المؤسسات', families: 'العوائل',
+  users: 'الحسابات', branding: 'الإعدادات', system: 'المؤسسات', families: 'العوائل', patients: 'المرضى',
 };
 
 // A save or change refused for lack of permission (403) is written to the foundation's activity

@@ -255,3 +255,15 @@
     background-color: color-mix(in srgb, var(--bar-active) 18%, var(--surface));
   }
 }
+
+/* Match dialog (families and patients): outside any layer, so it wins over Tailwind's colours
+   on every page, not only inside .fam-saas. */
+:root[data-theme="dark"] .fam-match { background: var(--surface); color: var(--ink); }
+:root[data-theme="dark"] .fam-match :is(.border-slate-100, .border-slate-200) { border-color: var(--line); }
+:root[data-theme="dark"] .fam-match :is(.bg-slate-50, .bg-slate-100) { background: var(--surface-2); }
+:root[data-theme="dark"] .fam-match .bg-amber-50 { background: color-mix(in srgb, #f59e0b 18%, transparent); }
+:root[data-theme="dark"] .fam-match :is(.text-slate-800, .text-slate-700) { color: var(--ink); }
+:root[data-theme="dark"] .fam-match :is(.text-slate-600, .text-slate-500) { color: var(--ink-2); }
+:root[data-theme="dark"] .fam-match .text-slate-400 { color: var(--ink-3); }
+:root[data-theme="dark"] .fam-match .fam-match-no { background: var(--surface-2); }
+:root[data-theme="dark"] .fam-match :is(.fam-match-cancel, .fam-match-no, button[aria-label]):hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }

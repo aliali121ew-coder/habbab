@@ -23,7 +23,17 @@ export const idParam = (value: string) => parseOrFail(z.coerce.number().int().po
 export const cursorParam = (value: string | undefined): number =>
   value ? parseOrFail(z.coerce.number().int().positive(), value) : Number.MAX_SAFE_INTEGER;
 
-export const zDate = z.string({ error: 'التاريخ مطلوب' }).regex(/^\d{4}-\d{2}-\d{2}$/, 'تاريخ غير صحيح');
+export function isValidCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1 || d > 31) return false;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
+export const zDate = z.string({ error: 'التاريخ مطلوب' })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'تاريخ غير صحيح')
+  .refine(isValidCalendarDate, 'تاريخ غير صحيح');
 export const zMonth = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'شهر غير صحيح');
 export const zAmount = z.number({ error: 'مبلغ غير صحيح' })
   .int('يجب أن يكون المبلغ رقماً صحيحاً').positive('يجب أن يكون المبلغ أكبر من صفر').max(100_000_000_000, 'المبلغ كبير جداً');

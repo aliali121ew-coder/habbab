@@ -52,7 +52,15 @@ export function PaymentDialog({ me, year, target, onClose, onDone }: Props) {
         });
       } catch (failure) {
         if (!(failure instanceof ApiError) || failure.status !== 0) throw failure;
-        queuePayment({ userId: me.id, subscriberId: row.id, name: row.full_name, period, amount: Number(amount), txDate: date });
+        queuePayment({
+          userId: me.id,
+          foundationId: me.foundation_id,
+          subscriberId: row.id,
+          name: row.full_name,
+          period,
+          amount: Number(amount),
+          txDate: date,
+        });
       }
     }, true);
   };

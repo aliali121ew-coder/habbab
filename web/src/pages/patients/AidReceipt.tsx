@@ -85,7 +85,7 @@ export function AidReceipt({ patient, aid, number, currency }: Props) {
           <dl>
             <div><dt><UserRound size={12} aria-hidden />الاسم</dt><dd>{patient.name}</dd></div>
             <div><dt><Activity size={12} aria-hidden />الحالة</dt><dd>{patient.condition}</dd></div>
-            <div><dt><Cake size={12} aria-hidden />العمر</dt><dd><bdi>{patient.age}</bdi> سنة</dd></div>
+            <div><dt><Cake size={12} aria-hidden />العمر</dt><dd>{patient.age > 0 ? <><bdi>{patient.age}</bdi> سنة</> : '—'}</dd></div>
             <div><dt><Phone size={12} aria-hidden />الهاتف</dt><dd><bdi dir="ltr">{patient.phone}</bdi></dd></div>
             <div><dt><MapPin size={12} aria-hidden />العنوان</dt><dd>{patient.address}</dd></div>
           </dl>

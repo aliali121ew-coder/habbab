@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowRight, CalendarDays, ChevronLeft, ChevronRight, HandCoins, HandHeart, Pencil, Pill, Printer, Search, Stethoscope,
-  UserRound, type LucideIcon,
+  ArrowRight, CalendarDays, ChevronLeft, ChevronRight, HandCoins, HandHeart, Pencil, Pill, Plus, Printer, Search, Stethoscope,
+  Trash2, UserRound, type LucideIcon,
 } from 'lucide-react';
 import type { Me } from '../../api';
 import { formatNumber } from '../../format';
@@ -10,7 +10,9 @@ import { patientIdFromHash } from '../../route';
 import { SortTh, compare, nextSort, type SortState } from '../../components/SortTh';
 import { printWhenReady } from '../../components/printWhenReady';
 import { AidReceipt } from './AidReceipt';
-import { FOUNDATIONS, OWN_FOUNDATION, PATIENTS } from './sample';
+import type { Patient } from './sample';
+import { addAid, getPatient, removeAid, updateAid, type AidInput } from '../../data/patients';
+import { AidDialog } from './PatientDialogs';
 
 type Kind = 'cash' | 'medicine' | 'exams';
 
@@ -27,14 +29,28 @@ const shortDate = (iso: string) => `${iso.slice(0, 4)}-${Number(iso.slice(5, 7))
 const initials = (name: string) => name.split(' ').slice(0, 2).map((part) => part[0]).join(' ');
 
 // One patient's page (#/patients/:id): who they are, four totals, then every aid they received,
-// one row per kind of aid, ten rows to a page. Built on the sample data for now.
+// one row per kind of aid, ten rows to a page. From the server (/api/patients/:id).
 type AidKey = 'kind' | 'amount' | 'doctor' | 'date' | 'delegate';
 const AID_LABELS: Record<AidKey, string> = {
   kind: 'نوع المساعدة', amount: 'المبلغ', doctor: 'الطبيب', date: 'تاريخ المساعدة', delegate: 'المندوب',
 };
 
 export function PatientDetailPage({ me }: { me: Me }) {
-  const patient = PATIENTS.find((item) => item.id === patientIdFromHash());
+  const id = patientIdFromHash();
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading');
+  const [editing, setEditing] = useState<{ id: number; aid: AidInput } | 'new' | null>(null);
+  const [failure, setFailure] = useState('');
+  const load = useCallback(async () => {
+    try {
+      const { patient: loaded } = await getPatient(id);
+      setPatient(loaded);
+      setState('ready');
+    } catch {
+      setState('missing');
+    }
+  }, [id]);
+  useEffect(() => { void load(); }, [load]);
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<Kind | 'all'>('all');
   const [page, setPage] = useState(0);
@@ -45,9 +61,9 @@ export function PatientDetailPage({ me }: { me: Me }) {
   };
 
   // Each visit can carry cash, medicine and an exam fee: each becomes its own row.
-  const aids = useMemo(() => (patient?.records ?? []).flatMap((record, at) => (Object.keys(KINDS) as Kind[])
+  const aids = useMemo(() => (patient?.records ?? []).flatMap((record) => (Object.keys(KINDS) as Kind[])
     .filter((key) => record[key] > 0)
-    .map((key) => ({ id: `${at}-${key}`, kind: key, amount: record[key], ...record }))), [patient]);
+    .map((key) => ({ ...record, key: `${record.id}-${key}`, kind: key, amount: record[key] }))), [patient]);
 
   const rows = useMemo(() => {
     const needle = query.trim();
@@ -71,6 +87,9 @@ export function PatientDetailPage({ me }: { me: Me }) {
     };
   }, [printing]);
 
+  if (state === 'loading') {
+    return <div className="pt"><section className="pt-panel ptd-missing"><p>جارٍ تحميل ملف المريض…</p></section></div>;
+  }
   if (!patient) {
     return (
       <div className="pt">
@@ -87,12 +106,30 @@ export function PatientDetailPage({ me }: { me: Me }) {
   const shown = rows.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
 
   const sum = (key: Kind, own = false) => patient.records
-    .filter((record) => !own || record.foundation === OWN_FOUNDATION)
+    .filter((record) => !own || record.own)
     .reduce((total, record) => total + record[key], 0);
   const count = (key: Kind) => patient.records.filter((record) => record[key] > 0).length;
   const highest = Math.max(0, ...patient.records.map((record) => record.cash));
   const last = patient.records[0];
-  const foundations = new Set(patient.records.map((record) => record.foundation)).size;
+  const foundations = new Set(patient.records.map((record) => (record.own ? '' : record.foundation))).size;
+  const lastDoctor = patient.records.find((record) => record.own && record.doctor)?.doctor ?? '—';
+
+  const save = async (work: () => Promise<unknown>) => {
+    setFailure('');
+    try {
+      await work();
+      await load();
+      setEditing(null);
+    } catch (problem) {
+      setFailure((problem as Error).message);
+      throw problem;
+    }
+  };
+  const remove = (aid: (typeof aids)[number]) => {
+    const total = aid.cash + aid.medicine + aid.exams;
+    if (!window.confirm(`حذف مساعدة ${shortDate(aid.date)} (${formatNumber(total)} ${me.currency})؟ تُحذف أنواعها كلها في هذا التاريخ.`)) return;
+    void save(() => removeAid(patient.id, aid.id)).catch(() => undefined);
+  };
 
   const unit = <span className="ptd-unit">{me.currency}</span>;
 
@@ -104,14 +141,17 @@ export function PatientDetailPage({ me }: { me: Me }) {
         <div className="ptd-who">
           <div className="ptd-name">
             <h1>{patient.name}</h1>
-            <span className="ptd-tag">{patient.condition}</span>
+            {patient.condition && <span className="ptd-tag">{patient.condition}</span>}
           </div>
           <dl className="ptd-facts">
-            <div><dt>العمر</dt><dd><bdi>{patient.age}</bdi> سنة</dd></div>
-            <div><dt>رقم الهاتف</dt><dd><bdi dir="ltr">{patient.phone}</bdi></dd></div>
-            <div><dt>العنوان</dt><dd>{patient.address}</dd></div>
+            <div><dt>العمر</dt><dd>{patient.age > 0 ? <><bdi>{patient.age}</bdi> سنة</> : '—'}</dd></div>
+            <div><dt>رقم الهاتف</dt><dd>{patient.phone ? <bdi dir="ltr">{patient.phone}</bdi> : '—'}</dd></div>
+            <div><dt>العنوان</dt><dd>{patient.address || '—'}</dd></div>
           </dl>
         </div>
+        <button type="button" className="pt-add ptd-add" onClick={() => setEditing('new')}>
+          <Plus size={17} aria-hidden /> تسجيل مساعدة
+        </button>
         <a className="ptd-file" href="#/patients" aria-label="رجوع إلى سجل المرضى">
           <span className={`ptd-file-photo tone-${patient.tone}`} aria-hidden>{initials(patient.name)}</span>
           <span className="ptd-file-text">
@@ -125,8 +165,8 @@ export function PatientDetailPage({ me }: { me: Me }) {
       <section className="pt-panel ptd-cards" aria-label="ملخص المساعدات">
         <Card title="عدد المساعدات" icon={HandHeart} tone="tone-violet" value={<bdi>{formatNumber(aids.length)}</bdi>}
           rows={[
-            ['آخر', <bdi dir="ltr">{shortDate(last.date)}</bdi>],
-            ['المؤسسات', <><bdi>{foundations}</bdi> من <bdi>{FOUNDATIONS.length}</bdi></>],
+            ['آخر', last ? <bdi dir="ltr">{shortDate(last.date)}</bdi> : '—'],
+            ['المؤسسات', <bdi>{foundations}</bdi>],
           ]} />
         <Card title="المبالغ المالية" icon={HandCoins} tone="tone-amber" value={<><bdi>{formatNumber(sum('cash'))}</bdi> {unit}</>}
           rows={[
@@ -136,7 +176,7 @@ export function PatientDetailPage({ me }: { me: Me }) {
         <Card title="كشفيات طبية" icon={Stethoscope} tone="tone-rose" value={<><bdi>{formatNumber(sum('exams'))}</bdi> {unit}</>}
           rows={[
             ['الكشفيات', <bdi>{count('exams')}</bdi>],
-            ['الطبيب', last.doctor],
+            ['الطبيب', lastDoctor],
           ]} />
         <Card title="شراء دواء" icon={Pill} tone="tone-teal" value={<><bdi>{formatNumber(sum('medicine', true))}</bdi> {unit}</>}
           rows={[
@@ -144,6 +184,8 @@ export function PatientDetailPage({ me }: { me: Me }) {
             ['الكل', <bdi>{formatNumber(sum('medicine'))}</bdi>],
           ]} />
       </section>
+
+      {failure && <p className="pt-notice is-error" role="alert">{failure}</p>}
 
       <section className="pt-panel ptd-list" aria-labelledby="ptd-list-title">
         <header className="ptd-tabs">
@@ -188,21 +230,31 @@ export function PatientDetailPage({ me }: { me: Me }) {
                 const info = KINDS[aid.kind];
                 const when = shortDate(aid.date);
                 return (
-                  <tr key={aid.id}>
+                  <tr key={aid.key}>
                     <td><span className="ptd-type"><span className={`ptd-type-icon ${info.tone}`} aria-hidden><info.icon size={16} /></span>{info.label}</span></td>
                     <td className="num"><b><bdi>{formatNumber(aid.amount)}</bdi></b> <span className="ptd-unit">{me.currency}</span></td>
-                    <td><span className="ptd-person"><span className="ptd-person-icon" aria-hidden><UserRound size={14} /></span>{aid.doctor}</span></td>
+                    <td>{aid.doctor ? <span className="ptd-person"><span className="ptd-person-icon" aria-hidden><UserRound size={14} /></span>{aid.doctor}</span> : <span className="pt-nil">—</span>}</td>
                     <td className="mid"><span className="ptd-date"><CalendarDays size={14} aria-hidden /><bdi dir="ltr">{when}</bdi></span></td>
-                    <td><span className="ptd-person"><span className="ptd-person-initials" aria-hidden>{initials(aid.delegate)}</span>{aid.delegate}</span></td>
-                    <td className="ptd-details"><b>{aid.note}</b><small>{aid.foundation}</small></td>
+                    <td>{aid.delegate ? <span className="ptd-person"><span className="ptd-person-initials" aria-hidden>{initials(aid.delegate)}</span>{aid.delegate}</span> : <span className="pt-nil">—</span>}</td>
+                    <td className="ptd-details"><b>{aid.note || (aid.own ? '' : 'مساعدة من مؤسسة أخرى')}</b><small>{aid.foundation}</small></td>
                     <td className="mid">
                       <div className="ptd-actions">
-                        <button type="button" className="ptd-act" title="تعديل" aria-label={`تعديل ${info.label} بتاريخ ${when}`}>
-                          <Pencil size={15} aria-hidden />
-                        </button>
-                        <button type="button" className="ptd-act print" title="طباعة" aria-label={`طباعة ${info.label} بتاريخ ${when}`} onClick={() => setPrinting(aid)}>
-                          <Printer size={15} aria-hidden />
-                        </button>
+                        {aid.own && (
+                          <button type="button" className="ptd-act" title="تعديل" aria-label={`تعديل ${info.label} بتاريخ ${when}`}
+                            onClick={() => setEditing({ id: aid.id, aid: { date: aid.date, cash: aid.cash, medicine: aid.medicine, exams: aid.exams, doctor: aid.doctor, delegate: aid.delegate, note: aid.note } })}>
+                            <Pencil size={15} aria-hidden />
+                          </button>
+                        )}
+                        {aid.own && me.role === 'admin' && (
+                          <button type="button" className="ptd-act del" title="حذف" aria-label={`حذف ${info.label} بتاريخ ${when}`} onClick={() => remove(aid)}>
+                            <Trash2 size={15} aria-hidden />
+                          </button>
+                        )}
+                        {aid.own && (
+                          <button type="button" className="ptd-act print" title="طباعة" aria-label={`طباعة ${info.label} بتاريخ ${when}`} onClick={() => setPrinting(aid)}>
+                            <Printer size={15} aria-hidden />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -221,6 +273,49 @@ export function PatientDetailPage({ me }: { me: Me }) {
           </table>
           {rows.length === 0 && <p className="pt-empty">لا توجد مساعدة تطابق البحث.</p>}
         </div>
+
+        {/* Phones: the same rows as cards (the table is hidden there). */}
+        <ul className="ptd-m-list" aria-label="سجل المساعدات">
+          {shown.map((aid) => {
+            const info = KINDS[aid.kind];
+            const when = shortDate(aid.date);
+            return (
+              <li key={aid.key} className="ptd-m-row">
+                <span className={`ptd-type-icon ${info.tone}`} aria-hidden><info.icon size={16} /></span>
+                <div className="ptd-m-main">
+                  <strong>{info.label}</strong>
+                  <small>
+                    <bdi dir="ltr">{when}</bdi>
+                    {aid.doctor && <> · {aid.doctor}</>}
+                  </small>
+                  <small className="ptd-m-from">{aid.own ? (aid.note || aid.foundation) : aid.foundation}</small>
+                </div>
+                <div className="ptd-m-end">
+                  <b><bdi>{formatNumber(aid.amount)}</bdi> <span className="ptd-unit">{me.currency}</span></b>
+                  <div className="ptd-actions">
+                    {aid.own && (
+                      <button type="button" className="ptd-act" aria-label={`تعديل ${info.label} بتاريخ ${when}`}
+                        onClick={() => setEditing({ id: aid.id, aid: { date: aid.date, cash: aid.cash, medicine: aid.medicine, exams: aid.exams, doctor: aid.doctor, delegate: aid.delegate, note: aid.note } })}>
+                        <Pencil size={15} aria-hidden />
+                      </button>
+                    )}
+                    {aid.own && me.role === 'admin' && (
+                      <button type="button" className="ptd-act del" aria-label={`حذف ${info.label} بتاريخ ${when}`} onClick={() => remove(aid)}>
+                        <Trash2 size={15} aria-hidden />
+                      </button>
+                    )}
+                    {aid.own && (
+                      <button type="button" className="ptd-act print" aria-label={`طباعة ${info.label} بتاريخ ${when}`} onClick={() => setPrinting(aid)}>
+                        <Printer size={15} aria-hidden />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+          {rows.length === 0 && <li className="pt-empty">لا توجد مساعدة تطابق البحث.</li>}
+        </ul>
 
         {rows.length > 0 && (
           <footer className="ptd-pager">
@@ -250,6 +345,16 @@ export function PatientDetailPage({ me }: { me: Me }) {
           currency={me.currency}
         />,
         document.body,
+      )}
+
+      {editing && (
+        <AidDialog
+          patientName={patient.name}
+          currency={me.currency}
+          initial={editing === 'new' ? undefined : editing.aid}
+          onClose={() => setEditing(null)}
+          onSave={(aid) => save(() => (editing === 'new' ? addAid(patient.id, aid) : updateAid(patient.id, editing.id, aid)))}
+        />
       )}
     </div>
   );

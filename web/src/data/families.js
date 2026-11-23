@@ -29,6 +29,12 @@ let loaded = false;
 const listeners = new Set();
 const publish = () => listeners.forEach((fn) => fn(cache));
 
+export function clearFamiliesCache() {
+  cache = [];
+  loaded = false;
+  publish();
+}
+
 /** The families last loaded from the server (empty until the first load). */
 export function loadFamiliesStore() {
   return cache;

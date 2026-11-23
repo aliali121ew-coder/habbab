@@ -149,22 +149,26 @@ export function Register({
   const [printRow, setPrintRow] = useState<GridRow | null>(null);
   const [attempt, setAttempt] = useState(0);
   // Payments recorded offline: shown as paid here until they are sent (paymentQueue.ts).
-  const [pending, setPending] = useState(() => queuedPayments());
-  useEffect(() => onQueueChange(() => setPending(queuedPayments())), []);
+  const [pending, setPending] = useState(() => queuedPayments(me.id, me.foundation_id));
+  useEffect(() => {
+    setPending(queuedPayments(me.id, me.foundation_id));
+    return onQueueChange(() => setPending(queuedPayments(me.id, me.foundation_id)));
+  }, [me.id, me.foundation_id]);
   const pendingIds = useMemo(() => new Set(pending.map((item) => item.subscriberId)), [pending]);
   const withPending = useCallback((items: GridRow[]) => {
-    const own = queuedPayments().filter((item) => item.period.startsWith(`${year}-`));
+    const own = queuedPayments(me.id, me.foundation_id).filter((item) => item.period.startsWith(`${year}-`));
     if (!own.length) return items;
     return items.map((item) => {
       let mask = item.paid_mask;
       for (const payment of own) if (payment.subscriberId === item.id) mask |= 1 << (Number(payment.period.slice(5, 7)) - 1);
       return mask === item.paid_mask ? item : { ...item, paid_mask: mask };
     });
-  }, [year]);
-  // Once waiting payments have gone out, the list is read again from the server.
+  }, [year, me.id, me.foundation_id]);
+  // Once waiting payments have gone out (or been rejected), the list is read again from the server.
   useEffect(() => {
     const synced = (event: Event) => {
-      if ((event as CustomEvent<{ sent?: number }>).detail?.sent) { setAttempt((value) => value + 1); onPaymentChanged(); }
+      const detail = (event as CustomEvent<{ sent?: number; failed?: number }>).detail;
+      if (detail?.sent || detail?.failed) { setAttempt((value) => value + 1); onPaymentChanged(); }
     };
     window.addEventListener('ahbab:queue', synced);
     return () => window.removeEventListener('ahbab:queue', synced);

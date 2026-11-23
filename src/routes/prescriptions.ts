@@ -192,9 +192,13 @@ files.get('/:token', async (c) => {
   const object = await c.env.FILES.get(link.k);
   if (!object) fail(404, 'الملف غير موجود');
   const plain = await decryptBytes(c.env.DATA_KEY, new Uint8Array(await object.arrayBuffer()));
-  return c.body(plain, 200, {
-    'content-type': object.customMetadata?.type ?? 'application/octet-stream',
+  const contentType = object.customMetadata?.type ?? 'application/octet-stream';
+  const headers: Record<string, string> = {
+    'content-type': contentType,
     'cache-control': `private, max-age=${LINK_WINDOW}`,
     'x-content-type-options': 'nosniff',
-  });
+    'content-security-policy': "default-src 'none'; sandbox",
+  };
+  if (contentType === 'application/pdf') headers['content-disposition'] = 'attachment';
+  return c.body(plain, 200, headers);
 });

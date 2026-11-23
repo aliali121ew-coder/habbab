@@ -144,10 +144,10 @@ families.get('/:id', async (c) => {
 
 const zMember = z.object({
   name: z.string().trim().min(2, 'اسم الفرد مطلوب').max(120),
-  relation: z.string().trim().max(60).optional().default(''),
-  age: z.coerce.number().int().min(0).max(130).optional().default(0),
+  relation: z.string().trim().max(60).optional(),
+  age: z.coerce.number().int().min(0).max(130).optional(),
   gender: z.string().trim().max(10).optional(),
-  status: z.string().trim().max(80).optional().default(''),
+  status: z.string().trim().max(80).optional(),
   chronic: z.string().trim().max(120).optional(),
   phone: z.string().trim().max(20).optional(),
   notes: z.string().trim().max(300).optional(),
@@ -162,12 +162,12 @@ const zFamily = {
   name: z.string({ error: 'اسم العائلة مطلوب' }).trim().min(3, 'اسم العائلة قصير جداً').max(160),
   headName: z.string({ error: 'اسم رب الأسرة مطلوب' }).trim().min(3, 'اسم رب الأسرة قصير جداً').max(120),
   phone: z.string().trim().max(20).optional(),
-  category: z.enum(['critical', 'intensive', 'stable']).default('intensive'),
+  category: z.enum(['critical', 'intensive', 'stable']).optional(),
   socialStatus: z.string().trim().max(80).optional(),
   region: z.string().trim().max(80).optional(),
   address: z.string().trim().max(200).optional(),
   housing: z.string().trim().max(60).optional(),
-  rent: z.coerce.number().int().min(0).max(100_000_000).default(0),
+  rent: z.coerce.number().int().min(0).max(100_000_000).optional(),
   income: z.string().trim().max(160).optional(),
   delegateId: z.number().int().positive().nullable().optional(),
   entitlements: zEnt.optional(),
@@ -196,15 +196,18 @@ families.post('/match', async (c) => {
 });
 
 // The link group a confirmed match joins (creating it on the other file if it had none).
-async function linkTo(c: Ctx, targetId: number): Promise<{ group: number; statements: D1PreparedStatement[] }> {
+async function linkTo(c: Ctx, targetId: number, expectedNorm: string): Promise<{ group: number; statements: D1PreparedStatement[] }> {
+  if (c.get('user').role !== 'admin') fail(403, 'ربط الملفات متاح للمدير فقط');
   const target = await first<{ id: number; link_id: number | null }>(c,
-    // scope-ok: the other foundation's file, by an id the match just offered; only its link is touched
-    'SELECT id, link_id FROM families WHERE id = ? AND foundation_id <> ? AND deleted_at IS NULL', targetId, fid(c));
+    // scope-ok: the other foundation's file, verified by exact normalized name and active foundation
+    `SELECT f.id, f.link_id FROM families f JOIN foundations fo ON fo.id = f.foundation_id
+     WHERE f.id = ? AND f.foundation_id <> ? AND f.deleted_at IS NULL AND fo.status = 'active' AND f.head_norm = ?`,
+    targetId, fid(c), expectedNorm);
   if (!target) fail(422, 'الملف المطابق غير موجود');
   const group = target.link_id ?? target.id;
   return {
     group,
-    // scope-ok: sets only the shared link on the other foundation's file
+    // scope-ok: sets only the shared link on the other foundation's verified matching file
     statements: target.link_id === null ? [stmt(c, 'UPDATE families SET link_id = ? WHERE id = ?', group, target.id)] : [],
   };
 }
@@ -217,13 +220,14 @@ families.post('/', async (c) => {
   }));
   const delegateId = await delegateFor(c, body.delegateId);
   const ent = body.entitlements ?? { salary: 0, aid: 0, medicine: 0, checkups: 0 };
-  const link = body.linkTo ? await linkTo(c, body.linkTo) : null;
+  const headNorm = normalizeName(body.headName);
+  const link = body.linkTo ? await linkTo(c, body.linkTo, headNorm) : null;
   const [created] = await batch(c, [
     stmt(c, `INSERT INTO families (foundation_id, file_no, name, head_name, head_norm, phone, category, social_status, region, address,
                housing, rent, income, delegate_id, ent_salary, ent_aid, ent_medicine, ent_checkups, notes, link_id, created_by)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-      fid(c), `tmp-${crypto.randomUUID()}`, body.name, body.headName, normalizeName(body.headName), body.phone ?? null, body.category,
-      body.socialStatus ?? null, body.region ?? null, body.address ?? null, body.housing ?? null, body.rent, body.income ?? null,
+      fid(c), `tmp-${crypto.randomUUID()}`, body.name, body.headName, headNorm, body.phone ?? null, body.category ?? 'intensive',
+      body.socialStatus ?? null, body.region ?? null, body.address ?? null, body.housing ?? null, body.rent ?? 0, body.income ?? null,
       delegateId, ent.salary, ent.aid, ent.medicine, ent.checkups, body.notes ?? null, link?.group ?? null, c.get('user').id),
   ]);
   const id = (created.results[0] as { id: number }).id;
@@ -232,7 +236,7 @@ families.post('/', async (c) => {
     ...(body.members ?? []).map((m, sort) => stmt(c,
       `INSERT INTO family_members (foundation_id, family_id, name, relation, age, gender, status, chronic, phone, notes, sort)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      fid(c), id, m.name, m.relation, m.age, m.gender ?? null, m.status, m.chronic ?? null, m.phone ?? null, m.notes ?? null, sort)),
+      fid(c), id, m.name, m.relation ?? '', m.age ?? 0, m.gender ?? null, m.status ?? '', m.chronic ?? null, m.phone ?? null, m.notes ?? null, sort)),
     ...(link?.statements ?? []),
     auditStmt(c, 'create', 'family', id, auditDetail(body.name, undefined, link ? 'مرتبطة بمؤسسة أخرى' : undefined)),
   ]);
@@ -300,7 +304,7 @@ families.post('/:id/payments', async (c) => {
 // Pays each listed family what is still due this month (the manager's «صرف جماعي»).
 families.post('/bulk-pay', requireRole('admin'), async (c) => {
   const { ids, date, type } = await readJson(c, z.object({
-    ids: z.array(z.number().int().positive()).min(1).max(500),
+    ids: z.array(z.number().int().positive()).min(1).max(100),
     date: zDate,
     type: z.string().trim().min(2).max(60).default('راتب شهري'),
   }));
@@ -309,18 +313,28 @@ families.post('/bulk-pay', requireRole('admin'), async (c) => {
     `SELECT f.id, f.name, f.head_name, f.ent_salary + f.ent_aid + f.ent_medicine + f.ent_checkups AS due,
        COALESCE((SELECT SUM(p.amount) FROM family_payments p WHERE p.family_id = f.id AND p.month = ? AND p.deleted_at IS NULL), 0) AS paid,
        u.full_name AS delegate_name
-     FROM families f LEFT JOIN users u ON u.id = f.delegate_id
+     FROM families f LEFT JOIN users u ON u.id = f.delegate_id AND u.foundation_id = f.foundation_id
      WHERE f.foundation_id = ? AND f.deleted_at IS NULL AND f.id IN (SELECT value FROM json_each(?))`,
     month, fid(c), JSON.stringify(ids));
   const owing = rows.filter((r) => r.due > r.paid);
   if (!owing.length) return c.json({ paid: 0 });
-  await batch(c, owing.flatMap((r) => [
+  const results = await batch(c, owing.map((r) =>
     stmt(c, `INSERT INTO family_payments (foundation_id, family_id, paid_on, month, amount, type, received_by, paid_by, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      fid(c), r.id, date, month, r.due - r.paid, type, r.head_name, r.delegate_name ?? 'الصرف الجماعي', c.get('user').id),
-    auditStmt(c, 'pay', 'family', r.id, auditDetail(r.name, undefined, JSON.stringify({ amount: r.due - r.paid, type }))),
-  ]));
-  return c.json({ paid: owing.length });
+             SELECT f.foundation_id, f.id, ?1, ?2,
+               (f.ent_salary + f.ent_aid + f.ent_medicine + f.ent_checkups)
+                 - COALESCE((SELECT SUM(p.amount) FROM family_payments p WHERE p.family_id = f.id AND p.month = ?2 AND p.deleted_at IS NULL), 0),
+               ?3, f.head_name, ?4, ?5
+             FROM families f
+             WHERE f.id = ?6 AND f.foundation_id = ?7 AND f.deleted_at IS NULL
+               AND (f.ent_salary + f.ent_aid + f.ent_medicine + f.ent_checkups)
+                 > COALESCE((SELECT SUM(p.amount) FROM family_payments p WHERE p.family_id = f.id AND p.month = ?2 AND p.deleted_at IS NULL), 0)`,
+      date, month, type, r.delegate_name ?? 'الصرف الجماعي', c.get('user').id, r.id, fid(c))));
+  const paidRows = owing.filter((_, i) => (results[i]?.meta?.changes ?? 0) > 0);
+  if (paidRows.length) {
+    await batch(c, paidRows.map((r) =>
+      auditStmt(c, 'pay', 'family', r.id, auditDetail(r.name, undefined, JSON.stringify({ amount: r.due - r.paid, type })))));
+  }
+  return c.json({ paid: paidRows.length });
 });
 
 families.post('/:id/visits', async (c) => {
@@ -342,7 +356,7 @@ families.post('/:id/members', async (c) => {
   await batch(c, [
     stmt(c, `INSERT INTO family_members (foundation_id, family_id, name, relation, age, gender, status, chronic, phone, notes, sort)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT COALESCE(MAX(sort), -1) + 1 FROM family_members WHERE family_id = ?))`,
-      fid(c), id, m.name, m.relation, m.age, m.gender ?? null, m.status, m.chronic ?? null, m.phone ?? null, m.notes ?? null, id),
+      fid(c), id, m.name, m.relation ?? '', m.age ?? 0, m.gender ?? null, m.status ?? '', m.chronic ?? null, m.phone ?? null, m.notes ?? null, id),
     auditStmt(c, 'add_member', 'family', id, auditDetail(family.name, undefined, m.name)),
   ]);
   return c.json({ ok: true }, 201);
@@ -403,7 +417,7 @@ families.post('/:id/link', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   const { target } = await readJson(c, z.object({ target: z.number().int().positive() }));
   const family = await loadFamily(c, id);
-  const link = await linkTo(c, target);
+  const link = await linkTo(c, target, normalizeName(family.head_name));
   await batch(c, [
     ...link.statements,
     stmt(c, 'UPDATE families SET link_id = ? WHERE id = ? AND foundation_id = ?', link.group, id, fid(c)),

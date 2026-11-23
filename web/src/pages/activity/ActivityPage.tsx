@@ -60,7 +60,8 @@ const FIELD: Record<string, string> = {
   stamp_place: 'المكان تحت الختم', phones: 'الهواتف', accountant_name: 'اسم المحاسب', manager_name: 'اسم المدير', features: 'الصفحات',
   head_name: 'رب الأسرة', social_status: 'الحالة الاجتماعية', region: 'المنطقة', housing: 'السكن', rent: 'الإيجار', income: 'الدخل',
   ent_salary: 'الراتب الشهري', ent_aid: 'المساعدات', ent_medicine: 'الدواء', ent_checkups: 'الكشفيات', relation: 'الصلة', age: 'العمر',
-  gender: 'الجنس', chronic: 'مرض مزمن',
+  gender: 'الجنس', chronic: 'مرض مزمن', condition: 'الحالة المرضية', given_on: 'التاريخ', cash: 'نقد', medicine: 'دواء',
+  exams: 'كشفية', doctor: 'الطبيب', delegate: 'المندوب', note: 'التفاصيل',
 };
 
 interface Detail { label?: string; changes?: Record<string, [unknown, unknown]>; note?: string; text?: string }
@@ -89,13 +90,21 @@ function showValue(key: string, value: unknown, currency: string): string {
   if (key === 'status') return value === 'alive' ? 'حي' : value === 'deceased' ? 'متوفى' : RX_STATUS[String(value)] ?? String(value);
   if (key === 'active') return Number(value) ? 'فعّال' : 'موقوف';
   if (key === 'role') return ROLE[String(value)] ?? String(value);
-  if (['amount', 'monthly_fee', 'rent', 'ent_salary', 'ent_aid', 'ent_medicine', 'ent_checkups'].includes(key)) return `${formatNumber(Number(value))} ${currency}`;
+  if (key === 'gender') return value === 'female' ? 'أنثى' : value === 'male' ? 'ذكر' : String(value);
+  if (['amount', 'monthly_fee', 'rent', 'ent_salary', 'ent_aid', 'ent_medicine', 'ent_checkups', 'cash', 'medicine', 'exams'].includes(key)) return `${formatNumber(Number(value))} ${currency}`;
   if (key === 'category' && ['critical', 'intensive', 'stable'].includes(String(value))) return { critical: 'حرجة', intensive: 'متوسطة', stable: 'مستقرة' }[String(value)]!;
   if (Array.isArray(value)) return value.join('، ');
   return String(value);
 }
 
 interface Said { tone: Tone; icon: LucideIcon; title: string; tag: string; subject?: string; facts: string[] }
+
+// A patient's aid as «نقد 100,000 د.ع · دواء 45,000 د.ع», leaving out the kinds it did not include.
+function aidFacts(note: Record<string, unknown>, currency: string): string[] {
+  return (['cash', 'medicine', 'exams'] as const)
+    .filter((key) => Number(note[key]) > 0)
+    .map((key) => `${FIELD[key]} ${formatNumber(Number(note[key]))} ${currency}`);
+}
 
 // One entry, as the reference shows it: a title (what was done), the record it concerns, a tag
 // (which part of the system) and a line of facts — each changed field as before ← after.
@@ -160,6 +169,15 @@ function describe(entry: Entry, currency: string): Said {
     case 'update_photo:family': return base('update', FileText, 'تغيير صورة عائلة', 'الملفات');
     case 'link:family': return base('update', Database, 'ربط العائلة بمؤسسة أخرى', 'البيانات');
     case 'unlink:family': return base('delete', Database, 'فك ربط العائلة', 'البيانات');
+    case 'create:patient': return base('create', Plus, 'إضافة مريض', 'البيانات', [detail.note]);
+    case 'update:patient': return base('update', Pencil, 'تعديل ملف مريض', 'البيانات');
+    case 'delete:patient': return base('delete', Trash2, 'حذف ملف مريض', 'البيانات');
+    case 'aid:patient': return base('money', Banknote, 'تسجيل مساعدة لمريض', 'المالية', aidFacts(note, currency));
+    case 'update_aid:patient': return base('update', Pencil, 'تعديل مساعدة مريض', 'المالية');
+    case 'remove_aid:patient': return base('delete', Trash2, 'حذف مساعدة مريض', 'المالية', aidFacts(note, currency));
+    case 'update_photo:patient': return base('update', FileText, 'تغيير صورة مريض', 'الملفات');
+    case 'link:patient': return base('update', Database, 'ربط المريض بمؤسسة أخرى', 'البيانات');
+    case 'unlink:patient': return base('delete', Database, 'فك ربط المريض', 'البيانات');
     case 'create_foundation:foundation': return base('create', Plus, 'إنشاء مؤسسة', 'الحسابات', [detail.text]);
     case 'update_foundation:foundation': return base('update', Pencil, 'تعديل إعدادات المؤسسة', 'الحسابات');
     default:

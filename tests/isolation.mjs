@@ -159,6 +159,13 @@ const lists = [
   ['delegates', await f2('GET', '/delegates'), (r) => ids(r).every((id) => id === IDS.delegate)],
   ['reference data', await f2('GET', '/meta'), (r) => r.json?.delegates.every((d) => d.id === IDS.delegate) && r.json.programs.every((p) => p.id === IDS.program)],
   ['audit log', await f2('GET', '/audit'), (r) => (r.json?.items ?? []).every((a) => a.user_name === 'مدير اختبار' || a.user_name === 'مندوب اختبار' || a.user_name === null)],
+  ['audit log search', await f2('GET', `/audit?q=${encodeURIComponent(f1.sub_name.slice(0, 6))}`), (r) => (r.json?.items ?? []).length === 0],
+  ['audit log of a foundation-1 user', await f2('GET', `/audit?user=${f1.delegate}`), (r) => (r.json?.items ?? []).length === 0],
+  ['audit log figures', await f2('GET', '/audit/stats'), (r) => {
+    const own = sql(`SELECT COUNT(*) AS n FROM audit_log WHERE foundation_id = ${F2} AND action = 'login'`)[0].n;
+    return r.json?.logins === own;
+  }],
+  ['audit log user filter', await f2('GET', '/audit/users'), (r) => ids(r).every((id) => id === IDS.admin || id === IDS.delegate)],
   ['dashboard', await f2('GET', '/dashboard'), (r) => (r.json?.totals?.subs_alive ?? 0) === 1],
   ['monthly closings', await f2('GET', '/closings'), (r) => (r.json?.items ?? []).length === 0],
   ['expenses of the month', await f2('GET', `/expenses?month=${thisMonth}`), (r) => (r.json?.items ?? []).length === 0],

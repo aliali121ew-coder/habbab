@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowLeft, Building2, CalendarCheck, CalendarDays, HandHeart, Camera, ChevronLeft, FileText, HandCoins, HeartPulse, MapPin, Phone, Pill, Printer, Search, Stethoscope, UserCheck, UserRound, UsersRound, X,
+  ArrowLeft, Building2, CalendarCheck, CalendarDays, HandHeart, Camera, ChevronLeft, FileText, HandCoins, HeartPulse, MapPin, Phone, Pill, Plus, Printer, Search, Stethoscope, UserCheck, UserPlus, UserRound, UsersRound, X,
 } from 'lucide-react';
 import type { Me } from '../../api';
 import { useBranding } from '../../branding';
@@ -12,7 +12,10 @@ import { printWhenReady } from '../../components/printWhenReady';
 import { loadFamiliesStore } from '../../data/families';
 import { WhatsAppMark } from '../subscribers/WhatsAppButton';
 import { PatientRecordSheet } from './PatientRecordSheet';
-import { FOUNDATIONS, OWN_FOUNDATION, PATIENTS, type AidRecord, type Patient } from './sample';
+import { foundationsOf, type AidRecord, type Patient } from './sample';
+import { addAid, createPatient, matchPatient, uploadPatientPhoto, usePatients, type AidInput, type PatientInput } from '../../data/patients';
+import { MatchDialog } from '../../components/families/MatchDialog';
+import { AddPatientDialog, AidDialog } from './PatientDialogs';
 
 const FOUNDATION_BRANDS: Record<string, { from: string; to: string; short: string }> = {
   'مؤسسة العين للرعاية': { from: '#0284c7', to: '#0369a1', short: 'العين' },
@@ -22,24 +25,10 @@ const FOUNDATION_BRANDS: Record<string, { from: string; to: string; short: strin
 const getFoundationBrand = (name: string) =>
   FOUNDATION_BRANDS[name] ?? { from: '#4f46e5', to: '#4338ca', short: name.slice(0, 6) };
 
-interface StoredFamilyPayment {
-  date: string;
-  amount: number;
-  type: string;
-  receivedBy?: string;
-  by?: string;
-}
-interface StoredFamilyVisit {
-  date: string;
-  delegateName?: string;
-  note?: string;
-}
 interface StoredFamily {
   id: number;
   name: string;
   members?: Array<{ name: string }>;
-  payments?: StoredFamilyPayment[];
-  visits?: StoredFamilyVisit[];
 }
 
 const FEMALE_NAMES = new Set([
@@ -83,23 +72,37 @@ function totals(patient: Patient) {
     cash: sum('cash'),
     medicine: sum('medicine'),
     exams: sum('exams'),
-    last: patient.records[0],
+    last: patient.records[0] as AidRecord | undefined,
     foundations: [...new Set(patient.records.map((record) => record.foundation))],
   };
 }
 
 // The shared patients section: four headline cards, the register of patients (three quarters of
 // the width) and, beside it, the selected patient's card: who they are on a coloured band, then
-// what they have received, from how many foundations. Built on sample data for now.
-type ListKey = 'name' | 'date' | 'cash' | 'medicine' | 'exams' | 'doctor';
+// what they have received, from how many foundations. From the server (/api/patients).
+type ListKey = 'name' | 'date' | 'cash' | 'medicine' | 'exams' | 'total' | 'foundations' | 'doctor';
 const LIST_LABELS: Record<ListKey, string> = {
-  name: 'المريض', date: 'التاريخ', cash: 'مبالغ مسلّمة', medicine: 'شراء دواء', exams: 'كشفيات طبية', doctor: 'الطبيب',
+  name: 'المريض', date: 'آخر مساعدة', cash: 'مبالغ مسلّمة', medicine: 'شراء دواء', exams: 'كشفيات طبية',
+  total: 'الإجمالي', foundations: 'المؤسسات', doctor: 'الطبيب',
 };
+const PAGE = 12;
+
+// A patient with no aid yet is dated by when it was filed.
+const lastDate = (patient: Patient, last?: AidRecord) => last?.date ?? patient.createdAt.slice(0, 10);
 
 export function PatientsPage({ me }: { me: Me }) {
   const brand = useBranding();
+  const { patients: PATIENTS, foundation: ownName, loading, error, reload } = usePatients();
+  const OWN = ownName || brand.name;
+  const FOUNDATIONS = useMemo(() => foundationsOf(PATIENTS, OWN), [PATIENTS, OWN]);
+  const [adding, setAdding] = useState(false);
+  const [pendingMatch, setPendingMatch] = useState<{ patient: PatientInput; matches: { id: number; foundation: string; region: null }[] } | null>(null);
+  const [aidFor, setAidFor] = useState<Patient | null>(null);
+  const [notice, setNotice] = useState('');
+  const [failure, setFailure] = useState('');
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState(PATIENTS[0]?.id ?? 0);
+  const [page, setPage] = useState(0);
+  const [selectedId, setSelectedId] = useState(0);
   const [mobileSheetPatient, setMobileSheetPatient] = useState<Patient | null>(null);
   const [mobileSheetTab, setMobileSheetTab] = useState<'records' | 'foundations'>('records');
   const [activeFoundationModal, setActiveFoundationModal] = useState<{
@@ -111,15 +114,20 @@ export function PatientsPage({ me }: { me: Me }) {
   } | null>(null);
   const [printing, setPrinting] = useState<Patient | null>(null);
   const [sort, setSort] = useState<SortState<ListKey>>({ key: 'date', dir: 'desc' });
-  const sortBy = (key: ListKey) => setSort((current) => nextSort(current, key, key === 'name' || key === 'doctor' ? 'asc' : 'desc'));
+  const sortBy = (key: ListKey) => {
+    setSort((current) => nextSort(current, key, key === 'name' || key === 'doctor' ? 'asc' : 'desc'));
+    setPage(0);
+  };
 
   const rows = useMemo(() => {
     const needle = query.trim();
     const value = (row: ReturnType<typeof totals> & { patient: Patient }): string | number => {
       switch (sort.key) {
         case 'name': return row.patient.name;
-        case 'date': return row.last.date;
-        case 'doctor': return row.last.doctor;
+        case 'date': return lastDate(row.patient, row.last);
+        case 'doctor': return row.last?.doctor ?? '';
+        case 'total': return row.cash + row.medicine + row.exams;
+        case 'foundations': return row.foundations.length;
         default: return row[sort.key];
       }
     };
@@ -127,15 +135,15 @@ export function PatientsPage({ me }: { me: Me }) {
       .filter((patient) => !needle || patient.name.includes(needle) || patient.file.includes(needle.toUpperCase()) || patient.phone.replaceAll(' ', '').includes(needle))
       .map((patient) => ({ patient, ...totals(patient) }))
       .sort((a, b) => compare(value(a), value(b), sort.dir));
-  }, [query, sort]);
+  }, [query, sort, PATIENTS]);
 
-  const all = useMemo(() => PATIENTS.map(totals), []);
+  const all = useMemo(() => PATIENTS.map(totals), [PATIENTS]);
   const headline = {
     patients: PATIENTS.length,
     cash: all.reduce((sum, item) => sum + item.cash, 0),
     // Medicine is what this foundation bought itself, not what the other foundations bought.
     medicine: PATIENTS.flatMap((patient) => patient.records)
-      .filter((record) => record.foundation === OWN_FOUNDATION)
+      .filter((record) => record.own)
       .reduce((sum, record) => sum + record.medicine, 0),
     exams: all.reduce((sum, item) => sum + item.exams, 0),
     visits: PATIENTS.reduce((sum, patient) => sum + patient.records.length, 0),
@@ -148,26 +156,47 @@ export function PatientsPage({ me }: { me: Me }) {
   // Undefined while the register is empty: the side card is then left out.
   const selected: Patient | undefined = PATIENTS.find((patient) => patient.id === selectedId) ?? PATIENTS[0];
   const detail = selected ? totals(selected) : null;
-  const emptyText = PATIENTS.length === 0 ? 'لا يوجد مرضى مسجّلون بعد.' : 'لا يوجد مريض يطابق البحث.';
-  const [photos, setPhotos] = useState<Record<number, string>>(() => {
-    try { return JSON.parse(localStorage.getItem('ahbab:patient-photos') || '{}') as Record<number, string>; }
-    catch { return {}; }
-  });
+  const emptyText = loading ? 'جارٍ تحميل المرضى…' : PATIENTS.length === 0 ? 'لا يوجد مرضى مسجّلون بعد. أضف أول مريض من زر «إضافة مريض».' : 'لا يوجد مريض يطابق البحث.';
+  const photos = useMemo(() => Object.fromEntries(PATIENTS.filter((p) => p.photo).map((p) => [p.id, p.photo as string])), [PATIENTS]);
+
+  // Every change goes to the server, then the list is read again.
+  const save = async (work: () => Promise<unknown>, done: string) => {
+    setFailure('');
+    try {
+      await work();
+      await reload();
+      setNotice(done);
+      window.setTimeout(() => setNotice(''), 3500);
+    } catch (problem) {
+      setFailure((problem as Error).message);
+      throw problem;
+    }
+  };
 
   const pickPhoto = async (patientId: number, file: File | undefined) => {
     if (!file) return;
     const blob = await compressAvatar(file);
-    const dataUrl = await new Promise<string>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.readAsDataURL(blob);
-    });
-    if (!dataUrl) return;
-    setPhotos((current) => {
-      const next = { ...current, [patientId]: dataUrl };
-      try { localStorage.setItem('ahbab:patient-photos', JSON.stringify(next)); } catch { /* ignore quota */ }
-      return next;
-    });
+    await save(() => uploadPatientPhoto(patientId, blob), 'حُفظت الصورة.').catch(() => undefined);
+  };
+
+  const finishCreate = async (patient: PatientInput, linkTo?: number) => {
+    setPendingMatch(null);
+    let id = 0;
+    await save(async () => { id = await createPatient(patient, linkTo); }, linkTo ? 'حُفظ المريض ورُبط بملفه في المؤسسة الأخرى.' : 'حُفظ المريض.').catch(() => undefined);
+    if (id) setSelectedId(id);
+  };
+
+  // Asked before saving: is a patient with the same four-part name at another foundation the same person?
+  const startCreate = async (patient: PatientInput) => {
+    const matches = await matchPatient(patient.name);
+    setAdding(false);
+    if (matches.length) setPendingMatch({ patient, matches });
+    else await finishCreate(patient);
+  };
+
+  const recordAid = async (patient: Patient, aid: AidInput) => {
+    await save(() => addAid(patient.id, aid), `سُجّلت المساعدة لـ ${patient.name}.`);
+    setAidFor(null);
   };
 
   // Print one patient's sheet: render it outside the app, print, then remove it.
@@ -192,42 +221,49 @@ export function PatientsPage({ me }: { me: Me }) {
           <h1>المرضى</h1>
           <p>السجل المشترك بين المؤسسات لكل المساعدات المقدّمة للمرضى</p>
         </div>
+        <button type="button" className="pt-add" onClick={() => setAdding(true)}>
+          <UserPlus size={18} aria-hidden /> إضافة مريض
+        </button>
       </header>
 
+      {(notice || failure || error) && (
+        <p className={`pt-notice${failure || error ? ' is-error' : ''}`} role={failure || error ? 'alert' : 'status'}>{failure || error || notice}</p>
+      )}
+
       <section className="pt-cards" aria-label="الملخص">
-        <article className="pt-card">
+        <article className="pt-card" data-tone="violet">
           <header><h2>عدد المرضى</h2><UsersRound size={18} className="ink-violet" aria-hidden /></header>
           <p className="pt-card-value"><bdi>{formatNumber(headline.patients)}</bdi> <span className="ink-violet">مريض</span></p>
           <small>عبر <bdi>{formatNumber(headline.foundations)}</bdi> مؤسسات</small>
         </article>
-        <article className="pt-card">
+        <article className="pt-card" data-tone="violet">
           <header><h2>عدد المساعدات</h2><HandHeart size={18} className="ink-violet" aria-hidden /></header>
           <p className="pt-card-value"><bdi>{formatNumber(headline.aids)}</bdi> <span className="ink-violet">مساعدة</span></p>
           <small>نقد ودواء وكشفيات</small>
         </article>
-        <article className="pt-card">
+        <article className="pt-card" data-tone="teal">
           <header><h2>عدد الزيارات</h2><CalendarCheck size={18} className="ink-teal" aria-hidden /></header>
           <p className="pt-card-value"><bdi>{formatNumber(headline.visits)}</bdi> <span className="ink-teal">زيارة</span></p>
           <small>مراجعات مسجلة للمرضى</small>
         </article>
-        <article className="pt-card">
+        <article className="pt-card" data-tone="teal">
           <header><h2>شراء دواء</h2><Pill size={18} className="ink-teal" aria-hidden /></header>
           <p className="pt-card-value"><bdi>{formatNumber(headline.medicine)}</bdi> <span className="ink-teal">{me.currency}</span></p>
-          <small>مشتريات {OWN_FOUNDATION}</small>
+          <small>مشتريات مؤسستنا</small>
         </article>
-        <article className="pt-card">
+        <article className="pt-card" data-tone="green">
           <header><h2>مبالغ مسلّمة</h2><HandCoins size={18} className="ink-green" aria-hidden /></header>
           <p className="pt-card-value ink-green"><bdi>{formatNumber(headline.cash)}</bdi> <span>{me.currency}</span></p>
           <small>نقداً للمرضى</small>
         </article>
-        <article className="pt-card">
+        <article className="pt-card" data-tone="amber">
           <header><h2>كشفيات طبية</h2><Stethoscope size={18} className="ink-amber" aria-hidden /></header>
           <p className="pt-card-value"><bdi>{formatNumber(headline.exams)}</bdi> <span className="ink-amber">{me.currency}</span></p>
           <small>أجور أطباء وفحوصات</small>
         </article>
       </section>
 
-      <div className="pt-main">
+      <div className={`pt-main${selected ? '' : ' is-solo'}`}>
         <section className="pt-panel pt-register" aria-labelledby="pt-register-title">
           <header className="pt-panel-head">
             <div className="tbl-title">
@@ -235,11 +271,12 @@ export function PatientsPage({ me }: { me: Me }) {
               <small>مرتب حسب {LIST_LABELS[sort.key]}</small>
             </div>
             <div className="pt-quick-pills" role="group" aria-label="فرز سريع">
-              {([['date', 'الأحدث'], ['cash', 'الأعلى مساعدة'], ['name', 'الاسم']] as const).map(([key, label]) => (
+              {([['date', 'الأحدث'], ['total', 'الأعلى مساعدة'], ['name', 'الاسم']] as const).map(([key, label]) => (
                 <button
                   key={key}
                   type="button"
                   className={sort.key === key ? 'is-on' : undefined}
+                  aria-pressed={sort.key === key}
                   onClick={() => sortBy(key)}
                 >
                   {label}
@@ -248,60 +285,154 @@ export function PatientsPage({ me }: { me: Me }) {
             </div>
             <label className="pt-search">
               <Search size={16} aria-hidden />
-              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث بالاسم أو الهاتف" aria-label="بحث عن مريض" />
+              <input type="search" value={query} onChange={(event) => { setQuery(event.target.value); setPage(0); }} placeholder="ابحث بالاسم أو رقم الملف أو الهاتف" aria-label="بحث عن مريض" />
             </label>
           </header>
 
           <div className="pt-table-wrap">
-            <table className="pt-table">
-              <thead>
-                <tr>
-                  <th scope="col" className="pt-idx">#</th>
-                  <SortTh id="name" label={LIST_LABELS.name} sort={sort} onSort={sortBy} />
-                  <SortTh id="date" label={LIST_LABELS.date} sort={sort} onSort={sortBy} className="mid" />
-                  <SortTh id="cash" label={LIST_LABELS.cash} sort={sort} onSort={sortBy} className="num" />
-                  <SortTh id="medicine" label={LIST_LABELS.medicine} sort={sort} onSort={sortBy} className="num" />
-                  <SortTh id="exams" label={LIST_LABELS.exams} sort={sort} onSort={sortBy} className="num" />
-                  <SortTh id="doctor" label={LIST_LABELS.doctor} sort={sort} onSort={sortBy} />
-                  <th scope="col" className="act mid">الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ patient, cash, medicine, exams, last }, index) => (
-                  <tr
-                    key={patient.id}
-                    className={patient.id === selected?.id ? 'on' : undefined}
-                    onClick={() => setSelectedId(patient.id)}
-                    aria-selected={patient.id === selected?.id}
-                  >
-                    <td className="pt-idx">{index + 1}</td>
-                    <td>
-                      <div className="pt-who">
-                        <span className={`pt-avatar tone-${patient.tone}`} aria-hidden>{initials(patient.name)}</span>
-                        <b>{patient.name}</b>
-                      </div>
-                    </td>
-                    <td className="pt-date mid"><span><CalendarDays size={14} aria-hidden /><DateText iso={last.date} /></span></td>
-                    <td className="num pt-cash">{money(cash)}</td>
-                    <td className="num">{money(medicine)}</td>
-                    <td className="num">{money(exams)}</td>
-                    <td className="pt-doctor"><span><UserRound size={14} aria-hidden />{last.doctor}</span></td>
-                    <td className="act mid">
-                      <button
-                        type="button"
-                        className="pt-print"
-                        onClick={(event) => { event.stopPropagation(); setPrinting(patient); }}
-                        aria-label={`طباعة سجل ${patient.name}`}
-                      >
-                        <Printer size={15} aria-hidden /> طباعة
-                      </button>
-                    </td>
+            {rows.length > 0 ? (
+              <table className="pt-table pt-reg-table">
+                <colgroup>
+                  <col className="c-idx" />
+                  <col className="c-who" />
+                  <col className="c-date" />
+                  <col className="c-amt" />
+                  <col className="c-amt" />
+                  <col className="c-amt" />
+                  <col className="c-total" />
+                  <col className="c-found" />
+                  <col className="c-act" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col" className="pt-idx">#</th>
+                    <SortTh id="name" label={LIST_LABELS.name} sort={sort} onSort={sortBy} />
+                    <SortTh id="date" label={LIST_LABELS.date} sort={sort} onSort={sortBy} className="mid" />
+                    <SortTh id="cash" label="نقد" sort={sort} onSort={sortBy} className="num" />
+                    <SortTh id="medicine" label="دواء" sort={sort} onSort={sortBy} className="num" />
+                    <SortTh id="exams" label="كشفيات" sort={sort} onSort={sortBy} className="num" />
+                    <SortTh id="total" label={LIST_LABELS.total} sort={sort} onSort={sortBy} className="num" />
+                    <SortTh id="foundations" label="الجهات" sort={sort} onSort={sortBy} className="mid" />
+                    <th scope="col" className="act mid">الإجراءات</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {rows.length === 0 && <p className="pt-empty">{emptyText}</p>}
+                </thead>
+                <tbody>
+                  {rows.slice(page * PAGE, page * PAGE + PAGE).map(({ patient, cash, medicine, exams, last, foundations }, index) => (
+                    <tr
+                      key={patient.id}
+                      className={patient.id === selected?.id ? 'on' : undefined}
+                      onClick={() => setSelectedId(patient.id)}
+                      aria-selected={patient.id === selected?.id}
+                    >
+                      <td className="pt-idx">{page * PAGE + index + 1}</td>
+                      <td>
+                        <div className="pt-who">
+                          <span className={`pt-avatar tone-${patient.tone}`} aria-hidden>
+                            {patient.photo ? <img src={patient.photo} alt="" /> : initials(patient.name)}
+                          </span>
+                          <div className="pt-who-text">
+                            <b title={patient.name}>{patient.name}</b>
+                            <small><bdi dir="ltr">{patient.file}</bdi>{patient.condition && <> · {patient.condition}</>}</small>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="pt-date mid">
+                        <span className="pt-date-cell">
+                          <DateText iso={lastDate(patient, last)} />
+                          <small>{last ? (last.doctor || (last.own ? 'مؤسستنا' : last.foundation)) : 'ملف جديد'}</small>
+                        </span>
+                      </td>
+                      <td className="num pt-cash">{money(cash)}</td>
+                      <td className="num">{money(medicine)}</td>
+                      <td className="num">{money(exams)}</td>
+                      <td className="num pt-total"><bdi>{formatNumber(cash + medicine + exams)}</bdi></td>
+                      <td className="mid">
+                        <span className={`pt-found-pill${patient.linked ? ' is-linked' : ''}`} title={foundations.join('، ') || 'لا توجد مساعدات بعد'}>
+                          <Building2 size={13} aria-hidden /><bdi>{foundations.length}</bdi>
+                        </span>
+                      </td>
+                      <td className="act">
+                        <div className="pt-row-acts">
+                          <button
+                            type="button"
+                            className="pt-row-act is-main"
+                            onClick={(event) => { event.stopPropagation(); setAidFor(patient); }}
+                            aria-label={`تسجيل مساعدة لـ ${patient.name}`}
+                            title="تسجيل مساعدة"
+                          >
+                            <Plus size={15} aria-hidden />
+                          </button>
+                          <a
+                            className="pt-row-act"
+                            href={`#/patients/${patient.id}`}
+                            onClick={(event) => event.stopPropagation()}
+                            aria-label={`ملف ${patient.name}`}
+                            title="الملف الكامل"
+                          >
+                            <FileText size={15} aria-hidden />
+                          </a>
+                          <button
+                            type="button"
+                            className="pt-row-act"
+                            onClick={(event) => { event.stopPropagation(); setPrinting(patient); }}
+                            aria-label={`طباعة سجل ${patient.name}`}
+                            title="طباعة السجل"
+                          >
+                            <Printer size={15} aria-hidden />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" colSpan={3}>
+                      الإجمالي <small>(<bdi>{formatNumber(rows.length)}</bdi> مريض)</small>
+                    </th>
+                    <td className="num pt-cash"><bdi>{formatNumber(rows.reduce((sum, row) => sum + row.cash, 0))}</bdi></td>
+                    <td className="num"><bdi>{formatNumber(rows.reduce((sum, row) => sum + row.medicine, 0))}</bdi></td>
+                    <td className="num"><bdi>{formatNumber(rows.reduce((sum, row) => sum + row.exams, 0))}</bdi></td>
+                    <td className="num pt-total"><bdi>{formatNumber(rows.reduce((sum, row) => sum + row.cash + row.medicine + row.exams, 0))}</bdi> <span className="pt-unit">{me.currency}</span></td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              </table>
+            ) : (
+              <div className="pt-reg-empty" role="status">
+                <span className="pt-reg-empty-icon" aria-hidden><HeartPulse size={26} /></span>
+                <h3>{loading ? 'جارٍ تحميل المرضى…' : PATIENTS.length === 0 ? 'لا يوجد مرضى مسجّلون بعد' : 'لا يوجد مريض يطابق البحث'}</h3>
+                {!loading && (
+                  <p>{PATIENTS.length === 0
+                    ? 'أضف أول مريض لتبدأ تسجيل مساعداته: النقد والدواء والكشفيات.'
+                    : 'جرّب اسماً آخر أو رقم الملف أو رقم الهاتف.'}</p>
+                )}
+                {!loading && PATIENTS.length === 0 && (
+                  <button type="button" className="pt-add" onClick={() => setAdding(true)}>
+                    <UserPlus size={17} aria-hidden /> إضافة مريض
+                  </button>
+                )}
+                {!loading && PATIENTS.length > 0 && (
+                  <button type="button" className="pt-add ghost" onClick={() => setQuery('')}>مسح البحث</button>
+                )}
+              </div>
+            )}
           </div>
+
+          {rows.length > PAGE && (
+            <footer className="pt-pager">
+              <span>عرض <bdi>{page * PAGE + 1}</bdi>–<bdi>{Math.min(rows.length, (page + 1) * PAGE)}</bdi> من <bdi>{rows.length}</bdi></span>
+              <nav aria-label="صفحات السجل">
+                <button type="button" onClick={() => setPage(page - 1)} disabled={page === 0} aria-label="الصفحة السابقة"><ChevronLeft size={16} className="pt-flip" aria-hidden /></button>
+                <bdi>{page + 1} / {Math.ceil(rows.length / PAGE)}</bdi>
+                <button type="button" onClick={() => setPage(page + 1)} disabled={(page + 1) * PAGE >= rows.length} aria-label="الصفحة التالية"><ChevronLeft size={16} aria-hidden /></button>
+              </nav>
+            </footer>
+          )}
+
+          <button type="button" className="pt-add pt-m-add" onClick={() => setAdding(true)}>
+            <UserPlus size={18} aria-hidden /> إضافة مريض
+          </button>
 
           {/* Mobile-only compact cards matching Expenses style */}
           <div className="pt-m-list" role="list" aria-label="قائمة المرضى">
@@ -327,14 +458,14 @@ export function PatientsPage({ me }: { me: Me }) {
                     </span>
                     <div className="pt-m-card-info">
                       <strong>{patient.name}</strong>
-                      <small><HeartPulse size={11} aria-hidden /> {patient.condition}</small>
+                      {patient.condition && <small><HeartPulse size={11} aria-hidden /> {patient.condition}</small>}
                     </div>
                     <ChevronLeft size={16} className="pt-m-card-chev" aria-hidden />
                   </div>
                   <div className="pt-m-card-foot">
                     <span className="pt-m-card-meta">
                       <span><FileText size={12} aria-hidden /><bdi>{patient.records.length}</bdi> {patient.records.length === 1 ? 'مراجعة' : 'مراجعات'}</span>
-                      <span><CalendarDays size={12} aria-hidden /><DateText iso={last.date} /></span>
+                      <span><CalendarDays size={12} aria-hidden /><DateText iso={lastDate(patient, last)} /></span>
                     </span>
                     <b className="pt-m-card-amt">
                       <bdi>{formatNumber(grandTotal)}</bdi> <span>{me.currency}</span>
@@ -397,8 +528,11 @@ export function PatientsPage({ me }: { me: Me }) {
               </article>
             </div>
 
-            <FoundationChart patient={selected} />
+            <FoundationChart patient={selected} foundations={FOUNDATIONS} />
           </div>
+          <button type="button" className="pt-add ghost pt-aid-btn" onClick={() => setAidFor(selected)}>
+            <Plus size={17} aria-hidden /> تسجيل مساعدة
+          </button>
         </aside>}
       </div>
 
@@ -417,14 +551,13 @@ export function PatientsPage({ me }: { me: Me }) {
               f.name.includes(mobileSheetPatient.name.trim()),
           ) ?? null;
 
-          const ownFamilyPayments = matchedFamily?.payments ?? [];
-          const ownFamilyVisits = matchedFamily?.visits ?? [];
-          const ownTotalCount = ownFamilyPayments.length + ownFamilyVisits.length;
+          const ownRecords = mobileSheetPatient.records.filter((r) => r.own);
+          const ownTotalCount = ownRecords.length;
 
-          // Other foundations ONLY (exclude account owner foundation)
-          const externalFoundations = FOUNDATIONS.filter((f) => f !== OWN_FOUNDATION)
+          // Other foundations only (what they gave the same patient, when both files are linked)
+          const externalFoundations = [...new Set(mobileSheetPatient.records.filter((r) => !r.own).map((r) => r.foundation))]
             .map((foundation) => {
-              const recs = mobileSheetPatient.records.filter((r) => r.foundation === foundation);
+              const recs = mobileSheetPatient.records.filter((r) => !r.own && r.foundation === foundation);
               const total = recs.reduce((s, r) => s + r.cash + r.medicine + r.exams, 0);
               return {
                 foundation,
@@ -452,7 +585,7 @@ export function PatientsPage({ me }: { me: Me }) {
                   <div className="pt-msheet-topbar">
                     <div className="pt-msheet-topmeta">
                       <span className="pt-msheet-file" dir="ltr">{mobileSheetPatient.file}</span>
-                      <span className="pt-msheet-age"><bdi>{mobileSheetPatient.age}</bdi> سنة</span>
+                      {mobileSheetPatient.age > 0 && <span className="pt-msheet-age"><bdi>{mobileSheetPatient.age}</bdi> سنة</span>}
                     </div>
                     <button
                       type="button"
@@ -492,13 +625,17 @@ export function PatientsPage({ me }: { me: Me }) {
                       >
                         <h3>{mobileSheetPatient.name}</h3>
                       </a>
-                      <span className="pt-msheet-cond">
-                        <HeartPulse size={11} aria-hidden /> {mobileSheetPatient.condition}
-                      </span>
-                      <span className="pt-msheet-addr">
-                        <MapPin size={12} aria-hidden />
-                        <span>{mobileSheetPatient.address}</span>
-                      </span>
+                      {mobileSheetPatient.condition && (
+                        <span className="pt-msheet-cond">
+                          <HeartPulse size={11} aria-hidden /> {mobileSheetPatient.condition}
+                        </span>
+                      )}
+                      {mobileSheetPatient.address && (
+                        <span className="pt-msheet-addr">
+                          <MapPin size={12} aria-hidden />
+                          <span>{mobileSheetPatient.address}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -579,7 +716,7 @@ export function PatientsPage({ me }: { me: Me }) {
                           {brand.logo && <img src={brand.logo} alt="" className="pt-msheet-own-logo" />}
                           <div className="pt-msheet-own-info">
                             <strong>{brand.name}</strong>
-                            <small>بيانات المراجعات من سجل العوائل المتعففة</small>
+                            <small>مساعدات مؤسستنا لهذا المريض</small>
                           </div>
                           {matchedFamily && (
                             <a
@@ -592,39 +729,34 @@ export function PatientsPage({ me }: { me: Me }) {
                           )}
                         </div>
 
-                        {ownFamilyPayments.map((pay, idx) => (
-                          <article key={`fp-${pay.date}-${idx}`} className="pt-msheet-rec">
-                            <div className="pt-msheet-rec-top">
-                              <strong><HandCoins size={13} className="ink-green" aria-hidden /> {pay.type}</strong>
-                              <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={pay.date} /></span>
-                            </div>
-                            <div className="pt-msheet-rec-meta">
-                              {pay.receivedBy && <span><UserRound size={12} aria-hidden /> المستلم: {pay.receivedBy}</span>}
-                              {pay.by && <span><UserCheck size={12} aria-hidden /> {pay.by}</span>}
-                            </div>
-                            <div className="pt-msheet-rec-foot">
-                              <span className="pt-msheet-source-tag">العوائل المتعففة</span>
-                              <b className="pt-msheet-rec-sum ink-green"><bdi>{formatNumber(pay.amount)}</bdi> {me.currency}</b>
-                            </div>
-                          </article>
-                        ))}
-
-                        {ownFamilyVisits.map((visit, idx) => (
-                          <article key={`fv-${visit.date}-${idx}`} className="pt-msheet-rec">
-                            <div className="pt-msheet-rec-top">
-                              <strong><UserCheck size={13} aria-hidden /> زيارة ميدانية — {visit.delegateName || 'المندوب'}</strong>
-                              <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={visit.date} /></span>
-                            </div>
-                            {visit.note && (
-                              <p className="pt-msheet-note">
-                                <FileText size={12} aria-hidden /> {visit.note}
-                              </p>
-                            )}
-                          </article>
-                        ))}
+                        {ownRecords.map((rec) => {
+                          const recTotal = rec.cash + rec.medicine + rec.exams;
+                          return (
+                            <article key={rec.id} className="pt-msheet-rec">
+                              <div className="pt-msheet-rec-top">
+                                <strong><UserRound size={13} aria-hidden /> {rec.doctor || 'مساعدة'}</strong>
+                                <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={rec.date} /></span>
+                              </div>
+                              {rec.delegate && (
+                                <div className="pt-msheet-rec-meta">
+                                  <span><UserCheck size={12} aria-hidden /> المندوب: {rec.delegate}</span>
+                                </div>
+                              )}
+                              {rec.note && <p className="pt-msheet-note"><FileText size={12} aria-hidden /> {rec.note}</p>}
+                              <div className="pt-msheet-rec-foot">
+                                <div className="pt-msheet-pills">
+                                  {rec.cash > 0 && <span className="is-cash">نقدي: <bdi>{formatNumber(rec.cash)}</bdi></span>}
+                                  {rec.medicine > 0 && <span className="is-med">دواء: <bdi>{formatNumber(rec.medicine)}</bdi></span>}
+                                  {rec.exams > 0 && <span className="is-exam">كشفية: <bdi>{formatNumber(rec.exams)}</bdi></span>}
+                                </div>
+                                <b className="pt-msheet-rec-sum"><bdi>{formatNumber(recTotal)}</bdi> {me.currency}</b>
+                              </div>
+                            </article>
+                          );
+                        })}
 
                         {ownTotalCount === 0 && (
-                          <p className="pt-empty">لا توجد مراجعات مسجلة لهذا المريض في سجل العوائل المتعففة حالياً.</p>
+                          <p className="pt-empty">لا توجد مساعدات مسجّلة لهذا المريض بعد.</p>
                         )}
                       </div>
                     ) : (
@@ -685,6 +817,18 @@ export function PatientsPage({ me }: { me: Me }) {
                 </div>
 
                 <div className="pt-msheet-foot">
+                  <button
+                    type="button"
+                    className="pt-msheet-print pt-msheet-aid"
+                    onClick={() => {
+                      const target = mobileSheetPatient;
+                      setMobileSheetPatient(null);
+                      setAidFor(target);
+                    }}
+                  >
+                    <Plus size={16} aria-hidden />
+                    <span>تسجيل مساعدة</span>
+                  </button>
                   <button
                     type="button"
                     className="pt-msheet-print"
@@ -828,6 +972,27 @@ export function PatientsPage({ me }: { me: Me }) {
         <PatientRecordSheet patient={printing} currency={me.currency} />,
         document.body,
       )}
+
+      {adding && <AddPatientDialog onClose={() => setAdding(false)} onSave={startCreate} />}
+      {pendingMatch && (
+        <MatchDialog
+          kind="patient"
+          canLink={me.role === 'admin'}
+          headName={pendingMatch.patient.name}
+          matches={pendingMatch.matches}
+          onSame={(match: { id: number }) => void finishCreate(pendingMatch.patient, match.id)}
+          onDifferent={() => void finishCreate(pendingMatch.patient)}
+          onCancel={() => setPendingMatch(null)}
+        />
+      )}
+      {aidFor && (
+        <AidDialog
+          patientName={aidFor.name}
+          currency={me.currency}
+          onClose={() => setAidFor(null)}
+          onSave={(aid) => recordAid(aidFor, aid)}
+        />
+      )}
     </div>
   );
 }
@@ -837,9 +1002,10 @@ const shortName = (name: string) => name.replace(/^(مؤسسة|جمعية)\s+/, 
 
 // What each foundation gave this patient, as paired columns: cash, and medicine with exams.
 // The foundation that gave the most is marked with a dot on top of its column.
-function FoundationChart({ patient }: { patient: Patient }) {
-  const groups = FOUNDATIONS.map((foundation) => {
-    const records = patient.records.filter((record) => record.foundation === foundation);
+function FoundationChart({ patient, foundations }: { patient: Patient; foundations: string[] }) {
+  const groups = foundations.map((foundation, index) => {
+    // The first is this foundation: its own records (another foundation could share its name).
+    const records = patient.records.filter((record) => (index === 0 ? record.own : !record.own && record.foundation === foundation));
     return {
       foundation,
       cash: records.reduce((sum, record) => sum + record.cash, 0),

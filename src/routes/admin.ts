@@ -5,7 +5,7 @@ import { requireRole } from '../lib/auth';
 import { edgeCached, invalidateRefData, refData } from '../lib/cache';
 import { hashPassword } from '../lib/crypto';
 import { all, auditDetail, auditInsertedStmt, auditStmt, batch, diff, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
-import { cursorParam, fail, idParam, readJson } from '../lib/http';
+import { cursorParam, fail, idParam, parseOrFail, readJson, zDate } from '../lib/http';
 import { currentMonth } from '../lib/text';
 import { zPassword } from './auth';
 import { signFileLink } from './prescriptions';
@@ -70,14 +70,19 @@ dashboard.get('/', async (c) => {
 // and month views. Income comes from stats_daily, which the transaction triggers keep up to date;
 // spending from the expenses table. Days with nothing recorded come back as zeros.
 dashboard.get('/daily', requireRole('admin', 'accountant'), async (c) => {
-  const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-  const from = day.safeParse(c.req.query('from'));
-  const to = day.safeParse(c.req.query('to'));
+  const from = zDate.safeParse(c.req.query('from'));
+  const to = zDate.safeParse(c.req.query('to'));
   if (!from.success || !to.success || from.data > to.data) fail(422, 'نطاق التاريخ غير صحيح');
-  const span = (Date.parse(to.data) - Date.parse(from.data)) / 86_400_000;
-  if (span > 62) fail(422, 'النطاق أطول من المسموح');
+  const fromMs = Date.parse(from.data);
+  const toMs = Date.parse(to.data);
+  const span = (toMs - fromMs) / 86_400_000;
+  if (!Number.isFinite(span) || span < 0 || span > 62) fail(422, 'النطاق أطول من المسموح');
 
-  const months = [...new Set([from.data.slice(0, 7), to.data.slice(0, 7)])];
+  const monthSet = new Set<string>();
+  for (let t = fromMs; t <= toMs; t += 86_400_000) {
+    monthSet.add(new Date(t).toISOString().slice(0, 7));
+  }
+  const months = [...monthSet];
   const [incoming, outgoing] = await Promise.all([
     all<{ day: string; total: number }>(c,
       'SELECT day, total_in AS total FROM stats_daily WHERE foundation_id = ? AND day BETWEEN ? AND ?', fid(c), from.data, to.data),
@@ -91,7 +96,7 @@ dashboard.get('/daily', requireRole('admin', 'accountant'), async (c) => {
   const inBy = new Map(incoming.map((r) => [r.day, r.total]));
   const outBy = new Map(outgoing.map((r) => [r.day, r.total]));
   const days: { day: string; in: number; out: number }[] = [];
-  for (let t = Date.parse(from.data); t <= Date.parse(to.data); t += 86_400_000) {
+  for (let t = fromMs; t <= toMs; t += 86_400_000) {
     const d = new Date(t).toISOString().slice(0, 10);
     days.push({ day: d, in: inBy.get(d) ?? 0, out: outBy.get(d) ?? 0 });
   }
@@ -138,9 +143,10 @@ users.use('*', requireRole('admin'));
 
 users.get('/', async (c) => {
   const cursor = cursorParam(c.req.query('cursor'));
+  const hideSystem = c.get('user').system ? '' : 'AND is_system = 0 ';
   const rows = await all<{ id: number }>(
     c,
-    `SELECT id, username, full_name, role, active FROM users WHERE foundation_id = ? AND id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
+    `SELECT id, username, full_name, role, active FROM users WHERE foundation_id = ? ${hideSystem}AND id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
     fid(c), cursor,
   );
   return c.json({ items: rows, next: nextCursor(rows) });
@@ -186,9 +192,9 @@ users.patch('/:id', async (c) => {
   if (!set.length) fail(422, 'لا توجد تعديلات');
   // Any security-relevant change ends the user's existing sessions at next refresh.
   set.push('token_version = token_version + 1', 'failed_logins = 0', 'locked_until = NULL');
-  const current = await first<{ full_name: string; role: string; active: number }>(c,
-    'SELECT full_name, role, active FROM users WHERE id = ? AND foundation_id = ?', id, fid(c));
-  if (!current) fail(404, 'المستخدم غير موجود');
+  const current = await first<{ full_name: string; role: string; active: number; is_system: number }>(c,
+    'SELECT full_name, role, active, is_system FROM users WHERE id = ? AND foundation_id = ?', id, fid(c));
+  if (!current || (current.is_system === 1 && !c.get('user').system)) fail(404, 'المستخدم غير موجود');
   const { password, active, ...rest } = body;
   const changes = diff(current, { ...rest, ...(active === undefined ? {} : { active: active ? 1 : 0 }), ...(password ? { password: 'x' } : {}) }, ['password']);
 
@@ -207,7 +213,7 @@ audit.use('*', requireRole('admin'));
 // The activity log's categories, as SQL over action and entity.
 const ACCESS = "('login', 'login_failed', 'system_enter')";
 const FILES = "('attach', 'detach', 'update_photo', 'update_image', 'remove_image')";
-const MONEY = "('pay', 'undo_payment', 'close_month', 'reopen_month')";
+const MONEY = "('pay', 'undo_payment', 'close_month', 'reopen_month', 'aid', 'update_aid', 'remove_aid')";
 const AUDIT_CATEGORIES: Record<string, string> = {
   login: `a.action IN ${ACCESS}`,
   accounts: `a.action NOT IN ${ACCESS} AND a.action NOT IN ${FILES} AND a.action <> 'denied'
@@ -256,7 +262,7 @@ audit.get('/', async (c) => {
   const cursor = cursorParam(c.req.query('cursor'));
   const category = c.req.query('category');
   const userId = c.req.query('user') ? idParam(c.req.query('user')!) : null;
-  const since = c.req.query('since') ? zSince.parse(c.req.query('since')) : null;
+  const since = c.req.query('since') ? parseOrFail(zSince, c.req.query('since')) : null;
   const q = (c.req.query('q') ?? '').trim().slice(0, 60);
 
   const where = ['a.foundation_id = ?', 'a.id < ?'];
@@ -286,7 +292,7 @@ audit.get('/', async (c) => {
 
 // The four figures above the log, for the chosen period.
 audit.get('/stats', async (c) => {
-  const since = c.req.query('since') ? zSince.parse(c.req.query('since')) : '1970-01-01';
+  const since = c.req.query('since') ? parseOrFail(zSince, c.req.query('since')) : '1970-01-01';
   const row = await first<{ logins: number; login_users: number; failed: number; failed_users: number; saves: number; save_users: number; denied: number; denied_users: number }>(
     c,
     `SELECT

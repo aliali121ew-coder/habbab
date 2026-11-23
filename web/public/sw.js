@@ -11,6 +11,14 @@ const DATA_CACHE = 'api-v1';
 const KEEP = [SHELL_CACHE, DATA_CACHE];
 const NETWORK_WAIT = 4000;
 const SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '/theme.js', '/icons/icon-192.png', '/icons/icon-512.png'];
+let cacheEpoch = 0;
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'CLEAR_CACHE') {
+    cacheEpoch += 1;
+    event.waitUntil(caches.delete(DATA_CACHE));
+  }
+});
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -38,11 +46,16 @@ const fromDevice = async (saved) => new Response(await saved.blob(), {
 
 function dataNetworkFirst(event) {
   const { request } = event;
+  const epoch = cacheEpoch;
   const network = fetch(request).then(async (response) => {
-    // Only real answers are kept; a 401 means the session ended, so the saved copy goes too.
-    const cache = await caches.open(DATA_CACHE);
-    if (response.status === 200) await cache.put(request, response.clone());
-    else if (response.status === 401) await caches.delete(DATA_CACHE);
+    // Only real answers from the current session epoch are kept; 401/403 clears saved data.
+    if (response.status === 401 || response.status === 403) {
+      cacheEpoch += 1;
+      await caches.delete(DATA_CACHE);
+    } else if (response.status === 200 && epoch === cacheEpoch) {
+      const cache = await caches.open(DATA_CACHE);
+      if (epoch === cacheEpoch) await cache.put(request, response.clone());
+    }
     return response;
   });
   event.waitUntil(network.catch(() => undefined));
@@ -80,7 +93,15 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  if (url.pathname.startsWith('/api/files/')) { event.respondWith(cacheFirst(event, DATA_CACHE)); return; }
+  // Auth, system, audit, and signed files must never be cached in shared CacheStorage.
+  if (
+    url.pathname.startsWith('/api/auth/')
+    || url.pathname.startsWith('/api/audit')
+    || url.pathname.startsWith('/api/system/')
+    || url.pathname.startsWith('/api/files/')
+  ) {
+    return;
+  }
   if (url.pathname.startsWith('/api/')) { event.respondWith(dataNetworkFirst(event)); return; }
 
   // The app's pages (#/… routes all load "/"): fresh from the network, the cached shell offline.
@@ -94,7 +115,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match('/')),
+        .catch(async () => (await caches.match('/')) || new Response('Offline', { status: 503 })),
     );
     return;
   }
@@ -103,5 +124,5 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/assets/')) { event.respondWith(cacheFirst(event, SHELL_CACHE)); return; }
 
   // Everything else (icons, theme script): network, falling back to the cache.
-  event.respondWith(fetch(request).catch(() => caches.match(request)));
+  event.respondWith(fetch(request).catch(async () => (await caches.match(request)) || new Response('Offline', { status: 503 })));
 });

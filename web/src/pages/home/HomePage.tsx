@@ -16,7 +16,7 @@ import { AidDisbursementsTable } from './AidDisbursementsTable';
 const PhoneMoneyOverview = lazy(() => import('./PhoneMoneyOverview').then((m) => ({ default: m.PhoneMoneyOverview })));
 import { WORK_ICONS, WorkSummaryCard, type WorkRow } from './WorkSummaryCard';
 import type { ExpenseItem } from '../expenses/ExpensesPage';
-import { PATIENTS } from '../patients/sample';
+import { usePatients } from '../../data/patients';
 
 interface MonthSheet {
   items: ExpenseItem[];
@@ -106,6 +106,7 @@ export function HomePage({ me }: { me: Me }) {
   useEffect(() => { void load(); }, [load]);
 
   // This month's families figures (payments and visits) come with the list from the server.
+  const patientCount = usePatients(me.features.includes('patients') && (me.role === 'admin' || me.role === 'health')).patients.length;
   const families = useFamilies(me.features.includes('families')).families as {
     arrears: number;
     visits?: { date: string }[];
@@ -163,7 +164,7 @@ export function HomePage({ me }: { me: Me }) {
       href: '#/families', icon: HeartHandshake, label: 'العوائل', value: formatNumber(families.length),
       note: `${formatNumber(families.filter((f) => f.arrears > 0).length)} متأخرات`, alert: families.some((f) => f.arrears > 0),
     },
-    { href: '#/patients', icon: HeartPulse, label: 'المرضى', value: formatNumber(PATIENTS.length), note: 'ملف مريض' },
+    { href: '#/patients', icon: HeartPulse, label: 'المرضى', value: formatNumber(patientCount), note: 'ملف مريض' },
     { href: '#/expenses', icon: Receipt, label: 'الحركات المالية', value: sheet ? formatNumber(sheet.items.length) : '—', note: 'هذا الشهر' },
   ];
 

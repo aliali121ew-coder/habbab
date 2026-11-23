@@ -1,6 +1,9 @@
-// Patients start empty: the sample patients, doctors and other foundations were removed on
-// 2026-11-23. Real patients will come from the server.
+// The patients' shapes, as /api/patients returns them (web/src/data/patients.ts loads them).
+// Each record is one visit's aid: this foundation's own in full; another foundation's (when both
+// confirmed the same patient) with its amounts, date and foundation name only.
 export interface AidRecord {
+  id: number;
+  own: boolean;
   date: string;
   foundation: string;
   cash: number;
@@ -16,18 +19,21 @@ export interface Patient {
   file: string;
   name: string;
   age: number;
+  gender?: 'male' | 'female';
   condition: string;
   address: string;
   phone: string;
+  notes: string;
+  photo: string | null;
+  linked: boolean;
+  createdAt: string;
   tone: number;
   records: AidRecord[];
 }
 
-// The foundation's own records are tagged with this; the patients register moves to the server
-// (phase 4), where each record carries its foundation's id instead.
-export const OWN_FOUNDATION = 'المؤسسة';
-
-// Foundations that appear in the patients register; others are added when they join.
-export const FOUNDATIONS: string[] = [OWN_FOUNDATION];
-
-export const PATIENTS: Patient[] = [];
+/** The foundations that gave these patients anything, this foundation first. */
+export function foundationsOf(patients: Patient[], own: string): string[] {
+  const others = new Set<string>();
+  for (const patient of patients) for (const record of patient.records) if (!record.own) others.add(record.foundation);
+  return [own, ...[...others].sort()];
+}

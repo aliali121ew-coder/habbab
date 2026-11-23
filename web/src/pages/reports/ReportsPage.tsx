@@ -6,7 +6,8 @@ import { printWhenReady } from '../../components/printWhenReady';
 import { StateMessage } from '../../components/StateMessage';
 import { MONTH_NAMES } from '../../format';
 import { PatientsReportSheet } from '../patients/PatientsReportSheet';
-import { PATIENTS, type Patient } from '../patients/sample';
+import type { Patient } from '../patients/sample';
+import { usePatients } from '../../data/patients';
 import { RegisterPrintModal } from '../subscribers/RegisterPrintModal';
 
 type PatientSortKey = 'date' | 'cash' | 'name';
@@ -22,7 +23,7 @@ function patientTotals(patient: Patient) {
     cash: sum('cash'),
     medicine: sum('medicine'),
     exams: sum('exams'),
-    last: patient.records[0],
+    last: patient.records[0] ?? { date: patient.createdAt.slice(0, 10), doctor: '', delegate: '' },
   };
 }
 
@@ -31,6 +32,7 @@ function patientTotals(patient: Patient) {
 export function ReportsPage({ me }: { me: Me }) {
   const now = new Date();
   const thisYear = now.getUTCFullYear();
+  const PATIENTS = usePatients(me.features.includes('patients') && (me.role === 'admin' || me.role === 'health')).patients;
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState('');
   const [delegate, setDelegate] = useState('');
@@ -70,7 +72,7 @@ export function ReportsPage({ me }: { me: Me }) {
       if (patientSort === 'cash') return b.cash - a.cash;
       return b.last.date.localeCompare(a.last.date);
     });
-  }, [patientSort]);
+  }, [patientSort, PATIENTS]);
 
   const delegateId = delegate ? Number(delegate) : null;
   const delegateName = delegateId === null

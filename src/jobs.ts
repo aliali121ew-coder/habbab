@@ -4,7 +4,7 @@ import { encryptBytes } from './lib/crypto';
 const BACKUP_TABLES = [
   'foundations', 'users', 'subscribers', 'programs', 'subscriber_programs', 'transactions', 'transactions_archive',
   'prescriptions', 'prescriptions_archive', 'monthly_closings', 'audit_log', 'audit_log_archive',
-  'expenses', 'expense_files', 'families', 'family_members', 'family_payments', 'family_visits',
+  'expenses', 'expense_files', 'families', 'family_members', 'family_payments', 'family_visits', 'patients', 'patient_aids',
   'stats_totals', 'stats_daily', 'stats_monthly', 'delegate_totals', 'subscriber_year', 'delegate_period',
 ] as const;
 

@@ -318,7 +318,7 @@ collections.get('/subscriber/:id', async (c) => {
             s.family_size, s.monthly_fee, s.address, s.notes, s.created_at,
             u.full_name AS delegate_name
      FROM subscribers s
-     LEFT JOIN users u ON u.id = s.delegate_id
+     LEFT JOIN users u ON u.id = s.delegate_id AND u.foundation_id = s.foundation_id
      WHERE s.id = ? AND s.foundation_id = ? AND s.deleted_at IS NULL`,
     id, fid(c),
   );

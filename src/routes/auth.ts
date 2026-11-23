@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv, Role } from '../env';
-import { endSession, requireAuth, startSession } from '../lib/auth';
+import { endSession, readSessionClaims, requireAuth, startSession } from '../lib/auth';
 import { hashPassword, verifyPassword } from '../lib/crypto';
 import { auditStmt, batch, first, stmt } from '../lib/db';
 import { parseFeatures } from '../lib/features';
@@ -53,19 +53,21 @@ auth.post('/login', async (c) => {
   const ok = await verifyPassword(password, user?.password_hash ?? DUMMY_HASH);
   const invalid = 'اسم المستخدم أو كلمة المرور غير صحيحة';
   if (!user || !user.active) fail(401, invalid);
-  if (user.foundation_status !== 'active' && !user.is_system) fail(403, 'حساب المؤسسة موقوف، راجع مدير النظام');
   if (user.locked_until && user.locked_until > Date.now()) fail(429, 'الحساب مقفل مؤقتاً، حاول لاحقاً');
 
   if (!ok) {
-    const failures = user.failed_logins + 1;
-    const lock = failures >= MAX_FAILURES ? Date.now() + LOCK_MINUTES * 60_000 : null;
+    const lockUntil = Date.now() + LOCK_MINUTES * 60_000;
     await batch(c, [
       // scope-ok: the row just found by its unique username
-      stmt(c, 'UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?', lock ? 0 : failures, lock, user.id),
+      stmt(c, `UPDATE users
+               SET failed_logins = CASE WHEN failed_logins + 1 >= ? THEN 0 ELSE failed_logins + 1 END,
+                   locked_until = CASE WHEN failed_logins + 1 >= ? THEN ? ELSE locked_until END
+               WHERE id = ?`, MAX_FAILURES, MAX_FAILURES, lockUntil, user.id),
       stmt(c, "INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id) VALUES (?, ?, 'login_failed', 'user', ?)", user.foundation_id, user.id, user.id),
     ]);
     fail(401, invalid);
   }
+  if (user.foundation_status !== 'active' && !user.is_system) fail(403, 'حساب المؤسسة موقوف، راجع مدير النظام');
 
   await batch(c, [
     // scope-ok: the row just found by its unique username
@@ -76,7 +78,14 @@ auth.post('/login', async (c) => {
   return c.json({ id: user.id, full_name: user.full_name, role: user.role, must_change_password: user.must_change_password === 1 });
 });
 
-auth.post('/logout', (c) => {
+auth.post('/logout', async (c) => {
+  const claims = await readSessionClaims(c);
+  if (claims) {
+    await batch(c, [
+      // scope-ok: the signed-in user's own row, invalidating copied session tokens server-side
+      stmt(c, 'UPDATE users SET token_version = token_version + 1 WHERE id = ? AND token_version = ?', claims.sub, claims.tv),
+    ]).catch(() => undefined);
+  }
   endSession(c);
   return c.json({ ok: true });
 });
@@ -85,6 +94,8 @@ auth.post('/logout', (c) => {
 // with its features read fresh, so the menu follows a change at once.
 auth.get('/me', requireAuth, async (c) => {
   const session = c.get('user');
+  const limit = await c.env.API_LIMITER?.limit({ key: String(session.id) });
+  if (limit && !limit.success) fail(429, 'طلبات كثيرة، انتظر قليلاً');
   const [row, place] = await Promise.all([
     first<{ id: number; full_name: string; role: Role; must_change_password: number; foundation_id: number }>(
       c, 'SELECT id, full_name, role, must_change_password, foundation_id FROM users WHERE id = ?', session.id,
@@ -110,13 +121,23 @@ auth.get('/me', requireAuth, async (c) => {
 });
 
 auth.post('/change-password', requireAuth, async (c) => {
+  const session = c.get('user');
+  const limit = await c.env.LOGIN_LIMITER?.limit({ key: `pw:${session.id}` });
+  if (limit && !limit.success) fail(429, 'محاولات كثيرة، حاول بعد دقيقة');
+
   const { current, next } = await readJson(c, z.object({ current: z.string().max(128), next: zPassword }));
-  const user = await first<UserRow>(
+  const user = await first<Pick<UserRow, 'id' | 'role' | 'foundation_id' | 'is_system' | 'password_hash' | 'token_version' | 'active' | 'foundation_status'>>(
     c,
-    'SELECT id, role, foundation_id, is_system, password_hash, token_version FROM users WHERE id = ?',
-    c.get('user').id,
+    `SELECT u.id, u.role, u.foundation_id, u.is_system, u.password_hash, u.token_version, u.active,
+       f.status AS foundation_status
+     FROM users u JOIN foundations f ON f.id = u.foundation_id WHERE u.id = ?`,
+    session.id,
   );
-  if (!user || !(await verifyPassword(current, user.password_hash))) fail(422, 'كلمة المرور الحالية غير صحيحة');
+  if (!user || !user.active || user.token_version !== session.tokenVersion || (user.foundation_status !== 'active' && !user.is_system)) {
+    endSession(c);
+    fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
+  }
+  if (!(await verifyPassword(current, user.password_hash))) fail(422, 'كلمة المرور الحالية غير صحيحة');
   if (current === next) fail(422, 'اختر كلمة مرور مختلفة عن الحالية');
 
   await batch(c, [
@@ -125,9 +146,10 @@ auth.post('/change-password', requireAuth, async (c) => {
       await hashPassword(next), user.id),
     auditStmt(c, 'change_password', 'user', user.id),
   ]);
-  const session = c.get('user');
-  await startSession(c, {
-    ...user, foundation_id: session.foundation, features: session.features, token_version: user.token_version + 1, must_change_password: 0,
-  });
+  await startSession(
+    c,
+    { ...user, foundation_id: session.foundation, features: session.features, token_version: user.token_version + 1, must_change_password: 0 },
+    { start: session.sessionStart, remember: session.remember },
+  );
   return c.json({ ok: true });
 });

@@ -118,6 +118,10 @@ subscribers.post('/', requireRole('admin', 'delegate'), async (c) => {
   const body = await readJson(c, z.object({ ...fields, confirm_other_delegate: z.boolean().optional() }));
   const user = c.get('user');
   const delegateId = delegateScope(c) ?? body.delegate_id ?? null;
+  if (delegateId !== null && delegateScope(c) === null) {
+    const ok = await first(c, "SELECT id FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", delegateId, fid(c));
+    if (!ok) fail(422, 'المندوب غير موجود');
+  }
   const status = body.status ?? 'alive';
 
   // The same name under another delegate is reported before anything is added. Only an admin
@@ -127,7 +131,7 @@ subscribers.post('/', requireRole('admin', 'delegate'), async (c) => {
     const conflicts = await all<{ id: number; full_name: string; status: string; delegate_id: number | null; delegate_name: string | null }>(
       c,
       `SELECT s.id, s.full_name, s.status, s.delegate_id, u.full_name AS delegate_name
-       FROM subscribers s LEFT JOIN users u ON u.id = s.delegate_id
+       FROM subscribers s LEFT JOIN users u ON u.id = s.delegate_id AND u.foundation_id = s.foundation_id
        WHERE s.foundation_id = ? AND s.name_norm = ? AND s.deleted_at IS NULL AND s.delegate_id IS NOT ? LIMIT 10`,
       fid(c), normalizeName(body.full_name), delegateId,
     );
@@ -189,6 +193,10 @@ subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
     family_size: number; monthly_fee: number; address: string | null; notes: string | null;
   }>(c, 'delegate_id, full_name, phone, status, death_date, family_size, monthly_fee, address, notes', id);
   if (body.delegate_id !== undefined && delegateScope(c) !== null) fail(403, 'لا يمكن للمندوب نقل المشتركين');
+  if (body.delegate_id !== undefined && body.delegate_id !== null) {
+    const ok = await first(c, "SELECT id FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", body.delegate_id, fid(c));
+    if (!ok) fail(422, 'المندوب غير موجود');
+  }
 
   const set: string[] = ['updated_at = ?'];
   const params: unknown[] = [new Date().toISOString()];
@@ -240,8 +248,10 @@ subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
 subscribers.delete('/:id', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   const current = await loadScoped<{ delegate_id: number | null; full_name: string }>(c, 'delegate_id, full_name', id);
+  const now = new Date().toISOString();
   await batch(c, [
-    stmt(c, 'UPDATE subscribers SET deleted_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', new Date().toISOString(), id, fid(c)),
+    stmt(c, 'UPDATE subscribers SET deleted_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', now, id, fid(c)),
+    stmt(c, 'UPDATE subscriber_programs SET ended_at = ? WHERE subscriber_id = ? AND foundation_id = ? AND ended_at IS NULL', now, id, fid(c)),
     auditStmt(c, 'delete', 'subscriber', id, auditDetail(current.full_name)),
   ]);
   return c.json({ ok: true });

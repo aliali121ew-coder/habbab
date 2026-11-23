@@ -78,7 +78,7 @@ closings.post('/', async (c) => {
   const opening = previous?.closing_balance ?? 0;
 
   // Totals are read inside the write, so an entry racing the close cannot be missed.
-  await batch(c, [
+  const [res] = await batch(c, [
     stmt(c,
       `INSERT INTO monthly_closings (foundation_id, month, status, opening_balance, total_in, total_out, closing_balance, tx_count, closed_by)
        SELECT ?4, ?1, 'closed', ?2, t.total_in, t.total_out, ?2 + t.total_in - t.total_out, t.tx_count, ?3
@@ -87,14 +87,16 @@ closings.post('/', async (c) => {
            COALESCE(SUM(general_aid + monthly_aid + program_aid), 0) AS total_out,
            COALESCE(SUM(tx_count), 0) AS tx_count
          FROM stats_monthly WHERE foundation_id = ?4 AND month = ?1) AS t
-       WHERE 1
+       WHERE NOT EXISTS (SELECT 1 FROM monthly_closings WHERE foundation_id = ?4 AND status = 'closed' AND month >= ?1)
        ON CONFLICT(foundation_id, month) DO UPDATE SET
          status = 'closed', opening_balance = excluded.opening_balance, total_in = excluded.total_in,
          total_out = excluded.total_out, closing_balance = excluded.closing_balance, tx_count = excluded.tx_count,
-         closed_by = excluded.closed_by, closed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')`,
+         closed_by = excluded.closed_by, closed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')
+       WHERE monthly_closings.status <> 'closed'`,
       month, opening, c.get('user').id, fid(c)),
-    auditStmt(c, 'close_month', 'closing', null, month),
   ]);
+  if ((res?.meta?.changes ?? 0) === 0) fail(409, 'هذا الشهر مقفل مسبقاً');
+  await batch(c, [auditStmt(c, 'close_month', 'closing', null, month)]);
   return c.json({ ok: true }, 201);
 });
 
@@ -104,9 +106,10 @@ closings.post('/:month/reopen', requireRole('admin'), async (c) => {
     c, "SELECT month FROM monthly_closings WHERE foundation_id = ? AND status = 'closed' AND month > ? LIMIT 1", fid(c), month,
   );
   if (later) fail(409, 'أعد فتح الأشهر اللاحقة أولاً');
-  await batch(c, [
+  const [res] = await batch(c, [
     stmt(c, "UPDATE monthly_closings SET status = 'reopened' WHERE foundation_id = ? AND month = ? AND status = 'closed'", fid(c), month),
-    auditStmt(c, 'reopen_month', 'closing', null, month),
   ]);
+  if ((res?.meta?.changes ?? 0) === 0) fail(404, 'هذا الشهر غير مقفل');
+  await batch(c, [auditStmt(c, 'reopen_month', 'closing', null, month)]);
   return c.json({ ok: true });
 });

@@ -1,7 +1,7 @@
 import { MapPin, Phone } from 'lucide-react';
 import { formatNumber, today } from '../../format';
 import { useBranding } from '../../branding';
-import { FOUNDATIONS, type Patient } from './sample';
+import type { Patient } from './sample';
 
 type Kind = 'cash' | 'medicine' | 'exams';
 const KINDS: [Kind, string][] = [['cash', 'مبلغ مالي'], ['medicine', 'شراء دواء'], ['exams', 'كشفية طبية']];
@@ -46,7 +46,7 @@ export function PatientRecordSheet({ patient, currency }: { patient: Patient; cu
         <div>
           <h2>بيانات المريض</h2>
           <p className="rec-name">{patient.name}</p>
-          <span className="rec-chip">{patient.condition} · <bdi>{patient.age}</bdi> سنة</span>
+          <span className="rec-chip">{[patient.condition, patient.age > 0 ? `${patient.age} سنة` : ''].filter(Boolean).join(' · ') || '—'}</span>
           <dl className="rec-pairs">
             <div><dt>الهاتف</dt><dd><bdi dir="ltr">{patient.phone}</bdi></dd></div>
             <div><dt>العنوان</dt><dd>{patient.address}</dd></div>
@@ -56,7 +56,7 @@ export function PatientRecordSheet({ patient, currency }: { patient: Patient; cu
           <h2>ملخص السجل</h2>
           <dl className="rec-pairs">
             <div><dt>عدد المساعدات</dt><dd><bdi>{rows.length}</bdi></dd></div>
-            <div><dt>المؤسسات</dt><dd><bdi>{foundations}</bdi> من <bdi>{FOUNDATIONS.length}</bdi></dd></div>
+            <div><dt>المؤسسات</dt><dd><bdi>{foundations}</bdi></dd></div>
             <div><dt>آخر مراجعة</dt><dd dir="ltr">{shortDate(patient.records[0].date)}</dd></div>
           </dl>
         </div>

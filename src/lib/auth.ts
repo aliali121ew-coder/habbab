@@ -82,15 +82,24 @@ export async function startSession(c: Context<AppEnv>, user: SessionInput, optio
   });
 }
 
+export async function readSessionClaims(c: Context<AppEnv>): Promise<Claims | null> {
+  const token = getCookie(c, cookieName(c));
+  return token ? readToken(c.env.JWT_SECRET, token) : null;
+}
+
 export function endSession(c: Context<AppEnv>) {
-  deleteCookie(c, cookieName(c), { path: '/', secure: cookieName(c) === '__Host-sid' });
+  deleteCookie(c, cookieName(c), {
+    path: '/',
+    secure: cookieName(c) === '__Host-sid',
+    httpOnly: true,
+    sameSite: 'Strict',
+  });
 }
 
 // No D1 read on a normal request. The user row is only checked when the token
 // is past half-life, so a disabled account loses access within 15 minutes.
 export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
-  const token = getCookie(c, cookieName(c));
-  const claims = token ? await readToken(c.env.JWT_SECRET, token) : null;
+  const claims = await readSessionClaims(c);
   if (!claims) fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
 
   const now = Math.floor(Date.now() / 1000);
@@ -99,6 +108,7 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   let features = claims.ft ?? [...FEATURES];
   let system = claims.sy === 1;
   let mustChange = claims.mc === 1;
+  let tokenVersion = claims.tv;
   if (claims.exp - now < TOKEN_TTL / 2) {
     if (now - claims.st >= sessionLimit(claims)) {
       endSession(c);
@@ -126,9 +136,19 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
     foundation = target;
     system = row.is_system === 1;
     mustChange = row.must_change_password === 1;
+    tokenVersion = row.token_version;
   }
 
-  c.set('user', { id: claims.sub, role, foundation, features, system });
+  c.set('user', {
+    id: claims.sub,
+    role,
+    foundation,
+    features,
+    system,
+    tokenVersion,
+    sessionStart: claims.st,
+    remember: claims.rm === 1,
+  });
   if (mustChange && !c.req.path.startsWith('/api/auth/')) fail(403, 'يجب تغيير كلمة المرور أولاً');
   await next();
 };

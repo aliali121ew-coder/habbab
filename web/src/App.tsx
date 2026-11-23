@@ -69,14 +69,17 @@ export function App() {
   // Payments recorded offline go out when the app opens, when the connection returns, and every
   // 30 seconds while some are still waiting (paymentQueue.ts).
   const userId = status === 'ready' ? me?.id ?? null : null;
+  const foundationId = status === 'ready' ? me?.foundation_id : undefined;
   useEffect(() => {
     if (userId === null) return;
-    const send = () => { if (navigator.onLine && queuedPayments(userId).length) void syncPayments(userId); };
+    const send = () => {
+      if (navigator.onLine && queuedPayments(userId, foundationId).length) void syncPayments(userId, foundationId);
+    };
     send();
     window.addEventListener('online', send);
     const timer = window.setInterval(send, 30_000);
     return () => { window.removeEventListener('online', send); window.clearInterval(timer); };
-  }, [userId]);
+  }, [userId, foundationId]);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -105,9 +108,9 @@ export function App() {
       <ChangePassword
         name={me.full_name}
         onDone={load}
-        onSignOut={() => {
-          void api('/auth/logout', { method: 'POST' }).catch(() => undefined);
-          clearLocalRecords();
+        onSignOut={async () => {
+          await api('/auth/logout', { method: 'POST' }).catch(() => undefined);
+          await clearLocalRecords();
           setMe(null);
           setStatus('login');
         }}
@@ -127,7 +130,7 @@ export function App() {
         : route === 'soon:activity' && me.role === 'admin'
         ? <ActivityPage me={me} />
         : route === 'soon:settings' && me.role === 'admin'
-        ? <SettingsPage />
+        ? <SettingsPage me={me} />
         : route === 'soon:reports' && me.role === 'admin'
         ? <ReportsPage me={me} />
         : typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'

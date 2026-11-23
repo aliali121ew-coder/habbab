@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { Building2, ImageUp, Loader2, Settings, Trash2 } from 'lucide-react';
-import { api } from '../../api';
+import { Building2, ChevronLeft, ImageUp, Loader2, ServerCog, Settings, Trash2 } from 'lucide-react';
+import { api, type Me } from '../../api';
 import { useBranding } from '../../branding';
 import { compressBrandImage } from '../../image';
 
@@ -78,7 +78,7 @@ function ImageSlot({ kind, label, hint, side, url, onChanged }: { kind: Kind; la
 
 // الإعدادات: the foundation's letterhead, printed on its sheets and receipts. The manager of the
 // foundation edits it; the name itself is set by the system admin.
-export function SettingsPage() {
+export function SettingsPage({ me }: { me?: Me }) {
   const brand = useBranding();
   const [address, setAddress] = useState('');
   const [stampPlace, setStampPlace] = useState('');
@@ -127,10 +127,17 @@ export function SettingsPage() {
     <div className="set">
       <header className="set-head">
         <span className="set-head-icon" aria-hidden><Settings size={22} /></span>
-        <div>
+        <div className="set-head-text">
           <h1>الإعدادات</h1>
           <p>الورقة الرسمية للمؤسسة: تظهر في كل ما يُطبع ويُرسل</p>
         </div>
+        {me?.is_system && (
+          <a href="#/system" className="btn primary" style={{ marginInlineStart: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+            <ServerCog size={16} aria-hidden />
+            <span>إدارة النظام</span>
+            <ChevronLeft size={15} aria-hidden />
+          </a>
+        )}
       </header>
 
       <section className="set-card" aria-labelledby="set-images">

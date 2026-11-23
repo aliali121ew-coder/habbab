@@ -25,6 +25,12 @@ let cachedData = null;
 let inflight = null;
 const listeners = new Set();
 
+export function clearDelegatesCache() {
+  cachedData = null;
+  inflight = null;
+  listeners.forEach((fn) => fn([]));
+}
+
 function fetchLiveDelegates(force = false) {
   if (!force && cachedData) return Promise.resolve(cachedData);
   if (!inflight) {

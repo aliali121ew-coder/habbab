@@ -30,6 +30,10 @@ export interface SessionUser {
   features: Feature[];
   /** مدير النظام: manages foundations and may enter any of them. */
   system: boolean;
+  /** Token version, session start, and remember flag from the verified session token. */
+  tokenVersion: number;
+  sessionStart: number;
+  remember: boolean;
 }
 
 export type AppEnv = {
