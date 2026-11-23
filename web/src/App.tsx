@@ -140,7 +140,10 @@ export function App() {
         : route === 'families' && me.role === 'admin'
           ? <FamiliesPage />
           : me.role === 'delegate'
-            ? <SubscribersPage me={me} delegateId={me.id} />
+            // A delegate's own register; «عرض المشتركين» (#/delegates/<id>/list) opens the full list.
+            ? (typeof route === 'string' && route.startsWith('list:')
+              ? <SubscribersPage key="list" me={me} delegateId={me.id} fullList />
+              : <SubscribersPage key="own" me={me} delegateId={me.id} />)
             : route === 'patient-detail' && (me.role === 'health' || me.role === 'admin')
               ? <PatientDetailPage me={me} />
               : me.role === 'health' || (route === 'patients' && me.role === 'admin')

@@ -66,8 +66,21 @@ export const onQueueChange = (listener: () => void) => {
 export function queuePayment(entry: Omit<QueuedPayment, 'key' | 'queuedAt'>) {
   const key = `${entry.foundationId ?? 0}:${entry.userId}:${entry.subscriberId}:${entry.period}`;
   const others = read<QueuedPayment>(QUEUE_KEY).filter((item) => item.key !== key);
-  const ok = write(QUEUE_KEY, [...others, { ...entry, key, queuedAt: new Date().toISOString() }]);
-  if (!ok) throw new Error('تعذّر حفظ التسديد على الجهاز لأن مساحة التخزين ممتلئة');
+  const next = [...others, { ...entry, key, queuedAt: new Date().toISOString() }];
+  if (write(QUEUE_KEY, next)) return;
+  // The device's storage is full. Money comes first: drop what this device only keeps for looks
+  // (the home page's slide pictures and cached lists) and try once more.
+  freeSpace();
+  if (write(QUEUE_KEY, next)) return;
+  throw new Error('لم يُحفظ هذا التسديد: لا يوجد إنترنت وذاكرة الهاتف ممتلئة. اكتب الاسم والمبلغ والشهر في ورقة، وسجّله مرة أخرى عند رجوع الإنترنت.');
+}
+
+// Keys that only make the app look or load nicer; safe to drop when a payment needs the room.
+const DISPOSABLE = /^ahbab:(hero-slides|families|family-photos|patient-photos)/;
+function freeSpace() {
+  try {
+    for (const name of Object.keys(localStorage)) if (DISPOSABLE.test(name)) localStorage.removeItem(name);
+  } catch { /* storage blocked */ }
 }
 
 export function dismissUnsent(key: string) {

@@ -197,7 +197,8 @@ async function compressImageFile(file: File): Promise<string> {
       const img = new Image();
       img.onerror = () => reject(new Error('ملف غير صالح كصورة'));
       img.onload = () => {
-        const maxW = 1600;
+        // Kept small: these pictures live in the browser's storage, which offline payments share.
+        const maxW = 1100;
         const scale = img.width > maxW ? maxW / img.width : 1;
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(img.width * scale);
@@ -208,7 +209,7 @@ async function compressImageFile(file: File): Promise<string> {
           return;
         }
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.84));
+        resolve(canvas.toDataURL('image/jpeg', 0.74));
       };
       img.src = String(reader.result);
     };

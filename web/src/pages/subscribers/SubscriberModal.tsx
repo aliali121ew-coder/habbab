@@ -133,7 +133,16 @@ export function SubscriberModal({
   // Rendered on the page body: inside the glass register card (backdrop-filter) a fixed overlay
   // is placed against the card instead of the screen, so on a phone the sheet landed off-screen.
   return createPortal(
-    <div className="sub-overlay" role="dialog" aria-modal="true" aria-label={`تفاصيل المشترك ${row.full_name}`} onClick={onClose}>
+    // Only a tap on the dimmed backdrop itself closes the sheet: the payment and print dialogs are
+    // rendered inside this overlay, and a tap in them (the amount field, the confirm button) must
+    // not close everything — that hid every error, such as a payment that could not be saved.
+    <div
+      className="sub-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`تفاصيل المشترك ${row.full_name}`}
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    >
       <div className="sub-card" onClick={(event) => event.stopPropagation()}>
         <header className="sub-hero">
           <div className="sub-hero-row">
