@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { decryptText, encryptText, hmac } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zDate, zId, zText } from '../lib/http';
 import { maskNationalId, maskPhone, normalizeDigits, normalizeName, prefixRange } from '../lib/text';
 
@@ -45,7 +45,7 @@ const delegateScope = (c: Context<AppEnv>) => (c.get('user').role === 'delegate'
 
 // 404 rather than 403, so a delegate cannot probe which ids exist.
 async function loadScoped<T extends { delegate_id: number | null }>(c: Context<AppEnv>, columns: string, id: number) {
-  const row = await first<T>(c, `SELECT ${columns} FROM subscribers WHERE id = ? AND deleted_at IS NULL`, id);
+  const row = await first<T>(c, `SELECT ${columns} FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL`, id, fid(c));
   const scope = delegateScope(c);
   if (!row || (scope !== null && row.delegate_id !== scope)) fail(404, 'السجل غير موجود');
   return row;
@@ -59,10 +59,12 @@ export async function searchRows<T>(c: Context<AppEnv>, columns: string, q: stri
   const [from, to] = prefixRange(term);
   const column = isPhone ? 'phone' : 'name_norm';
 
-  const where = ['deleted_at IS NULL', `${column} >= ?`, `${column} < ?`];
-  const params: unknown[] = [from, to];
-  if (isPhone) where.push('phone IS NOT NULL');
   const scope = delegateScope(c) ?? delegate ?? null;
+  // With a delegate, their own (delegate_id, name_norm) index is the narrow one; unary + keeps
+  // the foundation check as a filter so the planner does not switch to the foundation index.
+  const where = [scope !== null ? '+foundation_id = ?' : 'foundation_id = ?', 'deleted_at IS NULL', `${column} >= ?`, `${column} < ?`];
+  const params: unknown[] = [fid(c), from, to];
+  if (isPhone) where.push('phone IS NOT NULL');
   if (scope !== null) {
     where.push('delegate_id = ?');
     params.push(scope);
@@ -73,6 +75,7 @@ export async function searchRows<T>(c: Context<AppEnv>, columns: string, q: stri
     where.push('+status = ?');
     params.push(status);
   }
+  // scope-ok: `where` starts with foundation_id = ?
   return all<T>(c, `SELECT ${columns} FROM subscribers WHERE ${where.join(' AND ')} ORDER BY ${column} LIMIT ${PAGE_SIZE}`, ...columnParams, ...params);
 }
 
@@ -86,11 +89,11 @@ subscribers.get('/', requireRole('admin', 'delegate'), async (c) => {
 
   const rows = delegate !== null
     ? await all<ListRow>(c, `SELECT ${LIST_COLUMNS} FROM subscribers
-        WHERE delegate_id = ? AND status = ? AND deleted_at IS NULL AND id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
-        delegate, status, cursor)
+        WHERE delegate_id = ? AND +foundation_id = ? AND status = ? AND deleted_at IS NULL AND id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
+        delegate, fid(c), status, cursor)
     : await all<ListRow>(c, `SELECT ${LIST_COLUMNS} FROM subscribers
-        WHERE status = ? AND deleted_at IS NULL AND id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
-        status, cursor);
+        WHERE foundation_id = ? AND status = ? AND deleted_at IS NULL AND id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
+        fid(c), status, cursor);
   return c.json({ items: rows.map(masked), next: nextCursor(rows) });
 });
 
@@ -125,8 +128,8 @@ subscribers.post('/', requireRole('admin', 'delegate'), async (c) => {
       c,
       `SELECT s.id, s.full_name, s.status, s.delegate_id, u.full_name AS delegate_name
        FROM subscribers s LEFT JOIN users u ON u.id = s.delegate_id
-       WHERE s.name_norm = ? AND s.deleted_at IS NULL AND s.delegate_id IS NOT ? LIMIT 10`,
-      normalizeName(body.full_name), delegateId,
+       WHERE s.foundation_id = ? AND s.name_norm = ? AND s.deleted_at IS NULL AND s.delegate_id IS NOT ? LIMIT 10`,
+      fid(c), normalizeName(body.full_name), delegateId,
     );
     if (conflicts.length) {
       const where = [...new Set(conflicts.map((row) => row.delegate_name ?? 'بدون مندوب'))].join('، ');
@@ -142,10 +145,10 @@ subscribers.post('/', requireRole('admin', 'delegate'), async (c) => {
   const nationalId = body.national_id ?? null;
   const statements = [
     stmt(c,
-      `INSERT INTO subscribers (full_name, name_norm, phone, national_id_enc, national_id_bidx, national_id_last4,
+      `INSERT INTO subscribers (foundation_id, full_name, name_norm, phone, national_id_enc, national_id_bidx, national_id_last4,
          status, death_date, delegate_id, family_size, monthly_fee, address, notes, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-      body.full_name, normalizeName(body.full_name), body.phone ?? null,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      fid(c), body.full_name, normalizeName(body.full_name), body.phone ?? null,
       nationalId ? await encryptText(c.env.DATA_KEY, nationalId) : null,
       nationalId ? await hmac(c.env.BLIND_KEY, nationalId) : null,
       nationalId ? nationalId.slice(-4) : null,
@@ -207,15 +210,15 @@ subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
   if (body.status === 'alive') put('death_date', null);
 
   const statements = [
-    stmt(c, `UPDATE subscribers SET ${set.join(', ')} WHERE id = ? AND deleted_at IS NULL`, ...params, id),
+    stmt(c, `UPDATE subscribers SET ${set.join(', ')} WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL`, ...params, id, fid(c)),
     auditStmt(c, 'update', 'subscriber', id, Object.keys(body).join(',')),
   ];
   const name = body.full_name ?? current.full_name;
   const delegateId = body.delegate_id === undefined ? current.delegate_id : body.delegate_id;
   if (name !== current.full_name || delegateId !== current.delegate_id) {
     statements.push(stmt(c,
-      'UPDATE subscriber_programs SET subscriber_name = ?, delegate_id = ? WHERE subscriber_id = ? AND ended_at IS NULL',
-      name, delegateId, id));
+      'UPDATE subscriber_programs SET subscriber_name = ?, delegate_id = ? WHERE subscriber_id = ? AND foundation_id = ? AND ended_at IS NULL',
+      name, delegateId, id, fid(c)));
   }
   await batch(c, statements);
   return c.json({ ok: true });
@@ -224,7 +227,7 @@ subscribers.patch('/:id', requireRole('admin', 'delegate'), async (c) => {
 subscribers.delete('/:id', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   await batch(c, [
-    stmt(c, 'UPDATE subscribers SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL', new Date().toISOString(), id),
+    stmt(c, 'UPDATE subscribers SET deleted_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', new Date().toISOString(), id, fid(c)),
     auditStmt(c, 'delete', 'subscriber', id),
   ]);
   return c.json({ ok: true });

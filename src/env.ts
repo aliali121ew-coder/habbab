@@ -21,6 +21,8 @@ export interface Env {
 export interface SessionUser {
   id: number;
   role: Role;
+  /** The user's foundation. Every query scopes by this; it never comes from the request. */
+  foundation: number;
 }
 
 export type AppEnv = {

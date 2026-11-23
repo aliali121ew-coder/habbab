@@ -4,7 +4,7 @@ import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { edgeCached, invalidateRefData, refData } from '../lib/cache';
 import { hashPassword } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, readJson } from '../lib/http';
 import { currentMonth } from '../lib/text';
 import { zPassword } from './auth';
@@ -16,20 +16,21 @@ interface Totals {
 }
 
 async function loadTotals(c: Context<AppEnv>): Promise<Totals> {
-  const rows = await all<{ key: string; value: number }>(c, 'SELECT key, value FROM stats_totals');
+  const rows = await all<{ key: string; value: number }>(c, 'SELECT key, value FROM stats_totals WHERE foundation_id = ?', fid(c));
   return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 }
 
 const delegateRow = (c: Context<AppEnv>, id: number) =>
   first<{ subs_alive: number; subs_deceased: number; received_total: number; disbursed_total: number }>(
-    c, 'SELECT subs_alive, subs_deceased, received_total, disbursed_total FROM delegate_totals WHERE delegate_id = ?', id,
+    c, `SELECT t.subs_alive, t.subs_deceased, t.received_total, t.disbursed_total
+        FROM delegate_totals t JOIN users u ON u.id = t.delegate_id WHERE t.delegate_id = ? AND u.foundation_id = ?`, id, fid(c),
   );
 
 const emptyDelegate = { subs_alive: 0, subs_deceased: 0, received_total: 0, disbursed_total: 0 };
 
 const recentMonths = (c: Context<AppEnv>) =>
   all<{ month: string; general_aid: number; monthly_aid: number; program_aid: number; delegate_receipt: number; tx_count: number }>(
-    c, 'SELECT month, general_aid, monthly_aid, program_aid, delegate_receipt, tx_count FROM stats_monthly ORDER BY month DESC LIMIT 6',
+    c, 'SELECT month, general_aid, monthly_aid, program_aid, delegate_receipt, tx_count FROM stats_monthly WHERE foundation_id = ? ORDER BY month DESC LIMIT 6', fid(c),
   );
 
 export const dashboard = new Hono<AppEnv>();
@@ -47,17 +48,17 @@ dashboard.get('/', async (c) => {
     return c.json(data);
   }
   if (user.role === 'health') {
-    const data = await edgeCached(c, 'dash/health', 60, async () => {
+    const data = await edgeCached(c, `dash/health/${user.foundation}`, 60, async () => {
       const totals = await loadTotals(c);
       return { kind: 'health', rx_total: totals.rx_total ?? 0, rx_pending: totals.rx_pending ?? 0 };
     });
     return c.json(data);
   }
   if (user.role === 'accountant') {
-    const data = await edgeCached(c, `dash/accountant/${month}`, 60, async () => ({ kind: 'accountant', month, months: await recentMonths(c) }));
+    const data = await edgeCached(c, `dash/accountant/${user.foundation}/${month}`, 60, async () => ({ kind: 'accountant', month, months: await recentMonths(c) }));
     return c.json(data);
   }
-  const data = await edgeCached(c, `dash/admin/${month}`, 60, async () => {
+  const data = await edgeCached(c, `dash/admin/${user.foundation}/${month}`, 60, async () => {
     const [totals, months] = await Promise.all([loadTotals(c), recentMonths(c)]);
     return { kind: 'admin', month, totals, months };
   });
@@ -78,12 +79,12 @@ dashboard.get('/daily', requireRole('admin', 'accountant'), async (c) => {
   const months = [...new Set([from.data.slice(0, 7), to.data.slice(0, 7)])];
   const [incoming, outgoing] = await Promise.all([
     all<{ day: string; total: number }>(c,
-      'SELECT day, total_in AS total FROM stats_daily WHERE day BETWEEN ? AND ?', from.data, to.data),
+      'SELECT day, total_in AS total FROM stats_daily WHERE foundation_id = ? AND day BETWEEN ? AND ?', fid(c), from.data, to.data),
     all<{ day: string; total: number }>(c,
       `SELECT spent_on AS day, SUM(amount) AS total FROM expenses
-       WHERE deleted_at IS NULL AND month IN (${months.map(() => '?').join(', ')}) AND spent_on BETWEEN ? AND ?
+       WHERE foundation_id = ? AND deleted_at IS NULL AND month IN (${months.map(() => '?').join(', ')}) AND spent_on BETWEEN ? AND ?
        GROUP BY spent_on`,
-      ...months, from.data, to.data),
+      fid(c), ...months, from.data, to.data),
   ]);
 
   const inBy = new Map(incoming.map((r) => [r.day, r.total]));
@@ -112,7 +113,8 @@ delegates.get('/', requireRole('admin', 'accountant'), async (c) => {
     `SELECT u.id, u.full_name, COALESCE(t.subs_alive, 0) AS subs_alive, COALESCE(t.subs_deceased, 0) AS subs_deceased,
        COALESCE(t.received_total, 0) AS received_total, COALESCE(t.disbursed_total, 0) AS disbursed_total
      FROM users u LEFT JOIN delegate_totals t ON t.delegate_id = u.id
-     WHERE u.role = 'delegate' AND u.active = 1 ORDER BY u.id`,
+     WHERE u.foundation_id = ? AND u.role = 'delegate' AND u.active = 1 ORDER BY u.id`,
+    fid(c),
   );
   return c.json({ items: rows, next: null });
 });
@@ -122,7 +124,7 @@ delegates.get('/:id', requireRole('admin', 'accountant', 'delegate'), async (c) 
   const user = c.get('user');
   if (user.role === 'delegate' && user.id !== id) fail(404, 'السجل غير موجود');
   const [person, totals] = await Promise.all([
-    first<{ full_name: string }>(c, "SELECT full_name FROM users WHERE id = ? AND role = 'delegate'", id),
+    first<{ full_name: string }>(c, "SELECT full_name FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", id, fid(c)),
     delegateRow(c, id),
   ]);
   if (!person) fail(404, 'السجل غير موجود');
@@ -137,8 +139,8 @@ users.get('/', async (c) => {
   const cursor = cursorParam(c.req.query('cursor'));
   const rows = await all<{ id: number }>(
     c,
-    `SELECT id, username, full_name, role, active FROM users WHERE id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
-    cursor,
+    `SELECT id, username, full_name, role, active FROM users WHERE foundation_id = ? AND id < ? ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
+    fid(c), cursor,
   );
   return c.json({ items: rows, next: nextCursor(rows) });
 });
@@ -151,8 +153,8 @@ users.post('/', async (c) => {
     password: zPassword,
   }));
   await batch(c, [
-    stmt(c, 'INSERT INTO users (username, full_name, role, password_hash) VALUES (?, ?, ?, ?)',
-      body.username, body.full_name, body.role, await hashPassword(body.password)),
+    stmt(c, 'INSERT INTO users (foundation_id, username, full_name, role, password_hash) VALUES (?, ?, ?, ?, ?)',
+      fid(c), body.username, body.full_name, body.role, await hashPassword(body.password)),
     auditInsertedStmt(c, 'create', 'user'),
   ]);
   invalidateRefData(c);
@@ -185,7 +187,7 @@ users.patch('/:id', async (c) => {
   set.push('token_version = token_version + 1', 'failed_logins = 0', 'locked_until = NULL');
 
   await batch(c, [
-    stmt(c, `UPDATE users SET ${set.join(', ')} WHERE id = ?`, ...params, id),
+    stmt(c, `UPDATE users SET ${set.join(', ')} WHERE id = ? AND foundation_id = ?`, ...params, id, fid(c)),
     auditStmt(c, 'update', 'user', id, Object.keys(body).join(',')),
   ]);
   invalidateRefData(c);
@@ -202,8 +204,8 @@ audit.get('/', async (c) => {
     c,
     `SELECT a.id, a.action, a.entity, a.entity_id, a.detail, a.created_at, u.full_name AS user_name
      FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
-     WHERE a.id < ? ORDER BY a.id DESC LIMIT ${PAGE_SIZE}`,
-    cursor,
+     WHERE a.foundation_id = ? AND a.id < ? ORDER BY a.id DESC LIMIT ${PAGE_SIZE}`,
+    fid(c), cursor,
   );
   return c.json({ items: rows, next: nextCursor(rows) });
 });

@@ -14,6 +14,7 @@ const REMEMBER_MAX = 30 * 24 * 60 * 60;
 interface Claims {
   sub: number;
   role: Role;
+  f?: number; // foundation; tokens issued before foundations existed lack it and mean 1
   tv: number;
   st: number; // session start, for the absolute lifetime
   exp: number;
@@ -50,12 +51,12 @@ async function readToken(secret: string, token: string): Promise<Claims | null> 
 
 export async function startSession(
   c: Context<AppEnv>,
-  user: { id: number; role: Role; token_version: number; must_change_password: number },
+  user: { id: number; role: Role; foundation_id: number; token_version: number; must_change_password: number },
   options: { start?: number; remember?: boolean } = {},
 ) {
   const now = Math.floor(Date.now() / 1000);
   const start = options.start ?? now;
-  const claims: Claims = { sub: user.id, role: user.role, tv: user.token_version, st: start, exp: now + TOKEN_TTL };
+  const claims: Claims = { sub: user.id, role: user.role, f: user.foundation_id, tv: user.token_version, st: start, exp: now + TOKEN_TTL };
   if (user.must_change_password) claims.mc = 1;
   if (options.remember) claims.rm = 1;
   setCookie(c, cookieName(c), await signToken(c.env.JWT_SECRET, claims), {
@@ -81,27 +82,30 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
 
   const now = Math.floor(Date.now() / 1000);
   let role = claims.role;
+  let foundation = claims.f ?? 1;
   let mustChange = claims.mc === 1;
   if (claims.exp - now < TOKEN_TTL / 2) {
     if (now - claims.st >= sessionLimit(claims)) {
       endSession(c);
       fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
     }
-    const row = await first<{ id: number; role: Role; token_version: number; active: number; must_change_password: number }>(
+    const row = await first<{ id: number; role: Role; foundation_id: number; token_version: number; active: number; must_change_password: number; foundation_status: string }>(
       c,
-      'SELECT id, role, token_version, active, must_change_password FROM users WHERE id = ?',
+      `SELECT u.id, u.role, u.foundation_id, u.token_version, u.active, u.must_change_password, f.status AS foundation_status
+       FROM users u JOIN foundations f ON f.id = u.foundation_id WHERE u.id = ?`,
       claims.sub,
     );
-    if (!row || !row.active || row.token_version !== claims.tv) {
+    if (!row || !row.active || row.token_version !== claims.tv || row.foundation_status !== 'active') {
       endSession(c);
       fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
     }
     await startSession(c, row, { start: claims.st, remember: claims.rm === 1 });
     role = row.role;
+    foundation = row.foundation_id;
     mustChange = row.must_change_password === 1;
   }
 
-  c.set('user', { id: claims.sub, role });
+  c.set('user', { id: claims.sub, role, foundation });
   if (mustChange && !c.req.path.startsWith('/api/auth/')) fail(403, 'يجب تغيير كلمة المرور أولاً');
   await next();
 };

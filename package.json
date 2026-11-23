@@ -19,6 +19,8 @@
     "seed:delegates": "node scripts/seed-delegates.mjs",
     "seed:expenses": "node scripts/seed-expenses.mjs",
     "test:register": "node tests/register.mjs",
+    "test:isolation": "node tests/isolation.mjs",
+    "check:scope": "node scripts/check-foundation-scope.mjs",
     "release": "node scripts/release.mjs"
   },
   "dependencies": {

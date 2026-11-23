@@ -31,11 +31,15 @@ export async function batch(c: Ctx, statements: D1PreparedStatement[]) {
   return results;
 }
 
+// The signed-in user's foundation. Every query on foundation data binds this; a foundation id
+// sent in a request is never used for scoping.
+export const fid = (c: Ctx): number => c.get('user').foundation;
+
 export function auditStmt(c: Ctx, action: string, entity: string, entityId: number | null, detail?: string) {
   return stmt(
     c,
-    'INSERT INTO audit_log (user_id, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?)',
-    c.get('user')?.id ?? null, action, entity, entityId, detail ?? null,
+    'INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id, detail) VALUES (?, ?, ?, ?, ?, ?)',
+    c.get('user')?.foundation ?? 1, c.get('user')?.id ?? null, action, entity, entityId, detail ?? null,
   );
 }
 
@@ -43,8 +47,8 @@ export function auditStmt(c: Ctx, action: string, entity: string, entityId: numb
 export function auditInsertedStmt(c: Ctx, action: string, entity: string) {
   return stmt(
     c,
-    'INSERT INTO audit_log (user_id, action, entity, entity_id) VALUES (?, ?, ?, last_insert_rowid())',
-    c.get('user').id, action, entity,
+    'INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id) VALUES (?, ?, ?, ?, last_insert_rowid())',
+    fid(c), c.get('user').id, action, entity,
   );
 }
 

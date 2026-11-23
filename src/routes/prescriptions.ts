@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { decryptBytes, decryptText, encryptBytes, encryptText, fromB64Url, hmac, hmacVerify, toB64Url } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zDate, zId, zText } from '../lib/http';
 
 const MAX_IMAGE = 300 * 1024;
@@ -62,8 +62,8 @@ prescriptions.get('/', async (c) => {
   const subscriber = c.req.query('subscriber') ? idParam(c.req.query('subscriber')!) : null;
   const cursor = cursorParam(c.req.query('cursor'));
 
-  const where = ['deleted_at IS NULL', 'id < ?'];
-  const params: unknown[] = [cursor];
+  const where = [subscriber !== null ? '+foundation_id = ?' : 'foundation_id = ?', 'deleted_at IS NULL', 'id < ?'];
+  const params: unknown[] = [fid(c), cursor];
   if (subscriber !== null) {
     where.push('subscriber_id = ?');
     params.push(subscriber);
@@ -74,6 +74,7 @@ prescriptions.get('/', async (c) => {
   }
   const rows = await all<{ id: number; thumb_key: string | null }>(
     c,
+    // scope-ok: `where` starts with foundation_id = ?
     `SELECT id, subscriber_id, patient_name, rx_date, status, thumb_key FROM prescriptions
      WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
     ...params,
@@ -103,7 +104,7 @@ prescriptions.post('/', async (c) => {
   const thumb = await readImage(form.get('thumb'), MAX_THUMB);
 
   const patient = await first<{ full_name: string }>(
-    c, 'SELECT full_name FROM subscribers WHERE id = ? AND deleted_at IS NULL', body.subscriber_id,
+    c, 'SELECT full_name FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', body.subscriber_id, fid(c),
   );
   if (!patient) fail(422, 'المريض غير موجود');
 
@@ -118,9 +119,9 @@ prescriptions.post('/', async (c) => {
   try {
     await batch(c, [
       stmt(c,
-        `INSERT INTO prescriptions (subscriber_id, patient_name, rx_date, details_enc, image_key, thumb_key, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        body.subscriber_id, patient.full_name, body.rx_date, await encryptText(c.env.DATA_KEY, details),
+        `INSERT INTO prescriptions (foundation_id, subscriber_id, patient_name, rx_date, details_enc, image_key, thumb_key, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        fid(c), body.subscriber_id, patient.full_name, body.rx_date, await encryptText(c.env.DATA_KEY, details),
         imageKey, thumbKey, c.get('user').id),
       auditInsertedStmt(c, 'create', 'prescription'),
     ]);
@@ -139,8 +140,8 @@ prescriptions.get('/:id', async (c) => {
   }>(
     c,
     `SELECT id, subscriber_id, patient_name, rx_date, status, details_enc, image_key
-     FROM prescriptions WHERE id = ? AND deleted_at IS NULL`,
-    id,
+     FROM prescriptions WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL`,
+    id, fid(c),
   );
   if (!row) fail(404, 'السجل غير موجود');
   await batch(c, [auditStmt(c, 'view', 'prescription', id)]);
@@ -156,7 +157,8 @@ prescriptions.patch('/:id/status', async (c) => {
   const id = idParam(c.req.param('id'));
   const { status } = await readJson(c, z.object({ status: zStatus }));
   await batch(c, [
-    stmt(c, 'UPDATE prescriptions SET status = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL', status, new Date().toISOString(), id),
+    stmt(c, 'UPDATE prescriptions SET status = ?, updated_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL',
+      status, new Date().toISOString(), id, fid(c)),
     auditStmt(c, 'update_status', 'prescription', id, status),
   ]);
   return c.json({ ok: true });
@@ -165,7 +167,7 @@ prescriptions.patch('/:id/status', async (c) => {
 prescriptions.delete('/:id', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   await batch(c, [
-    stmt(c, 'UPDATE prescriptions SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL', new Date().toISOString(), id),
+    stmt(c, 'UPDATE prescriptions SET deleted_at = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', new Date().toISOString(), id, fid(c)),
     auditStmt(c, 'delete', 'prescription', id),
   ]);
   return c.json({ ok: true });

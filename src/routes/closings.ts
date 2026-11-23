@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
-import { all, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { fail, parseOrFail, readJson, zMonth } from '../lib/http';
 import { currentMonth } from '../lib/text';
 
@@ -22,8 +22,8 @@ const COLUMNS = 'month, status, opening_balance, total_in, total_out, closing_ba
 const previousClosing = (c: Parameters<typeof first>[0], month: string) =>
   first<{ month: string; closing_balance: number }>(
     c,
-    "SELECT month, closing_balance FROM monthly_closings WHERE status = 'closed' AND month < ? ORDER BY month DESC LIMIT 1",
-    month,
+    "SELECT month, closing_balance FROM monthly_closings WHERE foundation_id = ? AND status = 'closed' AND month < ? ORDER BY month DESC LIMIT 1",
+    fid(c), month,
   );
 
 export const closings = new Hono<AppEnv>();
@@ -33,9 +33,9 @@ closings.use('*', requireRole('admin', 'accountant'));
 closings.get('/', async (c) => {
   const cursor = c.req.query('cursor');
   const rows = cursor
-    ? await all<ClosingRow>(c, `SELECT ${COLUMNS} FROM monthly_closings WHERE month < ? ORDER BY month DESC LIMIT ${PAGE_SIZE}`,
-        parseOrFail(zMonth, cursor))
-    : await all<ClosingRow>(c, `SELECT ${COLUMNS} FROM monthly_closings ORDER BY month DESC LIMIT ${PAGE_SIZE}`);
+    ? await all<ClosingRow>(c, `SELECT ${COLUMNS} FROM monthly_closings WHERE foundation_id = ? AND month < ? ORDER BY month DESC LIMIT ${PAGE_SIZE}`,
+        fid(c), parseOrFail(zMonth, cursor))
+    : await all<ClosingRow>(c, `SELECT ${COLUMNS} FROM monthly_closings WHERE foundation_id = ? ORDER BY month DESC LIMIT ${PAGE_SIZE}`, fid(c));
   const items = rows.map((row) => ({ ...row, id: row.month }));
   return c.json({ items, next: rows.length === PAGE_SIZE ? rows[rows.length - 1].month : null });
 });
@@ -44,7 +44,7 @@ closings.get('/preview', async (c) => {
   const month = parseOrFail(zMonth, c.req.query('month'));
   const [stats, previous] = await Promise.all([
     first<{ general_aid: number; monthly_aid: number; program_aid: number; delegate_receipt: number; tx_count: number }>(
-      c, 'SELECT general_aid, monthly_aid, program_aid, delegate_receipt, tx_count FROM stats_monthly WHERE month = ?', month,
+      c, 'SELECT general_aid, monthly_aid, program_aid, delegate_receipt, tx_count FROM stats_monthly WHERE foundation_id = ? AND month = ?', fid(c), month,
     ),
     previousClosing(c, month),
   ]);
@@ -69,8 +69,8 @@ closings.post('/', async (c) => {
   if (month >= currentMonth()) fail(422, 'لا يمكن إقفال شهر لم ينتهِ بعد');
 
   const [existing, later, previous] = await Promise.all([
-    first<{ status: string }>(c, 'SELECT status FROM monthly_closings WHERE month = ?', month),
-    first<{ month: string }>(c, "SELECT month FROM monthly_closings WHERE status = 'closed' AND month > ? LIMIT 1", month),
+    first<{ status: string }>(c, 'SELECT status FROM monthly_closings WHERE foundation_id = ? AND month = ?', fid(c), month),
+    first<{ month: string }>(c, "SELECT month FROM monthly_closings WHERE foundation_id = ? AND status = 'closed' AND month > ? LIMIT 1", fid(c), month),
     previousClosing(c, month),
   ]);
   if (existing?.status === 'closed') fail(409, 'هذا الشهر مقفل مسبقاً');
@@ -80,19 +80,19 @@ closings.post('/', async (c) => {
   // Totals are read inside the write, so an entry racing the close cannot be missed.
   await batch(c, [
     stmt(c,
-      `INSERT INTO monthly_closings (month, status, opening_balance, total_in, total_out, closing_balance, tx_count, closed_by)
-       SELECT ?1, 'closed', ?2, t.total_in, t.total_out, ?2 + t.total_in - t.total_out, t.tx_count, ?3
+      `INSERT INTO monthly_closings (foundation_id, month, status, opening_balance, total_in, total_out, closing_balance, tx_count, closed_by)
+       SELECT ?4, ?1, 'closed', ?2, t.total_in, t.total_out, ?2 + t.total_in - t.total_out, t.tx_count, ?3
        FROM (SELECT
            COALESCE(SUM(delegate_receipt), 0) AS total_in,
            COALESCE(SUM(general_aid + monthly_aid + program_aid), 0) AS total_out,
            COALESCE(SUM(tx_count), 0) AS tx_count
-         FROM stats_monthly WHERE month = ?1) AS t
+         FROM stats_monthly WHERE foundation_id = ?4 AND month = ?1) AS t
        WHERE 1
-       ON CONFLICT(month) DO UPDATE SET
+       ON CONFLICT(foundation_id, month) DO UPDATE SET
          status = 'closed', opening_balance = excluded.opening_balance, total_in = excluded.total_in,
          total_out = excluded.total_out, closing_balance = excluded.closing_balance, tx_count = excluded.tx_count,
          closed_by = excluded.closed_by, closed_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')`,
-      month, opening, c.get('user').id),
+      month, opening, c.get('user').id, fid(c)),
     auditStmt(c, 'close_month', 'closing', null, month),
   ]);
   return c.json({ ok: true }, 201);
@@ -101,11 +101,11 @@ closings.post('/', async (c) => {
 closings.post('/:month/reopen', requireRole('admin'), async (c) => {
   const month = parseOrFail(zMonth, c.req.param('month'));
   const later = await first<{ month: string }>(
-    c, "SELECT month FROM monthly_closings WHERE status = 'closed' AND month > ? LIMIT 1", month,
+    c, "SELECT month FROM monthly_closings WHERE foundation_id = ? AND status = 'closed' AND month > ? LIMIT 1", fid(c), month,
   );
   if (later) fail(409, 'أعد فتح الأشهر اللاحقة أولاً');
   await batch(c, [
-    stmt(c, "UPDATE monthly_closings SET status = 'reopened' WHERE month = ? AND status = 'closed'", month),
+    stmt(c, "UPDATE monthly_closings SET status = 'reopened' WHERE foundation_id = ? AND month = ? AND status = 'closed'", fid(c), month),
     auditStmt(c, 'reopen_month', 'closing', null, month),
   ]);
   return c.json({ ok: true });

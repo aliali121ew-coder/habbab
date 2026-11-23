@@ -2,15 +2,20 @@ import type { Env } from './env';
 import { encryptBytes } from './lib/crypto';
 
 const BACKUP_TABLES = [
-  'users', 'subscribers', 'programs', 'subscriber_programs', 'transactions', 'transactions_archive',
+  'foundations', 'users', 'subscribers', 'programs', 'subscriber_programs', 'transactions', 'transactions_archive',
   'prescriptions', 'prescriptions_archive', 'monthly_closings', 'audit_log', 'audit_log_archive',
+  'expenses', 'expense_files',
   'stats_totals', 'stats_daily', 'stats_monthly', 'delegate_totals', 'subscriber_year', 'delegate_period',
 ] as const;
 
 // WITHOUT ROWID tables have no rowid to page on.
 const COMPOSITE_KEYS: Record<string, string[]> = {
   subscriber_year: ['subscriber_id', 'year'],
-  delegate_period: ['delegate_id', 'period'],
+  delegate_period: ['foundation_id', 'delegate_id', 'period'],
+  monthly_closings: ['foundation_id', 'month'],
+  stats_totals: ['foundation_id', 'key'],
+  stats_daily: ['foundation_id', 'day'],
+  stats_monthly: ['foundation_id', 'month'],
 };
 
 const BACKUP_PAGE = 2000;
@@ -74,20 +79,21 @@ export async function archiveOldRecords(env: Env) {
   // Only closed months move, so an open period is never split across tables.
   await moveRows(
     env, 'transactions',
-    'id, type, amount, month, tx_date, subscriber_id, party_name, delegate_id, program_id, receipt_no, note, created_by, created_at, deleted_at, deleted_by, period',
-    `SELECT t.id FROM transactions t JOIN monthly_closings c ON c.month = t.month AND c.status = 'closed'
+    'id, foundation_id, type, amount, month, tx_date, subscriber_id, party_name, delegate_id, program_id, receipt_no, note, created_by, created_at, deleted_at, deleted_by, period',
+    `SELECT t.id FROM transactions t
+       JOIN monthly_closings c ON c.foundation_id = t.foundation_id AND c.month = t.month AND c.status = 'closed'
      WHERE t.month < ? ORDER BY t.id LIMIT ${ARCHIVE_PAGE}`,
     cutoffMonth,
   );
   await moveRows(
     env, 'prescriptions',
-    'id, subscriber_id, patient_name, rx_date, status, details_enc, image_key, thumb_key, created_by, created_at, updated_at, deleted_at',
+    'id, foundation_id, subscriber_id, patient_name, rx_date, status, details_enc, image_key, thumb_key, created_by, created_at, updated_at, deleted_at',
     `SELECT id FROM prescriptions WHERE created_at < ? AND status <> 'pending' ORDER BY id LIMIT ${ARCHIVE_PAGE}`,
     cutoff,
   );
   await moveRows(
     env, 'audit_log',
-    'id, user_id, action, entity, entity_id, detail, created_at',
+    'id, foundation_id, user_id, action, entity, entity_id, detail, created_at',
     `SELECT id FROM audit_log WHERE created_at < ? ORDER BY id LIMIT ${ARCHIVE_PAGE}`,
     cutoff,
   );

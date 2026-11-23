@@ -4,7 +4,7 @@ import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { invalidateRefData, kvCached, refData } from '../lib/cache';
 import { hashPassword } from '../lib/crypto';
-import { all, auditInsertedStmt, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth } from '../lib/http';
 import { currentMonth, maskPhone } from '../lib/text';
 import { zPassword } from './auth';
@@ -74,19 +74,21 @@ collections.get('/overview', async (c) => {
   const [periods, counts, patients] = await Promise.all([
     all<{ period: string; paid_count: number; paid_amount: number }>(
       c,
-      'SELECT period, paid_count, paid_amount FROM delegate_period WHERE delegate_id = ? AND period >= ? AND period <= ?',
-      key, `${year}-01`, `${year}-12`,
+      'SELECT period, paid_count, paid_amount FROM delegate_period WHERE foundation_id = ? AND delegate_id = ? AND period >= ? AND period <= ?',
+      fid(c), key, `${year}-01`, `${year}-12`,
     ),
     delegateId === null
-      ? all<{ key: string; value: number }>(c, "SELECT key, value FROM stats_totals WHERE key IN ('subs_alive', 'subs_deceased')")
-      : first<{ subs_alive: number; subs_deceased: number }>(c, 'SELECT subs_alive, subs_deceased FROM delegate_totals WHERE delegate_id = ?', delegateId),
+      ? all<{ key: string; value: number }>(c, "SELECT key, value FROM stats_totals WHERE foundation_id = ? AND key IN ('subs_alive', 'subs_deceased')", fid(c))
+      : first<{ subs_alive: number; subs_deceased: number }>(c,
+          `SELECT t.subs_alive, t.subs_deceased FROM delegate_totals t JOIN users u ON u.id = t.delegate_id
+           WHERE t.delegate_id = ? AND u.foundation_id = ?`, delegateId, fid(c)),
     // A patient is a subscriber with at least one prescription on file. CROSS JOIN keeps SQLite
     // walking the prescriptions and probing each subscriber, not scanning the delegate's register.
     delegateId === null
-      ? first<{ n: number }>(c, 'SELECT COUNT(DISTINCT subscriber_id) AS n FROM prescriptions WHERE deleted_at IS NULL')
+      ? first<{ n: number }>(c, 'SELECT COUNT(DISTINCT subscriber_id) AS n FROM prescriptions WHERE foundation_id = ? AND deleted_at IS NULL', fid(c))
       : first<{ n: number }>(c,
           `SELECT COUNT(DISTINCT p.subscriber_id) AS n FROM prescriptions p CROSS JOIN subscribers s ON s.id = p.subscriber_id
-           WHERE p.deleted_at IS NULL AND s.deleted_at IS NULL AND s.delegate_id = ?`, delegateId),
+           WHERE p.foundation_id = ? AND p.deleted_at IS NULL AND s.deleted_at IS NULL AND s.delegate_id = ?`, fid(c), delegateId),
   ]);
 
   const totals = Array.isArray(counts)
@@ -102,7 +104,7 @@ collections.get('/overview', async (c) => {
   const current = currentMonth();
   const focus = current.startsWith(`${year}-`) ? current : `${year}-12`;
   const delegateRow = delegateId === null ? null : await first<{ id: number; full_name: string; avatar_key: string | null; phone: string | null; address: string | null }>(
-    c, "SELECT id, full_name, avatar_key, phone, address FROM users WHERE id = ? AND role = 'delegate'", delegateId,
+    c, "SELECT id, full_name, avatar_key, phone, address FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", delegateId, fid(c),
   );
   if (delegateId !== null && !delegateRow) fail(404, 'المندوب غير موجود');
 
@@ -119,14 +121,14 @@ collections.get('/overview', async (c) => {
   // per-delegate list — one row and one signed photo link per delegate — and send its count.
   const withList = c.req.query('delegates') !== '0';
   const delegateCount = isDelegate(c) ? 0 : (await refData(c)).delegates.length;
-  const lateByDelegate = isDelegate(c) || !withList ? null : await kvCached(c, `coll:late:v1:${focus}`, 300, async () => {
+  const lateByDelegate = isDelegate(c) || !withList ? null : await kvCached(c, `coll:late:v2:${fid(c)}:${focus}`, 300, async () => {
     const rows = await all<{ delegate_id: number; late: number }>(
       c,
       `SELECT s.delegate_id, COUNT(*) AS late FROM subscribers s
-       WHERE s.status = 'alive' AND s.deleted_at IS NULL AND s.delegate_id IS NOT NULL AND s.created_at < ?
+       WHERE s.foundation_id = ? AND s.status = 'alive' AND s.deleted_at IS NULL AND s.delegate_id IS NOT NULL AND s.created_at < ?
          AND NOT EXISTS (SELECT 1 FROM transactions x WHERE x.subscriber_id = s.id AND x.deleted_at IS NULL AND x.period IN (?, ?, ?, ?))
        GROUP BY s.delegate_id`,
-      `${lateWindow[3]}-01`, ...lateWindow,
+      fid(c), `${lateWindow[3]}-01`, ...lateWindow,
     );
     return Object.fromEntries(rows.map((row) => [row.delegate_id, row.late])) as Record<string, number>;
   });
@@ -138,10 +140,10 @@ collections.get('/overview', async (c) => {
        COALESCE(p.paid_count, 0) AS paid_count, COALESCE(p.paid_amount, 0) AS paid_amount
      FROM users u
      LEFT JOIN delegate_totals t ON t.delegate_id = u.id
-     LEFT JOIN delegate_period p ON p.delegate_id = u.id AND p.period = ?
-     WHERE u.role = 'delegate' AND u.active = 1
+     LEFT JOIN delegate_period p ON p.foundation_id = u.foundation_id AND p.delegate_id = u.id AND p.period = ?
+     WHERE u.foundation_id = ? AND u.role = 'delegate' AND u.active = 1
      ORDER BY paid_amount DESC, u.id`,
-    focus,
+    focus, fid(c),
   )).map(async ({ avatar_key, ...row }) => ({ ...row, late: lateByDelegate[row.id] ?? 0, avatar_url: await avatarUrl(c, avatar_key) })));
 
   return c.json({
@@ -182,6 +184,7 @@ collections.get('/print', async (c) => {
   // The whole year keeps the stored total; part of it is summed from its payments.
   const paidTotal = until === 11
     ? 'COALESCE(y.paid_total, 0)'
+    // scope-ok: correlated to s.id, and the outer query keeps s to this foundation
     : `COALESCE((SELECT SUM(t.amount) FROM transactions t WHERE t.subscriber_id = s.id AND t.deleted_at IS NULL
          AND t.period BETWEEN '${year}-01' AND '${year}-${String(until + 1).padStart(2, '0')}'), 0)`;
   const rows = await all<{ id: number; full_name: string; area: string | null; monthly_fee: number; paid_mask: number; paid_total: number; last_paid: string | null }>(
@@ -191,7 +194,7 @@ collections.get('/print', async (c) => {
          COALESCE(y.paid_mask, 0) & ${mask} AS paid_mask, ${until < 0 ? '0' : paidTotal} AS paid_total
        FROM subscribers s
        LEFT JOIN subscriber_year y ON y.subscriber_id = s.id AND y.year = ?
-       WHERE ${delegateId === null ? '' : 's.delegate_id = ? AND '}s.status = ? AND s.deleted_at IS NULL
+       WHERE ${delegateId === null ? 's.foundation_id = ? AND ' : '+s.foundation_id = ? AND s.delegate_id = ? AND '}s.status = ? AND s.deleted_at IS NULL
        ORDER BY ${delegateId === null ? '' : "COALESCE(s.area, ''), "}s.name_norm
        LIMIT ${PRINT_LIMIT + 1}
      )
@@ -199,7 +202,7 @@ collections.get('/print', async (c) => {
        (SELECT tx_date FROM transactions t WHERE t.subscriber_id = base.id AND t.deleted_at IS NULL
           AND t.period = ? || '-' || printf('%02d', ${LAST_PAID_MONTH})) AS last_paid
      FROM base`,
-    ...(delegateId === null ? [year, status, String(year)] : [year, delegateId, status, String(year)]),
+    ...(delegateId === null ? [year, fid(c), status, String(year)] : [year, fid(c), delegateId, status, String(year)]),
   );
   if (rows.length > PRINT_LIMIT) fail(413, 'السجل أكبر من أن يُطبع دفعة واحدة؛ اختر مندوباً');
   return c.json({ items: rows });
@@ -244,11 +247,11 @@ collections.get('/grid', async (c) => {
 
   const rows = delegateId !== null
     ? await all<GridRow>(c, `SELECT ${GRID_COLUMNS} FROM subscribers
-        WHERE delegate_id = ? AND status = ? AND deleted_at IS NULL AND id < ?${maskExpr} ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
-        year, delegateId, status, cursor, ...maskParams)
+        WHERE delegate_id = ? AND +foundation_id = ? AND status = ? AND deleted_at IS NULL AND id < ?${maskExpr} ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
+        year, delegateId, fid(c), status, cursor, ...maskParams)
     : await all<GridRow>(c, `SELECT ${GRID_COLUMNS} FROM subscribers
-        WHERE status = ? AND deleted_at IS NULL AND id < ?${maskExpr} ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
-        year, status, cursor, ...maskParams);
+        WHERE foundation_id = ? AND status = ? AND deleted_at IS NULL AND id < ?${maskExpr} ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
+        year, fid(c), status, cursor, ...maskParams);
   const toItem = gridItem(year);
   return c.json({ items: rows.map(toItem), next: nextCursor(rows) });
 });
@@ -274,8 +277,8 @@ collections.get('/pay-counts', async (c) => {
        SUM(CASE WHEN (${mask} & ${fullMask}) <> ${fullMask} THEN 1 ELSE 0 END) AS unpaid,
        ${overdue} AS overdue
      FROM subscribers s LEFT JOIN subscriber_year y ON y.subscriber_id = s.id AND y.year = ?
-     WHERE s.delegate_id = ? AND s.status = 'alive' AND s.deleted_at IS NULL`,
-    year, delegateId,
+     WHERE s.delegate_id = ? AND +s.foundation_id = ? AND s.status = 'alive' AND s.deleted_at IS NULL`,
+    year, delegateId, fid(c),
   );
   return c.json({ alive: row?.alive ?? 0, paid: row?.paid ?? 0, unpaid: row?.unpaid ?? 0, overdue: row?.overdue ?? 0 });
 });
@@ -316,8 +319,8 @@ collections.get('/subscriber/:id', async (c) => {
             u.full_name AS delegate_name
      FROM subscribers s
      LEFT JOIN users u ON u.id = s.delegate_id
-     WHERE s.id = ? AND s.deleted_at IS NULL`,
-    id,
+     WHERE s.id = ? AND s.foundation_id = ? AND s.deleted_at IS NULL`,
+    id, fid(c),
   );
   if (!row || (isDelegate(c) && row.delegate_id !== c.get('user').id)) fail(404, 'المشترك غير موجود');
 
@@ -325,9 +328,9 @@ collections.get('/subscriber/:id', async (c) => {
     c,
     `SELECT period, amount, tx_date
      FROM transactions
-     WHERE subscriber_id = ? AND period >= ? AND period <= ? AND deleted_at IS NULL
+     WHERE subscriber_id = ? AND +foundation_id = ? AND period >= ? AND period <= ? AND deleted_at IS NULL
      ORDER BY period DESC`,
-    id, `${year}-01`, `${year}-12`,
+    id, fid(c), `${year}-01`, `${year}-12`,
   );
 
   // The administration, and a delegate for their own subscribers, see and edit the full number;
@@ -356,7 +359,7 @@ function whatsappNumber(phone: string) {
 collections.post('/subscriber/:id/whatsapp', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   const row = await first<{ phone: string | null }>(
-    c, 'SELECT phone FROM subscribers WHERE id = ? AND deleted_at IS NULL', id,
+    c, 'SELECT phone FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c),
   );
   if (!row) fail(404, 'المشترك غير موجود');
   if (!row.phone) fail(422, 'لا يوجد رقم هاتف لهذا المشترك');
@@ -369,7 +372,7 @@ collections.post('/subscriber/:id/whatsapp', requireRole('admin'), async (c) => 
 collections.post('/delegates/:id/whatsapp', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   const row = await first<{ phone: string | null }>(
-    c, "SELECT phone FROM users WHERE id = ? AND role = 'delegate' AND active = 1", id,
+    c, "SELECT phone FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate' AND active = 1", id, fid(c),
   );
   if (!row) fail(404, 'المندوب غير موجود');
   if (!row.phone) fail(422, 'لا يوجد رقم هاتف لهذا المندوب');
@@ -386,15 +389,15 @@ collections.post('/pay', async (c) => {
     tx_date: zDate,
   }));
   const subscriber = await first<{ full_name: string; delegate_id: number | null }>(
-    c, 'SELECT full_name, delegate_id FROM subscribers WHERE id = ? AND deleted_at IS NULL', body.subscriber_id,
+    c, 'SELECT full_name, delegate_id FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', body.subscriber_id, fid(c),
   );
   if (!subscriber || (isDelegate(c) && subscriber.delegate_id !== c.get('user').id)) fail(404, 'المشترك غير موجود');
 
   await batch(c, [
     stmt(c,
-      `INSERT INTO transactions (type, amount, month, tx_date, subscriber_id, party_name, delegate_id, period, created_by)
-       VALUES ('delegate_receipt', ?, ?, ?, ?, ?, ?, ?, ?)`,
-      body.amount, body.tx_date.slice(0, 7), body.tx_date, body.subscriber_id, subscriber.full_name,
+      `INSERT INTO transactions (foundation_id, type, amount, month, tx_date, subscriber_id, party_name, delegate_id, period, created_by)
+       VALUES (?, 'delegate_receipt', ?, ?, ?, ?, ?, ?, ?, ?)`,
+      fid(c), body.amount, body.tx_date.slice(0, 7), body.tx_date, body.subscriber_id, subscriber.full_name,
       subscriber.delegate_id, body.period, c.get('user').id),
     auditInsertedStmt(c, 'create', 'transaction'),
   ]);
@@ -405,8 +408,8 @@ collections.post('/pay', async (c) => {
 collections.post('/undo', requireRole('admin'), async (c) => {
   const body = await readJson(c, z.object({ subscriber_id: zId, period: zMonth }));
   await batch(c, [
-    stmt(c, 'UPDATE transactions SET deleted_at = ?, deleted_by = ? WHERE subscriber_id = ? AND period = ? AND deleted_at IS NULL',
-      new Date().toISOString(), c.get('user').id, body.subscriber_id, body.period),
+    stmt(c, 'UPDATE transactions SET deleted_at = ?, deleted_by = ? WHERE subscriber_id = ? AND foundation_id = ? AND period = ? AND deleted_at IS NULL',
+      new Date().toISOString(), c.get('user').id, body.subscriber_id, fid(c), body.period),
     auditStmt(c, 'undo_payment', 'subscriber', body.subscriber_id, body.period),
   ]);
   return c.json({ ok: true });
@@ -427,8 +430,8 @@ interface DelegateProfile {
 const findDelegate = (c: Context<AppEnv>, id: number) => first<DelegateProfile>(
   c,
   `SELECT id, username, full_name, phone, address, birth_date, joined_year, created_at, avatar_key
-   FROM users WHERE id = ? AND role = 'delegate' AND active = 1`,
-  id,
+   FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate' AND active = 1`,
+  id, fid(c),
 );
 
 // The profile drawer on the delegates page. Admin only: it carries the delegate's phone.
@@ -436,7 +439,9 @@ collections.get('/delegates/:id/profile', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   const [person, totals] = await Promise.all([
     findDelegate(c, id),
-    first<{ subs_alive: number; subs_deceased: number }>(c, 'SELECT subs_alive, subs_deceased FROM delegate_totals WHERE delegate_id = ?', id),
+    first<{ subs_alive: number; subs_deceased: number }>(c,
+      `SELECT t.subs_alive, t.subs_deceased FROM delegate_totals t JOIN users u ON u.id = t.delegate_id
+       WHERE t.delegate_id = ? AND u.foundation_id = ?`, id, fid(c)),
   ]);
   if (!person) fail(404, 'المندوب غير موجود');
   const { avatar_key, ...profile } = person;
@@ -477,8 +482,9 @@ collections.post('/delegates', requireRole('admin'), async (c) => {
   const created = await batch(c, [
     stmt(
       c,
-      `INSERT INTO users (username, full_name, role, password_hash, phone, address, birth_date, joined_year)
-       VALUES (?, ?, 'delegate', ?, ?, ?, ?, ?) RETURNING id`,
+      `INSERT INTO users (foundation_id, username, full_name, role, password_hash, phone, address, birth_date, joined_year)
+       VALUES (?, ?, ?, 'delegate', ?, ?, ?, ?, ?) RETURNING id`,
+      fid(c),
       username,
       body.full_name,
       await hashPassword(password),
@@ -510,8 +516,9 @@ collections.post('/delegates', requireRole('admin'), async (c) => {
     followUp.push(
       stmt(
         c,
-        `INSERT INTO stats_totals (key, value) VALUES ('subs_alive', ?)
-         ON CONFLICT(key) DO UPDATE SET value = value + excluded.value`,
+        `INSERT INTO stats_totals (foundation_id, key, value) VALUES (?, 'subs_alive', ?)
+         ON CONFLICT(foundation_id, key) DO UPDATE SET value = value + excluded.value`,
+        fid(c),
         body.alive_count,
       ),
     );
@@ -520,8 +527,9 @@ collections.post('/delegates', requireRole('admin'), async (c) => {
     followUp.push(
       stmt(
         c,
-        `INSERT INTO stats_totals (key, value) VALUES ('subs_deceased', ?)
-         ON CONFLICT(key) DO UPDATE SET value = value + excluded.value`,
+        `INSERT INTO stats_totals (foundation_id, key, value) VALUES (?, 'subs_deceased', ?)
+         ON CONFLICT(foundation_id, key) DO UPDATE SET value = value + excluded.value`,
+        fid(c),
         body.deceased_count,
       ),
     );
@@ -550,7 +558,7 @@ collections.patch('/delegates/:id/profile', requireRole('admin'), async (c) => {
   }
   if (!set.length) fail(422, 'لا توجد تعديلات');
   await batch(c, [
-    stmt(c, `UPDATE users SET ${set.join(', ')} WHERE id = ?`, ...params, id),
+    stmt(c, `UPDATE users SET ${set.join(', ')} WHERE id = ? AND foundation_id = ?`, ...params, id, fid(c)),
     auditStmt(c, 'update_profile', 'user', id, set.map((s) => s.split(' ')[0]).join(',')),
   ]);
   if (body.full_name !== undefined) invalidateRefData(c);
@@ -563,7 +571,7 @@ collections.delete('/delegates/:id', requireRole('admin'), async (c) => {
   const id = idParam(c.req.param('id'));
   if (!(await findDelegate(c, id))) fail(404, 'المندوب غير موجود');
   await batch(c, [
-    stmt(c, 'UPDATE users SET active = 0, token_version = token_version + 1 WHERE id = ?', id),
+    stmt(c, 'UPDATE users SET active = 0, token_version = token_version + 1 WHERE id = ? AND foundation_id = ?', id, fid(c)),
     auditStmt(c, 'deactivate', 'user', id),
   ]);
   invalidateRefData(c);
@@ -577,13 +585,14 @@ collections.post('/delegates/:id/photo', async (c) => {
   const form = await c.req.formData().catch(() => fail(400, 'صيغة الطلب غير صحيحة'));
   const image = await readImage(form.get('image'), 300 * 1024);
   if (!image) fail(422, 'الصورة مطلوبة');
-  const delegate = await first<{ avatar_key: string | null }>(c, "SELECT avatar_key FROM users WHERE id = ? AND role = 'delegate'", id);
+  const delegate = await first<{ avatar_key: string | null }>(c,
+    "SELECT avatar_key FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", id, fid(c));
   if (!delegate) fail(404, 'المندوب غير موجود');
 
   const key = `avatars/${crypto.randomUUID()}.bin`;
   await putEncrypted(c, key, image);
   await batch(c, [
-    stmt(c, 'UPDATE users SET avatar_key = ? WHERE id = ?', key, id),
+    stmt(c, 'UPDATE users SET avatar_key = ? WHERE id = ? AND foundation_id = ?', key, id, fid(c)),
     auditStmt(c, 'update_photo', 'user', id),
   ]);
   if (delegate.avatar_key) c.executionCtx.waitUntil(c.env.FILES.delete(delegate.avatar_key));

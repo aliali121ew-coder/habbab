@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
-import { all, auditInsertedStmt, auditStmt, batch, first, stmt } from '../lib/db';
+import { all, auditInsertedStmt, auditStmt, batch, fid, first, stmt } from '../lib/db';
 import { fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth, zText } from '../lib/http';
 import { currentMonth } from '../lib/text';
 import { putEncrypted, signFileLink } from './prescriptions';
@@ -48,7 +48,8 @@ const COLUMNS = 'e.id, e.category, e.amount, e.spent_on, e.details, e.beneficiar
 // The subscriber's name as the register holds it, so a linked entry never drifts from it.
 async function beneficiary(c: Parameters<typeof first>[0], id: number | null | undefined, name: string) {
   if (!id) return { id: null, name };
-  const person = await first<{ full_name: string }>(c, 'SELECT full_name FROM subscribers WHERE id = ? AND deleted_at IS NULL', id);
+  const person = await first<{ full_name: string }>(c,
+    'SELECT full_name FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c));
   if (!person) fail(422, 'المستفيد غير موجود في سجل المشتركين');
   return { id, name: person.full_name };
 }
@@ -94,15 +95,15 @@ expenses.get('/', async (c) => {
       `SELECT ${COLUMNS}, e.created_at, u.full_name AS created_by_name,
          (SELECT COUNT(*) FROM expense_files f WHERE f.expense_id = e.id AND f.deleted_at IS NULL) AS files
        FROM expenses e LEFT JOIN users u ON u.id = e.created_by
-       WHERE e.month BETWEEN ? AND ? AND e.spent_on BETWEEN ? AND ? AND e.deleted_at IS NULL
+       WHERE e.foundation_id = ? AND e.month BETWEEN ? AND ? AND e.spent_on BETWEEN ? AND ? AND e.deleted_at IS NULL
        ORDER BY e.spent_on DESC, e.id DESC LIMIT ${MONTH_LIMIT}`,
-      from.slice(0, 7), to.slice(0, 7), from, to,
+      fid(c), from.slice(0, 7), to.slice(0, 7), from, to,
     ),
     all<{ month: string; total: number; count: number }>(
       c,
       `SELECT month, SUM(amount) AS total, COUNT(*) AS count FROM expenses
-       WHERE month BETWEEN ? AND ? AND deleted_at IS NULL GROUP BY month`,
-      `${year}-01`, `${year}-12`,
+       WHERE foundation_id = ? AND month BETWEEN ? AND ? AND deleted_at IS NULL GROUP BY month`,
+      fid(c), `${year}-01`, `${year}-12`,
     ),
   ]);
   const byMonth = new Map(totals.map((row) => [Number(row.month.slice(5, 7)) - 1, row]));
@@ -122,8 +123,8 @@ expenses.get('/ledger', async (c) => {
   const cells = await all<{ month: string; category: string; total: number; count: number }>(
     c,
     `SELECT month, category, SUM(amount) AS total, COUNT(*) AS count FROM expenses
-     WHERE month BETWEEN ? AND ? AND deleted_at IS NULL GROUP BY month, category`,
-    `${year}-01`, `${year}-12`,
+     WHERE foundation_id = ? AND month BETWEEN ? AND ? AND deleted_at IS NULL GROUP BY month, category`,
+    fid(c), `${year}-01`, `${year}-12`,
   );
   return c.json({
     year,
@@ -137,20 +138,20 @@ expenses.get('/:id', async (c) => {
   const row = await first<Row & { created_at: string; updated_at: string | null; created_by_name: string | null }>(
     c,
     `SELECT ${COLUMNS}, e.created_at, e.updated_at, u.full_name AS created_by_name
-     FROM expenses e LEFT JOIN users u ON u.id = e.created_by WHERE e.id = ? AND e.deleted_at IS NULL`,
-    id,
+     FROM expenses e LEFT JOIN users u ON u.id = e.created_by WHERE e.id = ? AND e.foundation_id = ? AND e.deleted_at IS NULL`,
+    id, fid(c),
   );
   if (!row) fail(404, 'القيد غير موجود');
   const [files, history] = await Promise.all([
     all<{ id: number; file_key: string; name: string; type: string; size: number; created_at: string }>(
-      c, 'SELECT id, file_key, name, type, size, created_at FROM expense_files WHERE expense_id = ? AND deleted_at IS NULL ORDER BY id', id,
+      c, 'SELECT id, file_key, name, type, size, created_at FROM expense_files WHERE expense_id = ? AND foundation_id = ? AND deleted_at IS NULL ORDER BY id', id, fid(c),
     ),
     all<{ action: string; detail: string | null; created_at: string; user_name: string | null }>(
       c,
       `SELECT a.action, a.detail, a.created_at, u.full_name AS user_name
        FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
-       WHERE a.entity = 'expense' AND a.entity_id = ? ORDER BY a.id DESC LIMIT 50`,
-      id,
+       WHERE a.entity = 'expense' AND a.entity_id = ? AND a.foundation_id = ? ORDER BY a.id DESC LIMIT 50`,
+      id, fid(c),
     ),
   ]);
   return c.json({
@@ -165,9 +166,9 @@ expenses.post('/', async (c) => {
   const person = await beneficiary(c, body.beneficiary_id, body.beneficiary_name);
   const [inserted] = await batch(c, [
     stmt(c,
-      `INSERT INTO expenses (category, amount, month, spent_on, details, beneficiary_id, beneficiary_name, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      body.category, body.amount, body.spent_on.slice(0, 7), body.spent_on, body.details, person.id, person.name, c.get('user').id),
+      `INSERT INTO expenses (foundation_id, category, amount, month, spent_on, details, beneficiary_id, beneficiary_name, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      fid(c), body.category, body.amount, body.spent_on.slice(0, 7), body.spent_on, body.details, person.id, person.name, c.get('user').id),
     auditInsertedStmt(c, 'create', 'expense'),
   ]);
   // The new id lets the dialog attach receipts straight after saving.
@@ -178,7 +179,7 @@ expenses.post('/', async (c) => {
 expenses.patch('/:id', async (c) => {
   const id = idParam(c.req.param('id'));
   const body = await readJson(c, z.object(entry).partial().strict());
-  const current = await first<Row>(c, `SELECT ${COLUMNS} FROM expenses e WHERE e.id = ? AND e.deleted_at IS NULL`, id);
+  const current = await first<Row>(c, `SELECT ${COLUMNS} FROM expenses e WHERE e.id = ? AND e.foundation_id = ? AND e.deleted_at IS NULL`, id, fid(c));
   if (!current) fail(404, 'القيد غير موجود');
 
   const next: Partial<Row> = {};
@@ -209,7 +210,7 @@ expenses.patch('/:id', async (c) => {
     params.push(String(next.spent_on).slice(0, 7));
   }
   await batch(c, [
-    stmt(c, `UPDATE expenses SET ${set.join(', ')} WHERE id = ?`, ...params, id),
+    stmt(c, `UPDATE expenses SET ${set.join(', ')} WHERE id = ? AND foundation_id = ?`, ...params, id, fid(c)),
     auditStmt(c, 'update', 'expense', id, JSON.stringify(changes)),
   ]);
   return c.json({ ok: true });
@@ -217,9 +218,9 @@ expenses.patch('/:id', async (c) => {
 
 expenses.delete('/:id', async (c) => {
   const id = idParam(c.req.param('id'));
-  if (!(await first(c, 'SELECT id FROM expenses WHERE id = ? AND deleted_at IS NULL', id))) fail(404, 'القيد غير موجود');
+  if (!(await first(c, 'SELECT id FROM expenses WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c)))) fail(404, 'القيد غير موجود');
   await batch(c, [
-    stmt(c, 'UPDATE expenses SET deleted_at = ? WHERE id = ?', new Date().toISOString(), id),
+    stmt(c, 'UPDATE expenses SET deleted_at = ? WHERE id = ? AND foundation_id = ?', new Date().toISOString(), id, fid(c)),
     auditStmt(c, 'delete', 'expense', id),
   ]);
   return c.json({ ok: true });
@@ -230,8 +231,8 @@ expenses.post('/:id/files', async (c) => {
   const id = idParam(c.req.param('id'));
   const length = Number(c.req.header('content-length') ?? 0);
   if (length > MAX_FILE + 8 * 1024) fail(413, 'حجم الملف أكبر من 2 ميغابايت');
-  if (!(await first(c, 'SELECT id FROM expenses WHERE id = ? AND deleted_at IS NULL', id))) fail(404, 'القيد غير موجود');
-  const count = await first<{ n: number }>(c, 'SELECT COUNT(*) AS n FROM expense_files WHERE expense_id = ? AND deleted_at IS NULL', id);
+  if (!(await first(c, 'SELECT id FROM expenses WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c)))) fail(404, 'القيد غير موجود');
+  const count = await first<{ n: number }>(c, 'SELECT COUNT(*) AS n FROM expense_files WHERE expense_id = ? AND foundation_id = ? AND deleted_at IS NULL', id, fid(c));
   if ((count?.n ?? 0) >= MAX_FILES_PER_EXPENSE) fail(422, 'وصل القيد إلى الحد الأعلى للمرفقات');
 
   const form = await c.req.formData().catch(() => fail(400, 'صيغة الطلب غير صحيحة'));
@@ -248,8 +249,8 @@ expenses.post('/:id/files', async (c) => {
   await putEncrypted(c, key, { bytes, contentType: type });
   try {
     await batch(c, [
-      stmt(c, 'INSERT INTO expense_files (expense_id, file_key, name, type, size, created_by) VALUES (?, ?, ?, ?, ?, ?)',
-        id, key, name, type, bytes.length, c.get('user').id),
+      stmt(c, 'INSERT INTO expense_files (foundation_id, expense_id, file_key, name, type, size, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        fid(c), id, key, name, type, bytes.length, c.get('user').id),
       auditStmt(c, 'attach', 'expense', id, name),
     ]);
   } catch (error) {
@@ -262,10 +263,11 @@ expenses.post('/:id/files', async (c) => {
 expenses.delete('/:id/files/:fileId', async (c) => {
   const id = idParam(c.req.param('id'));
   const fileId = idParam(c.req.param('fileId'));
-  const file = await first<{ name: string }>(c, 'SELECT name FROM expense_files WHERE id = ? AND expense_id = ? AND deleted_at IS NULL', fileId, id);
+  const file = await first<{ name: string }>(c,
+    'SELECT name FROM expense_files WHERE id = ? AND expense_id = ? AND foundation_id = ? AND deleted_at IS NULL', fileId, id, fid(c));
   if (!file) fail(404, 'المرفق غير موجود');
   await batch(c, [
-    stmt(c, 'UPDATE expense_files SET deleted_at = ? WHERE id = ?', new Date().toISOString(), fileId),
+    stmt(c, 'UPDATE expense_files SET deleted_at = ? WHERE id = ? AND foundation_id = ?', new Date().toISOString(), fileId, fid(c)),
     auditStmt(c, 'detach', 'expense', id, file.name),
   ]);
   return c.json({ ok: true });

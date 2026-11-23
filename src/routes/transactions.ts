@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
-import { all, auditInsertedStmt, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
+import { all, auditInsertedStmt, auditStmt, batch, fid, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth, zText } from '../lib/http';
 import { currentMonth } from '../lib/text';
 
@@ -21,8 +21,9 @@ transactions.get('/', requireRole('admin', 'accountant', 'delegate'), async (c) 
   const subscriberParam = c.req.query('subscriber') ? idParam(c.req.query('subscriber')!) : null;
   const delegate = user.role === 'delegate' ? user.id : delegateParam;
 
-  const where = ['deleted_at IS NULL', 'id < ?'];
-  const params: unknown[] = [cursor];
+  // A person filter has its own narrower index; unary + keeps the foundation check a filter there.
+  const where = [delegate !== null || subscriberParam !== null ? '+foundation_id = ?' : 'foundation_id = ?', 'deleted_at IS NULL', 'id < ?'];
+  const params: unknown[] = [fid(c), cursor];
   const add = (clause: string, value: unknown) => {
     where.push(clause);
     params.push(value);
@@ -38,6 +39,7 @@ transactions.get('/', requireRole('admin', 'accountant', 'delegate'), async (c) 
 
   const rows = await all<{ id: number }>(
     c,
+    // scope-ok: `where` starts with foundation_id = ?
     `SELECT ${COLUMNS} FROM transactions WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ${PAGE_SIZE}`,
     ...params,
   );
@@ -63,27 +65,31 @@ transactions.post('/', requireRole('admin', 'accountant'), async (c) => {
   if (body.type === 'delegate_receipt') {
     if (!delegateId) fail(422, 'اختر المندوب');
     const delegate = await first<{ full_name: string }>(
-      c, "SELECT full_name FROM users WHERE id = ? AND role = 'delegate'", delegateId,
+      c, "SELECT full_name FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate'", delegateId, fid(c),
     );
     if (!delegate) fail(422, 'المندوب غير موجود');
     partyName = delegate.full_name;
   } else {
     if (!body.subscriber_id) fail(422, 'اختر المشترك');
     const subscriber = await first<{ full_name: string; delegate_id: number | null }>(
-      c, 'SELECT full_name, delegate_id FROM subscribers WHERE id = ? AND deleted_at IS NULL', body.subscriber_id,
+      c, 'SELECT full_name, delegate_id FROM subscribers WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', body.subscriber_id, fid(c),
     );
     if (!subscriber) fail(422, 'المشترك غير موجود');
     partyName = subscriber.full_name;
     subscriberId = body.subscriber_id;
     delegateId = subscriber.delegate_id;
   }
-  if (body.type === 'program_aid' && !body.program_id) fail(422, 'اختر البرنامج');
+  if (body.type === 'program_aid') {
+    if (!body.program_id) fail(422, 'اختر البرنامج');
+    const program = await first<{ id: number }>(c, 'SELECT id FROM programs WHERE id = ? AND foundation_id = ?', body.program_id, fid(c));
+    if (!program) fail(422, 'البرنامج غير موجود');
+  }
 
   await batch(c, [
     stmt(c,
-      `INSERT INTO transactions (type, amount, month, tx_date, subscriber_id, party_name, delegate_id, program_id, receipt_no, note, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      body.type, body.amount, body.tx_date.slice(0, 7), body.tx_date, subscriberId, partyName, delegateId,
+      `INSERT INTO transactions (foundation_id, type, amount, month, tx_date, subscriber_id, party_name, delegate_id, program_id, receipt_no, note, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      fid(c), body.type, body.amount, body.tx_date.slice(0, 7), body.tx_date, subscriberId, partyName, delegateId,
       body.type === 'program_aid' ? body.program_id : null, body.receipt_no ?? null, body.note ?? null, c.get('user').id),
     auditInsertedStmt(c, 'create', 'transaction'),
   ]);
@@ -94,8 +100,8 @@ transactions.delete('/:id', requireRole('admin', 'accountant'), async (c) => {
   const id = idParam(c.req.param('id'));
   const user = c.get('user');
   await batch(c, [
-    stmt(c, 'UPDATE transactions SET deleted_at = ?, deleted_by = ? WHERE id = ? AND deleted_at IS NULL',
-      new Date().toISOString(), user.id, id),
+    stmt(c, 'UPDATE transactions SET deleted_at = ?, deleted_by = ? WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL',
+      new Date().toISOString(), user.id, id, fid(c)),
     auditStmt(c, 'delete', 'transaction', id),
   ]);
   return c.json({ ok: true });

@@ -1,6 +1,6 @@
 import type { Context } from 'hono';
 import type { AppEnv } from '../env';
-import { all } from './db';
+import { all, fid } from './db';
 
 export interface RefData {
   programs: { id: number; name: string; active: number }[];
@@ -32,21 +32,24 @@ export async function kvCached<T>(c: Context<AppEnv>, key: string, ttl: number, 
   return data;
 }
 
-const REF_KEY = 'ref:v1';
+// One reference list per foundation.
+const refKey = (c: Context<AppEnv>) => `ref:v2:${fid(c)}`;
 
 // KV: shared across colos and explicitly invalidated, so it holds reference lists.
 export async function refData(c: Context<AppEnv>): Promise<RefData> {
-  const hit = await c.env.CACHE.get<RefData>(REF_KEY, 'json');
+  const key = refKey(c);
+  const hit = await c.env.CACHE.get<RefData>(key, 'json');
   if (hit) return hit;
   const [programs, delegates] = await Promise.all([
-    all<RefData['programs'][number]>(c, 'SELECT id, name, active FROM programs ORDER BY id'),
-    all<RefData['delegates'][number]>(c, "SELECT id, full_name FROM users WHERE role = 'delegate' AND active = 1 ORDER BY id"),
+    all<RefData['programs'][number]>(c, 'SELECT id, name, active FROM programs WHERE foundation_id = ? ORDER BY id', fid(c)),
+    all<RefData['delegates'][number]>(c,
+      "SELECT id, full_name FROM users WHERE foundation_id = ? AND role = 'delegate' AND active = 1 ORDER BY id", fid(c)),
   ]);
   const data = { programs, delegates };
-  c.executionCtx.waitUntil(c.env.CACHE.put(REF_KEY, JSON.stringify(data), { expirationTtl: 120 }));
+  c.executionCtx.waitUntil(c.env.CACHE.put(key, JSON.stringify(data), { expirationTtl: 120 }));
   return data;
 }
 
 export function invalidateRefData(c: Context<AppEnv>) {
-  c.executionCtx.waitUntil(c.env.CACHE.delete(REF_KEY));
+  c.executionCtx.waitUntil(c.env.CACHE.delete(refKey(c)));
 }
