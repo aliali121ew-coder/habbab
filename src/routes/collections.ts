@@ -2,7 +2,7 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
-import { invalidateRefData } from '../lib/cache';
+import { invalidateRefData, kvCached } from '../lib/cache';
 import { hashPassword } from '../lib/crypto';
 import { all, auditInsertedStmt, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth } from '../lib/http';
@@ -112,26 +112,33 @@ collections.get('/overview', async (c) => {
     const d = new Date(Date.UTC(Number(focus.slice(0, 4)), Number(focus.slice(5, 7)) - 1 - back, 1));
     return d.toISOString().slice(0, 7);
   });
-  const delegates = isDelegate(c) ? [] : await Promise.all((await all<{
-    id: number; full_name: string; avatar_key: string | null; alive: number; paid_count: number; paid_amount: number; late: number;
+  // The late count walks the whole living register (one subscriber row plus up to four
+  // transaction probes each), so it is shared from KV for 5 minutes; the cheap per-delegate
+  // figures beside it stay live, and photo links are signed per user after the cache.
+  const lateByDelegate = isDelegate(c) ? null : await kvCached(c, `coll:late:v1:${focus}`, 300, async () => {
+    const rows = await all<{ delegate_id: number; late: number }>(
+      c,
+      `SELECT s.delegate_id, COUNT(*) AS late FROM subscribers s
+       WHERE s.status = 'alive' AND s.deleted_at IS NULL AND s.delegate_id IS NOT NULL AND s.created_at < ?
+         AND NOT EXISTS (SELECT 1 FROM transactions x WHERE x.subscriber_id = s.id AND x.deleted_at IS NULL AND x.period IN (?, ?, ?, ?))
+       GROUP BY s.delegate_id`,
+      `${lateWindow[3]}-01`, ...lateWindow,
+    );
+    return Object.fromEntries(rows.map((row) => [row.delegate_id, row.late])) as Record<string, number>;
+  });
+  const delegates = lateByDelegate === null ? [] : await Promise.all((await all<{
+    id: number; full_name: string; avatar_key: string | null; alive: number; paid_count: number; paid_amount: number;
   }>(
     c,
     `SELECT u.id, u.full_name, u.avatar_key, COALESCE(t.subs_alive, 0) AS alive,
-       COALESCE(p.paid_count, 0) AS paid_count, COALESCE(p.paid_amount, 0) AS paid_amount,
-       COALESCE(l.late, 0) AS late
+       COALESCE(p.paid_count, 0) AS paid_count, COALESCE(p.paid_amount, 0) AS paid_amount
      FROM users u
      LEFT JOIN delegate_totals t ON t.delegate_id = u.id
      LEFT JOIN delegate_period p ON p.delegate_id = u.id AND p.period = ?
-     LEFT JOIN (
-       SELECT s.delegate_id, COUNT(*) AS late FROM subscribers s
-       WHERE s.status = 'alive' AND s.deleted_at IS NULL AND s.created_at < ?
-         AND NOT EXISTS (SELECT 1 FROM transactions x WHERE x.subscriber_id = s.id AND x.deleted_at IS NULL AND x.period IN (?, ?, ?, ?))
-       GROUP BY s.delegate_id
-     ) l ON l.delegate_id = u.id
      WHERE u.role = 'delegate' AND u.active = 1
      ORDER BY paid_amount DESC, u.id`,
-    focus, `${lateWindow[3]}-01`, ...lateWindow,
-  )).map(async ({ avatar_key, ...row }) => ({ ...row, avatar_url: await avatarUrl(c, avatar_key) })));
+    focus,
+  )).map(async ({ avatar_key, ...row }) => ({ ...row, late: lateByDelegate[row.id] ?? 0, avatar_url: await avatarUrl(c, avatar_key) })));
 
   return c.json({
     year,

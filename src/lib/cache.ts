@@ -22,6 +22,16 @@ export async function edgeCached<T>(c: Context<AppEnv>, key: string, ttl: number
   return data;
 }
 
+// KV for slow aggregates that may be a few minutes old. Works on workers.dev too, unlike
+// edgeCached. Keep ttl >= 300 so a hot key costs at most ~288 KV writes a day.
+export async function kvCached<T>(c: Context<AppEnv>, key: string, ttl: number, load: () => Promise<T>): Promise<T> {
+  const hit = await c.env.CACHE.get<T>(key, 'json');
+  if (hit !== null) return hit;
+  const data = await load();
+  c.executionCtx.waitUntil(c.env.CACHE.put(key, JSON.stringify(data), { expirationTtl: ttl }));
+  return data;
+}
+
 const REF_KEY = 'ref:v1';
 
 // KV: shared across colos and explicitly invalidated, so it holds reference lists.
