@@ -4,7 +4,7 @@ import {
   HandCoins, HeartHandshake, HeartPulse, Receipt,
   Gift, UsersRound, Wallet, type LucideIcon,
 } from 'lucide-react';
-import { api, type Me, type Overview } from '../../api';
+import { api, type Feature, type Me, type Overview } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { AidHeroBanner } from '../../components/shared/AidHeroBanner';
 import { SAMPLE_DONATIONS } from '../../data/donations';
@@ -147,6 +147,15 @@ export function HomePage({ me }: { me: Me }) {
   const paidCount = overview.months[month]?.paid_count ?? 0;
   const rate = overview.alive > 0 ? Math.round((paidCount / overview.alive) * 100) : 0;
 
+  // A card or row leads to a section; it shows only when the foundation has that section.
+  const HREF_FEATURE: Record<string, Feature> = {
+    '#/delegates': 'subscribers', '#/families': 'families', '#/patients': 'patients', '#/expenses': 'expenses', '#/soon/donations': 'donations',
+  };
+  const shown = <T extends { href?: string; feature?: Feature }>(item: T) => {
+    const need = item.feature ?? (item.href ? HREF_FEATURE[item.href] : undefined);
+    return !need || me.features.includes(need);
+  };
+
   const sections: { href: string; icon: LucideIcon; label: string; value: string; note: string; alert?: boolean }[] = [
     { href: '#/delegates', icon: UsersRound, label: 'المندوبون', value: formatNumber(overview.delegate_count), note: `${formatNumber(overview.alive)} مشترك` },
     {
@@ -157,9 +166,9 @@ export function HomePage({ me }: { me: Me }) {
     { href: '#/expenses', icon: Receipt, label: 'الحركات المالية', value: sheet ? formatNumber(sheet.items.length) : '—', note: 'هذا الشهر' },
   ];
 
-  const kpis: { label: string; icon: LucideIcon; tone: string; soft: string; value: string; unit?: string; valueColor?: string; foot: ReactNode; href?: string }[] = [
-    { label: 'الوارد الشهري', icon: Wallet, tone: 'var(--fp-primary)', soft: 'var(--fp-primary-soft)', value: formatNumber(collectedNow), unit, foot: <DeltaPill value={incomeDelta} goodWhenUp /> },
-    { label: 'المصروف الشهري', icon: Receipt, tone: 'var(--fp-amber)', soft: 'var(--fp-amber-soft)', value: sheet ? formatNumber(spentNow) : '—', unit: sheet ? unit : undefined, foot: <DeltaPill value={spentDelta} goodWhenUp={false} /> },
+  const kpis: { label: string; icon: LucideIcon; tone: string; soft: string; value: string; unit?: string; valueColor?: string; foot: ReactNode; href?: string; feature?: Feature }[] = [
+    { label: 'الوارد الشهري', feature: 'subscribers', icon: Wallet, tone: 'var(--fp-primary)', soft: 'var(--fp-primary-soft)', value: formatNumber(collectedNow), unit, foot: <DeltaPill value={incomeDelta} goodWhenUp /> },
+    { label: 'المصروف الشهري', feature: 'expenses', icon: Receipt, tone: 'var(--fp-amber)', soft: 'var(--fp-amber-soft)', value: sheet ? formatNumber(spentNow) : '—', unit: sheet ? unit : undefined, foot: <DeltaPill value={spentDelta} goodWhenUp={false} /> },
     {
       // Sample figures (data/donations.ts) until the donations section exists.
       label: 'التبرعات', icon: Gift, tone: 'var(--fp-primary)', soft: 'var(--fp-primary-soft)', href: '#/soon/donations',
@@ -174,7 +183,7 @@ export function HomePage({ me }: { me: Me }) {
         </span>
       ),
     },
-    { label: 'عدد المساعدات', icon: HandCoins, tone: 'var(--fp-emerald)', soft: 'var(--fp-emerald-soft)', value: sheet ? formatNumber(aidCountNow) : '—', unit: sheet ? 'مساعدة' : undefined, foot: <DeltaPill value={aidCountDelta} goodWhenUp /> },
+    { label: 'عدد المساعدات', feature: 'expenses', icon: HandCoins, tone: 'var(--fp-emerald)', soft: 'var(--fp-emerald-soft)', value: sheet ? formatNumber(aidCountNow) : '—', unit: sheet ? 'مساعدة' : undefined, foot: <DeltaPill value={aidCountDelta} goodWhenUp /> },
   ];
 
   // This month's work across the foundation, for the phone summary card.
@@ -212,26 +221,30 @@ export function HomePage({ me }: { me: Me }) {
     <div dir="rtl" className="fp-root -mx-[14px] -my-3 min-h-[calc(100dvh-56px)] px-4 py-6 md:-mx-[18px] md:px-7">
       <div className="mx-auto max-w-[2400px] space-y-6">
         {/* Top Animated Hero Carousel (3 rotating aid distribution slides) */}
-        <AidHeroBanner isAdmin={me.role === 'admin'} />
+        <AidHeroBanner isAdmin={me.role === 'admin'} canOpen={(href) => shown({ href })} />
 
         {/* Four headline figures: each one appears once on the page */}
-        <div className="md:hidden">
-          <Suspense fallback={<div className="home-chart-slot" aria-busy="true" />}>
-          <PhoneMoneyOverview
-            currency={unit}
-            month={month}
-            collected={collected}
-            spent={sheet ? spentYear : null}
-            donations={SAMPLE_DONATIONS}
-          />
-          </Suspense>
-        </div>
+        {/* Income comes from subscriber payments and spending from the expense sheets; a
+            foundation with neither has no money summary to show. */}
+        {(me.features.includes('subscribers') || me.features.includes('expenses')) && (
+          <div className="md:hidden">
+            <Suspense fallback={<div className="home-chart-slot" aria-busy="true" />}>
+            <PhoneMoneyOverview
+              currency={unit}
+              month={month}
+              collected={collected}
+              spent={sheet ? spentYear : null}
+              donations={SAMPLE_DONATIONS}
+            />
+            </Suspense>
+          </div>
+        )}
         <div className="fp-kpi-parent hidden md:block">
         <h2 className="fp-kpi-parent-title mb-2.5 items-center justify-between px-1 text-sm font-bold" style={{ color: 'var(--fp-ink)' }}>
           <span>ملخص {MONTH_NAMES[month]}</span>
         </h2>
         <section aria-label="المؤشرات المالية السريعة" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {kpis.map((k) => {
+          {kpis.filter(shown).map((k) => {
             const Tag = k.href ? 'a' : 'article';
             return (
               <Tag
@@ -279,7 +292,7 @@ export function HomePage({ me }: { me: Me }) {
             <div>
               <span className="mb-2 block text-xs font-semibold" style={{ color: 'var(--fp-ink-3)' }}>الأقسام</span>
               <div className="grid grid-cols-2 gap-2.5">
-                {sections.map((sec) => (
+                {sections.filter(shown).map((sec) => (
                   <a
                     key={sec.href}
                     href={sec.href}
@@ -305,16 +318,18 @@ export function HomePage({ me }: { me: Me }) {
           <div className="lg:col-span-9">
             <div className="md:hidden">
               <WorkSummaryCard
-                rows={workRows}
+                rows={workRows.filter(shown)}
                 currency={unit}
                 monthName={MONTH_NAMES[month]}
                 previousTotal={previousTotal || null}
                 previousMonthName={month > 0 ? MONTH_NAMES[month - 1] : null}
               />
             </div>
-            <div className="hidden h-full md:block">
-              <AidDisbursementsTable items={sheet?.items ?? []} currency={unit} />
-            </div>
+            {me.features.includes('expenses') && (
+              <div className="hidden h-full md:block">
+                <AidDisbursementsTable items={sheet?.items ?? []} currency={unit} />
+              </div>
+            )}
           </div>
         </div>
       </div>

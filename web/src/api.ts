@@ -1,11 +1,24 @@
 export type Role = 'admin' | 'accountant' | 'delegate' | 'health';
 
+export type Feature =
+  | 'subscribers' | 'aid' | 'expenses' | 'families' | 'patients'
+  | 'donations' | 'requests' | 'worship' | 'contests' | 'reports';
+
 export interface Me {
   id: number;
   full_name: string;
   role: Role;
   must_change_password: boolean;
   currency: string;
+  /** The foundation being worked in (for a system admin, the one they entered). */
+  foundation_id: number;
+  foundation_name: string;
+  foundation_status: 'active' | 'suspended';
+  /** The user's own foundation. */
+  home_foundation_id: number;
+  features: Feature[];
+  /** مدير النظام */
+  is_system: boolean;
 }
 
 export interface MonthTotal {

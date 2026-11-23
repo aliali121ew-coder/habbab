@@ -28,6 +28,7 @@
 @import './accent-gradient.css' layer(base);
 @import './strip.css' layer(base);
 @import './delegate-panel.css' layer(base);
+@import './system.css' layer(base);
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);

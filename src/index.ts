@@ -3,6 +3,8 @@ import { HTTPException } from 'hono/http-exception';
 import type { AppEnv, Env } from './env';
 import { runMonthlyJobs } from './jobs';
 import { requireAuth } from './lib/auth';
+import { requireFeature } from './lib/features';
+import { system } from './routes/system';
 import { fail } from './lib/http';
 import { audit, dashboard, delegates, meta, users } from './routes/admin';
 import { auth } from './routes/auth';
@@ -42,6 +44,16 @@ api.use('*', async (c, next) => {
   if (limit && !limit.success) fail(429, 'طلبات كثيرة، انتظر قليلاً');
   await next();
 });
+// Each section answers only for a foundation that has its feature switched on.
+api.use('/subscribers/*', requireFeature('subscribers', '/subscribers/lookup'));
+api.use('/collections/*', requireFeature('subscribers', '/collections/overview'));
+api.use('/closings/*', requireFeature('subscribers'));
+api.use('/delegates/*', requireFeature('subscribers'));
+api.use('/programs/*', requireFeature('aid'));
+api.use('/transactions/*', requireFeature('aid'));
+api.use('/expenses/*', requireFeature('expenses'));
+api.use('/prescriptions/*', requireFeature('patients'));
+api.route('/system', system);
 api.route('/dashboard', dashboard);
 api.route('/meta', meta);
 api.route('/subscribers', subscribers);

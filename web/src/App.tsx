@@ -7,6 +7,13 @@ import { queuedPayments, syncPayments } from './paymentQueue';
 import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
 import { useRoute } from './route';
+import { hasFeature, routeFeature } from './features';
+import type { Feature, Role } from './api';
+
+// The page a role lands on by default needs this feature (the manager's home needs none).
+const ROLE_FEATURE: Record<Role, Feature | undefined> = {
+  admin: undefined, delegate: 'subscribers', accountant: 'expenses', health: 'patients',
+};
 
 // Each page is its own file, fetched when first opened, so a phone downloads and prepares only
 // what it shows. After the first screen every page is fetched quietly in the background, so
@@ -23,7 +30,9 @@ const pages = {
   patient: () => import('./pages/patients/PatientDetailPage'),
   patients: () => import('./pages/patients/PatientsPage'),
   subscribers: () => import('./pages/subscribers/SubscribersPage'),
+  system: () => import('./pages/system/SystemPage'),
 };
+const SystemPage = lazy(() => pages.system().then((m) => ({ default: m.SystemPage })));
 const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.DelegatesPage })));
 const ComingSoonPage = lazy(() => pages.soon().then((m) => ({ default: m.ComingSoonPage })));
 const ReportsPage = lazy(() => pages.reports().then((m) => ({ default: m.ReportsPage })));
@@ -105,7 +114,11 @@ export function App() {
     <Shell me={me} onSignedOut={() => { clearLocalRecords(); setMe(null); setStatus('login'); }}>
       <OfflineBar userId={me.id} currency={me.currency} />
       <Suspense fallback={<div className="page-loading" aria-busy="true"><span className="boot-star" /></div>}>
-      {route === 'soon:reports' && me.role === 'admin'
+      {route === 'system' && me.is_system
+        ? <SystemPage me={me} />
+        : !hasFeature(me, routeFeature(route) ?? ROLE_FEATURE[me.role])
+        ? <StateMessage kind="empty" title="هذه الصفحة غير مفعّلة لمؤسستك" hint="يفعّلها مدير النظام من صفحة المؤسسات." />
+        : route === 'soon:reports' && me.role === 'admin'
         ? <ReportsPage me={me} />
         : typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'
         ? <ComingSoonPage slug={route.slice(5)} />

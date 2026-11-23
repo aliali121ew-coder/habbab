@@ -1,3 +1,5 @@
+import type { Feature } from './lib/features';
+
 export type Role = 'admin' | 'accountant' | 'delegate' | 'health';
 
 export interface Limiter {
@@ -21,8 +23,13 @@ export interface Env {
 export interface SessionUser {
   id: number;
   role: Role;
-  /** The user's foundation. Every query scopes by this; it never comes from the request. */
+  /** The foundation being worked in. Every query scopes by this; it never comes from the request.
+   *  For a system admin it is the foundation they entered; for everyone else, their own. */
   foundation: number;
+  /** Features that foundation has switched on. */
+  features: Feature[];
+  /** مدير النظام: manages foundations and may enter any of them. */
+  system: boolean;
 }
 
 export type AppEnv = {

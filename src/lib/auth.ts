@@ -3,6 +3,7 @@ import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import type { AppEnv, Role } from '../env';
 import { fromB64Url, hmac, hmacVerify, toB64Url } from './crypto';
 import { first } from './db';
+import { FEATURES, parseFeatures, type Feature } from './features';
 import { fail } from './http';
 
 const TOKEN_TTL = 15 * 60;
@@ -15,6 +16,8 @@ interface Claims {
   sub: number;
   role: Role;
   f?: number; // foundation; tokens issued before foundations existed lack it and mean 1
+  ft?: Feature[]; // that foundation's features; absent on older tokens = all
+  sy?: 1; // system admin
   tv: number;
   st: number; // session start, for the absolute lifetime
   exp: number;
@@ -49,14 +52,24 @@ async function readToken(secret: string, token: string): Promise<Claims | null> 
   }
 }
 
-export async function startSession(
-  c: Context<AppEnv>,
-  user: { id: number; role: Role; foundation_id: number; token_version: number; must_change_password: number },
-  options: { start?: number; remember?: boolean } = {},
-) {
+export interface SessionInput {
+  id: number;
+  role: Role;
+  /** The foundation the session works in (a system admin's entered foundation). */
+  foundation_id: number;
+  features: Feature[];
+  is_system: number;
+  token_version: number;
+  must_change_password: number;
+}
+
+export async function startSession(c: Context<AppEnv>, user: SessionInput, options: { start?: number; remember?: boolean } = {}) {
   const now = Math.floor(Date.now() / 1000);
   const start = options.start ?? now;
-  const claims: Claims = { sub: user.id, role: user.role, f: user.foundation_id, tv: user.token_version, st: start, exp: now + TOKEN_TTL };
+  const claims: Claims = {
+    sub: user.id, role: user.role, f: user.foundation_id, ft: user.features, tv: user.token_version, st: start, exp: now + TOKEN_TTL,
+  };
+  if (user.is_system) claims.sy = 1;
   if (user.must_change_password) claims.mc = 1;
   if (options.remember) claims.rm = 1;
   setCookie(c, cookieName(c), await signToken(c.env.JWT_SECRET, claims), {
@@ -83,30 +96,45 @@ export const requireAuth: MiddlewareHandler<AppEnv> = async (c, next) => {
   const now = Math.floor(Date.now() / 1000);
   let role = claims.role;
   let foundation = claims.f ?? 1;
+  let features = claims.ft ?? [...FEATURES];
+  let system = claims.sy === 1;
   let mustChange = claims.mc === 1;
   if (claims.exp - now < TOKEN_TTL / 2) {
     if (now - claims.st >= sessionLimit(claims)) {
       endSession(c);
       fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
     }
-    const row = await first<{ id: number; role: Role; foundation_id: number; token_version: number; active: number; must_change_password: number; foundation_status: string }>(
+    const row = await first<{ id: number; role: Role; foundation_id: number; is_system: number; token_version: number; active: number; must_change_password: number }>(
       c,
-      `SELECT u.id, u.role, u.foundation_id, u.token_version, u.active, u.must_change_password, f.status AS foundation_status
-       FROM users u JOIN foundations f ON f.id = u.foundation_id WHERE u.id = ?`,
+      'SELECT id, role, foundation_id, is_system, token_version, active, must_change_password FROM users WHERE id = ?',
       claims.sub,
     );
-    if (!row || !row.active || row.token_version !== claims.tv || row.foundation_status !== 'active') {
+    if (!row || !row.active || row.token_version !== claims.tv) {
       endSession(c);
       fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
     }
-    await startSession(c, row, { start: claims.st, remember: claims.rm === 1 });
+    // A system admin stays in the foundation they entered; everyone else is in their own.
+    const target = row.is_system ? (claims.f ?? row.foundation_id) : row.foundation_id;
+    const place = await first<{ status: string; features: string | null }>(c, 'SELECT status, features FROM foundations WHERE id = ?', target);
+    if (!place || (!row.is_system && place.status !== 'active')) {
+      endSession(c);
+      fail(401, 'انتهت الجلسة، يرجى تسجيل الدخول');
+    }
+    features = parseFeatures(place.features);
+    await startSession(c, { ...row, foundation_id: target, features }, { start: claims.st, remember: claims.rm === 1 });
     role = row.role;
-    foundation = row.foundation_id;
+    foundation = target;
+    system = row.is_system === 1;
     mustChange = row.must_change_password === 1;
   }
 
-  c.set('user', { id: claims.sub, role, foundation });
+  c.set('user', { id: claims.sub, role, foundation, features, system });
   if (mustChange && !c.req.path.startsWith('/api/auth/')) fail(403, 'يجب تغيير كلمة المرور أولاً');
+  await next();
+};
+
+export const requireSystem: MiddlewareHandler<AppEnv> = async (c, next) => {
+  if (!c.get('user').system) fail(403, 'هذه الصفحة لمدير النظام فقط');
   await next();
 };
 

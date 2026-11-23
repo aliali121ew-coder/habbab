@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  Check, ChevronLeft, Crown, HeartHandshake, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, Sun, Users, UsersRound, X, type LucideIcon,
+  Building2, Check, ChevronLeft, Crown, HeartHandshake, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, Sun, Users, UsersRound, X, type LucideIcon,
 } from 'lucide-react';
-import { api, type Me, type Role } from '../api';
+import { api, type Feature, type Me, type Role } from '../api';
+import { hasFeature, SOON_FEATURE } from '../features';
 import { initialOf } from '../format';
 import { useRoute } from '../route';
 import { SOON_PAGES } from '../soonPages';
 import { Breadcrumbs, type Crumb } from './Breadcrumbs';
 import { useTheme, type Palette } from '../theme';
 import { queuedPayments } from '../paymentQueue';
+import { clearLocalRecords } from '../localRecords';
 
 interface NavItem {
   id: string;
@@ -17,20 +19,24 @@ interface NavItem {
   href: string;
   roles: Role[];
   group: 'main' | 'records' | 'admin';
+  /** Shown only when the foundation has this feature switched on. */
+  feature?: Feature;
 }
 
 const NAV: NavItem[] = [
   { id: 'home', label: 'الرئيسية', icon: LayoutDashboard, href: '#/', roles: ['admin'], group: 'main' },
-  { id: 'delegates', label: 'المندوبون', icon: UsersRound, href: '#/delegates', roles: ['admin'], group: 'main' },
+  { id: 'delegates', label: 'المندوبون', icon: UsersRound, href: '#/delegates', roles: ['admin'], group: 'main', feature: 'subscribers' },
   // A delegate's own register; the manager reaches each delegate's register from the delegates page.
-  { id: 'subscribers', label: 'سجل المشتركين', icon: Users, href: '#/', roles: ['delegate'], group: 'main' },
-  { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin'], group: 'main' },
-  { id: 'expenses', label: 'الحركات المالية', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records' },
-  { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health'], group: 'records' },
+  { id: 'subscribers', label: 'سجل المشتركين', icon: Users, href: '#/', roles: ['delegate'], group: 'main', feature: 'subscribers' },
+  { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin'], group: 'main', feature: 'families' },
+  { id: 'expenses', label: 'الحركات المالية', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records', feature: 'expenses' },
+  { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health'], group: 'records', feature: 'patients' },
 ];
 
 // Sections still to be programmed sit in the same menu and open a «قيد التطوير» page.
-NAV.push(...SOON_PAGES.map((p) => ({ id: `soon:${p.slug}`, label: p.label, icon: p.icon, href: `#/soon/${p.slug}`, roles: ['admin'] as Role[], group: p.group })));
+NAV.push(...SOON_PAGES.map((p) => ({
+  id: `soon:${p.slug}`, label: p.label, icon: p.icon, href: `#/soon/${p.slug}`, roles: ['admin'] as Role[], group: p.group, feature: SOON_FEATURE[p.slug],
+})));
 
 const GROUPS: { id: NavItem['group']; label: string }[] = [
   { id: 'main', label: 'القائمة الرئيسية' },
@@ -118,6 +124,15 @@ function crumbsFor(route: ReturnType<typeof useRoute>): Crumb[] | null {
   return null;
 }
 
+// The system admin moves between foundations; the whole app reloads in the new one, so no page
+// keeps the previous foundation's figures or offline copies.
+export async function enterFoundation(foundationId: number) {
+  await api('/system/enter', { method: 'POST', body: { foundation_id: foundationId } });
+  clearLocalRecords();
+  location.hash = '#/';
+  location.reload();
+}
+
 const greeting = () => (new Date().getHours() < 12 ? 'صباح الخير' : 'مساء الخير');
 const todayLabel = () => new Intl.DateTimeFormat('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
@@ -181,8 +196,23 @@ export function Shell({ me, onSignedOut, children }: Props) {
           <span />
         </div>
         <nav className="rail-nav" aria-label="القائمة الرئيسية">
+          {me.is_system && (
+            <div className="rail-group">
+              <div className="rail-section">مدير النظام</div>
+              <a
+                href="#/system"
+                title="المؤسسات"
+                className={route === 'system' ? 'active' : undefined}
+                aria-current={route === 'system' ? 'page' : undefined}
+                onClick={() => setOpen(false)}
+              >
+                <span className="rail-nav-icon" aria-hidden><Building2 size={18} /></span>
+                <span>المؤسسات</span>
+              </a>
+            </div>
+          )}
           {GROUPS.map((group) => {
-            const items = NAV.filter((item) => item.group === group.id && item.roles.includes(me.role));
+            const items = NAV.filter((item) => item.group === group.id && item.roles.includes(me.role) && hasFeature(me, item.feature));
             if (items.length === 0) return null;
             return (
               <div key={group.id} className="rail-group">
@@ -281,6 +311,13 @@ export function Shell({ me, onSignedOut, children }: Props) {
           </div>
         </header>
         <main className="page">
+          {me.is_system && me.foundation_id !== me.home_foundation_id && (
+            <div className="sys-visit" role="status">
+              <Building2 size={16} aria-hidden />
+              <span>أنت داخل <b>{me.foundation_name}</b>{me.foundation_status === 'suspended' ? ' (موقوفة)' : ''}</span>
+              <button type="button" onClick={() => void enterFoundation(me.home_foundation_id)}>العودة إلى مؤسستي</button>
+            </div>
+          )}
           {me.role === 'admin' && crumbsFor(route) && <div className="shell-crumbs" data-route={route}><Breadcrumbs items={crumbsFor(route)!} /></div>}
           {children}
         </main>

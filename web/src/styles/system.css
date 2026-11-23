@@ -1,0 +1,185 @@
+/* مدير النظام: the foundations page, the "you are inside" bar, and the feature ticks.
+   Colours come from the theme (--bar-active) so the page follows the chosen palette. */
+
+/* ── "you are inside another foundation" bar ── */
+.sys-visit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #d97706 30%, var(--line));
+  background: color-mix(in srgb, #f59e0b 12%, var(--surface));
+  color: var(--ink);
+  font-size: .85rem;
+}
+.sys-visit span { flex: 1 1 170px; min-width: 0; }
+.sys-visit button {
+  flex: none;
+  border: 0;
+  border-radius: 9px;
+  padding: 6px 10px;
+  background: var(--bar-active);
+  color: #fff;
+  font: inherit;
+  font-size: .8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+:root[data-theme="dark"] .sys-visit {
+  border-color: color-mix(in srgb, #f59e0b 35%, transparent);
+  background: color-mix(in srgb, #f59e0b 14%, transparent);
+}
+
+/* ── page ── */
+/* minmax(0, 1fr): the column fits the screen; without it a one-line name widened the page. */
+.sys { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.sys-card { min-width: 0; }
+.sys-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--bar-active) 18%, var(--line));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 10%, #fff), #fff 60%);
+}
+.sys-head-icon {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--bar-active);
+  color: #fff;
+}
+.sys-head { flex-wrap: wrap; }
+.sys-head > div { flex: 1 1 120px; min-width: 0; }
+.sys-head h1 { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--ink); white-space: nowrap; }
+.sys-head p { margin: 2px 0 0; font-size: .8rem; color: var(--ink-3); white-space: nowrap; }
+.sys-add { flex: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+/* Phones: the add button takes its own full-width row under the title. */
+@media (max-width: 420px) { .sys-add { flex: 1 1 100%; } }
+:root[data-theme="dark"] .sys-head {
+  border-color: color-mix(in srgb, var(--bar-active) 24%, var(--line));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 18%, var(--surface)), var(--surface) 60%);
+}
+
+.sys-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sys-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--bar-active) 14%, var(--line));
+  background: var(--surface);
+  box-shadow: 0 4px 14px -8px rgb(15 23 42 / 16%);
+}
+.sys-card.is-off { opacity: .72; }
+.sys-skeleton { min-height: 132px; background: color-mix(in srgb, var(--bar-active) 6%, var(--surface)); animation: sys-pulse 1.2s ease-in-out infinite; }
+@keyframes sys-pulse { 50% { opacity: .55; } }
+:root[data-theme="dark"] .sys-card { box-shadow: 0 4px 14px -8px rgb(0 0 0 / 45%); }
+
+.sys-card-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.sys-card-mark {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-weight: 800;
+  color: var(--bar-active);
+  background: color-mix(in srgb, var(--bar-active) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--bar-active) 22%, transparent);
+}
+.sys-card-name { display: grid; gap: 4px; min-width: 0; }
+/* The smallest phones: the letter circle gives its room to the name, which stays on one line. */
+@media (max-width: 360px) { .sys-card-mark { display: none; } }
+.sys-card-name strong { font-size: clamp(.78rem, 3.7vw, .95rem); font-weight: 800; color: var(--ink); line-height: 1.35; white-space: nowrap; }
+.sys-card-name small { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.sys-chip { padding: 1px 8px; border-radius: 999px; font-size: .7rem; font-weight: 700; }
+.sys-chip.ok { background: color-mix(in srgb, #10b981 14%, var(--surface)); color: #047857; }
+.sys-chip.off { background: color-mix(in srgb, #ef4444 12%, var(--surface)); color: #b91c1c; }
+.sys-chip.here { background: color-mix(in srgb, var(--bar-active) 14%, var(--surface)); color: var(--bar-active); }
+:root[data-theme="dark"] .sys-chip.ok { background: color-mix(in srgb, #10b981 18%, transparent); color: #6ee7b7; }
+:root[data-theme="dark"] .sys-chip.off { background: color-mix(in srgb, #ef4444 18%, transparent); color: #fca5a5; }
+:root[data-theme="dark"] .sys-chip.here { background: color-mix(in srgb, var(--bar-active) 22%, transparent); color: color-mix(in srgb, var(--bar-active) 65%, #fff); }
+
+.sys-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  font-size: .76rem;
+  color: var(--ink-3);
+}
+.sys-card-stats span { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.sys-card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sys-card-actions .btn { display: inline-flex; align-items: center; gap: 5px; font-size: .82rem; }
+
+/* ── forms ── */
+.sys-form { display: grid; gap: 12px; }
+.sys-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sys-form-note { margin: 0; font-size: .76rem; color: var(--ink-3); }
+.sys-form-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.sys-error { margin: 0; color: var(--danger); font-size: .82rem; }
+@media (max-width: 480px) { .sys-form-row { grid-template-columns: 1fr; } }
+
+.sys-features { display: grid; gap: 6px; margin: 0; padding: 0; border: 0; }
+.sys-features legend { margin-bottom: 4px; font-size: .88rem; font-weight: 700; color: var(--ink-2); }
+.sys-features label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+}
+.sys-features label.on {
+  border-color: color-mix(in srgb, var(--bar-active) 40%, var(--line));
+  background: color-mix(in srgb, var(--bar-active) 7%, var(--surface));
+}
+.sys-features label { position: relative; }
+/* Visually hidden but still focusable; a 1px box so the dialog's input rules cannot widen it. */
+.sys-features input {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  width: 1px !important;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  pointer-events: none;
+}
+.sys-tick {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  border: 1.5px solid var(--line);
+  color: transparent;
+}
+.sys-features label.on .sys-tick { background: var(--bar-active); border-color: var(--bar-active); color: #fff; }
+.sys-features input:focus-visible + .sys-tick { outline: 2px solid var(--bar-active); outline-offset: 2px; }
+.sys-feature-text { display: grid; min-width: 0; }
+.sys-feature-text b { font-size: .86rem; color: var(--ink); }
+.sys-feature-text small { font-size: .72rem; color: var(--ink-3); }
+:root[data-theme="dark"] .sys-features label.on { background: color-mix(in srgb, var(--bar-active) 14%, transparent); }

@@ -10,6 +10,8 @@ export type Route =
   | 'patient-detail'
   | 'families'
   | 'family-detail'
+  // مدير النظام: the foundations and their features.
+  | 'system'
   | `soon:${string}`
   // One delegate's full subscriber list on its own page (the phone shows only five on the register page).
   | `list:${number}`
@@ -27,6 +29,7 @@ function parse(hash: string): Route {
   if (hash === '#/expenses/ledger') return 'expenses-ledger';
   if (hash === '#/patients') return 'patients';
   if (/^#\/patients\/\d+$/.test(hash)) return 'patient-detail';
+  if (hash === '#/system') return 'system';
   if (hash === '#/families') return 'families';
   if (/^#\/families\/\d+$/.test(hash)) return 'family-detail';
   const soon = /^#\/soon\/([a-z-]+)$/.exec(hash);

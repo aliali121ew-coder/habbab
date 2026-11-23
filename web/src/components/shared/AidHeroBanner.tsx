@@ -259,7 +259,8 @@ function splitWords(text: string, count: number) {
   return { head: words.slice(0, count).join(' '), rest: words.slice(count).join(' ') };
 }
 
-export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
+// canOpen: whether a link's section is switched on for this foundation; buttons to the others are left out.
+export function AidHeroBanner({ isAdmin = false, canOpen = () => true }: { isAdmin?: boolean; canOpen?: (href: string) => boolean }) {
   const [slides, setSlides] = useState<HeroSlide[]>(loadSlides);
   const [[index, direction], setSlideState] = useState<[number, number]>([0, 1]);
   const [paused, setPaused] = useState(false);
@@ -538,19 +539,23 @@ export function AidHeroBanner({ isAdmin = false }: { isAdmin?: boolean }) {
               })()}
 
               <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-2.5">
-                <a
-                  href={slide.ctaHref}
-                  className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-bold text-slate-900 no-underline shadow-sm transition hover:bg-white/90"
-                >
-                  <span>{slide.ctaLabel}</span>
-                  <ArrowLeft size={14} aria-hidden />
-                </a>
-                <a
-                  href={slide.secondaryHref}
-                  className="hidden h-11 items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold text-white no-underline backdrop-blur-xs transition hover:bg-white/20 sm:inline-flex"
-                >
-                  {slide.secondaryLabel}
-                </a>
+                {canOpen(slide.ctaHref) && (
+                  <a
+                    href={slide.ctaHref}
+                    className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-white px-4 text-sm font-bold text-slate-900 no-underline shadow-sm transition hover:bg-white/90"
+                  >
+                    <span>{slide.ctaLabel}</span>
+                    <ArrowLeft size={14} aria-hidden />
+                  </a>
+                )}
+                {canOpen(slide.secondaryHref) && (
+                  <a
+                    href={slide.secondaryHref}
+                    className="hidden h-11 items-center gap-1.5 rounded-xl border border-white/25 bg-white/10 px-4 text-sm font-semibold text-white no-underline backdrop-blur-xs transition hover:bg-white/20 sm:inline-flex"
+                  >
+                    {slide.secondaryLabel}
+                  </a>
+                )}
                 <span className="hidden rounded-xl bg-black/25 px-3 py-1.5 text-[11px] font-bold text-emerald-300 backdrop-blur-xs md:inline-block">
                   {slide.metric}
                 </span>
