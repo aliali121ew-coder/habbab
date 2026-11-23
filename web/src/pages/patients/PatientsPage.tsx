@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  ArrowLeft, Building2, CalendarDays, Camera, ChevronLeft, HandCoins, HeartPulse, Phone, Pill, Printer, Search, Stethoscope, UserRound, UsersRound, X,
+  ArrowLeft, Building2, CalendarDays, Camera, ChevronLeft, FileText, HandCoins, HeartPulse, MapPin, Phone, Pill, Printer, Search, Stethoscope, UserCheck, UserRound, UsersRound, X,
 } from 'lucide-react';
 import type { Me } from '../../api';
 import { formatNumber } from '../../format';
 import { compressAvatar } from '../../image';
 import { SortTh, compare, nextSort, type SortState } from '../../components/SortTh';
 import { printWhenReady } from '../../components/printWhenReady';
+import { WhatsAppMark } from '../subscribers/WhatsAppButton';
 import { PatientRecordSheet } from './PatientRecordSheet';
 import { PatientsReportSheet } from './PatientsReportSheet';
 import { FOUNDATIONS, OWN_FOUNDATION, PATIENTS, type Patient } from './sample';
@@ -352,14 +353,19 @@ export function PatientsPage({ me }: { me: Me }) {
       {mobileSheetPatient && createPortal(
         (() => {
           const sheetTotals = totals(mobileSheetPatient);
+          const grandTotal = sheetTotals.cash + sheetTotals.medicine + sheetTotals.exams;
+          const phoneDigits = mobileSheetPatient.phone.replace(/\D/g, '');
+          const waHref = `https://wa.me/${phoneDigits.startsWith('0') ? `964${phoneDigits.slice(1)}` : phoneDigits}`;
           const foundationBreakdown = FOUNDATIONS.map((foundation) => {
             const recs = mobileSheetPatient.records.filter((r) => r.foundation === foundation);
+            const total = recs.reduce((s, r) => s + r.cash + r.medicine + r.exams, 0);
             return {
               foundation,
               count: recs.length,
-              total: recs.reduce((s, r) => s + r.cash + r.medicine + r.exams, 0),
+              total,
+              pct: grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0,
             };
-          }).filter((item) => item.total > 0);
+          }).filter((item) => item.total > 0).sort((a, b) => b.total - a.total);
           return (
             <div
               className="pt-msheet-backdrop"
@@ -369,129 +375,180 @@ export function PatientsPage({ me }: { me: Me }) {
               dir="rtl"
               onClick={(e) => { if (e.target === e.currentTarget) setMobileSheetPatient(null); }}
             >
-              <div className="pt-msheet">
-                <div className="pt-msheet-head">
-                  <div className="pt-msheet-who">
-                    <label className={`pt-msheet-photo tone-${mobileSheetPatient.tone}`} title="اضغط لإضافة أو تغيير الصورة">
-                      {photos[mobileSheetPatient.id]
-                        ? <img src={photos[mobileSheetPatient.id]} alt={mobileSheetPatient.name} />
-                        : <AvatarSilhouette female={isFemale(mobileSheetPatient)} />}
-                      <span className="pt-msheet-cam" aria-hidden><Camera size={13} /></span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        aria-label={`صورة ${mobileSheetPatient.name}`}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0];
-                          event.target.value = '';
-                          void pickPhoto(mobileSheetPatient.id, file);
-                        }}
-                        hidden
-                      />
-                    </label>
-                    <div className="pt-msheet-title">
-                      <a
-                        href={`#/patients/${mobileSheetPatient.id}`}
-                        className="pt-msheet-name-link"
-                        onClick={() => setMobileSheetPatient(null)}
-                      >
-                        <h3>{mobileSheetPatient.name}</h3>
-                        <ArrowLeft size={16} aria-hidden />
-                      </a>
-                      <p>
-                        <bdi dir="ltr">{mobileSheetPatient.file}</bdi>
-                        {mobileSheetPatient.phone && (
-                          <>
-                            {' • '}
-                            <a href={`tel:${mobileSheetPatient.phone.replace(/\s/g, '')}`} dir="ltr">
-                              <Phone size={11} aria-hidden /> {mobileSheetPatient.phone}
-                            </a>
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="pt-msheet-close"
-                    onClick={() => setMobileSheetPatient(null)}
-                    aria-label="إغلاق"
-                  >
-                    <X size={18} aria-hidden />
-                  </button>
-                </div>
-
-                <div className="pt-msheet-kpis">
-                  <div>
-                    <span>مبالغ مسلّمة</span>
-                    <b className="ink-green"><bdi>{formatNumber(sheetTotals.cash)}</bdi></b>
-                  </div>
-                  <div>
-                    <span>شراء دواء</span>
-                    <b className="ink-teal"><bdi>{formatNumber(sheetTotals.medicine)}</bdi></b>
-                  </div>
-                  <div>
-                    <span>كشفيات طبية</span>
-                    <b className="ink-amber"><bdi>{formatNumber(sheetTotals.exams)}</bdi></b>
-                  </div>
-                  <div>
-                    <span>المؤسسات</span>
-                    <b className="ink-violet"><bdi>{sheetTotals.foundations.length}</bdi> / {FOUNDATIONS.length}</b>
-                  </div>
-                </div>
-
-                <div className="pt-msheet-tabs" role="tablist">
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={mobileSheetTab === 'records'}
-                    className={mobileSheetTab === 'records' ? 'is-on' : undefined}
-                    onClick={() => setMobileSheetTab('records')}
-                  >
-                    تفاصيل المراجعات ({mobileSheetPatient.records.length})
-                  </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={mobileSheetTab === 'foundations'}
-                    className={mobileSheetTab === 'foundations' ? 'is-on' : undefined}
-                    onClick={() => setMobileSheetTab('foundations')}
-                  >
-                    المؤسسات المساهمة ({foundationBreakdown.length})
-                  </button>
-                </div>
-
-                <div className="pt-msheet-body">
-                  {mobileSheetTab === 'records' ? (
-                    <div className="pt-msheet-records">
-                      {mobileSheetPatient.records.map((rec, idx) => (
-                        <article key={`${rec.date}-${idx}`} className="pt-msheet-rec">
-                          <div className="pt-msheet-rec-top">
-                            <strong><UserRound size={13} aria-hidden /> {rec.doctor}</strong>
-                            <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={rec.date} /></span>
-                          </div>
-                          <p className="pt-msheet-found"><Building2 size={12} aria-hidden /> {rec.foundation}</p>
-                          <div className="pt-msheet-pills">
-                            {rec.cash > 0 && <span className="is-cash">نقدي: <bdi>{formatNumber(rec.cash)}</bdi> {me.currency}</span>}
-                            {rec.medicine > 0 && <span className="is-med">دواء: <bdi>{formatNumber(rec.medicine)}</bdi> {me.currency}</span>}
-                            {rec.exams > 0 && <span className="is-exam">كشفية: <bdi>{formatNumber(rec.exams)}</bdi> {me.currency}</span>}
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="pt-msheet-founds">
-                      {foundationBreakdown.map((item) => (
-                        <div key={item.foundation} className="pt-msheet-fitem">
-                          <div>
-                            <strong>{item.foundation}</strong>
-                            <small>{item.count} {item.count === 1 ? 'مساعدة' : 'مساعدات'}</small>
-                          </div>
-                          <b><bdi>{formatNumber(item.total)}</bdi> <span>{me.currency}</span></b>
+              <aside className="pt-msheet">
+                {/* Gradient Hero Header */}
+                <div className="pt-msheet-hero">
+                  <div className="pt-msheet-head">
+                    <div className="pt-msheet-who">
+                      <label className={`pt-msheet-photo tone-${mobileSheetPatient.tone}`} title="اضغط لإضافة أو تغيير الصورة">
+                        {photos[mobileSheetPatient.id]
+                          ? <img src={photos[mobileSheetPatient.id]} alt={mobileSheetPatient.name} />
+                          : <AvatarSilhouette female={isFemale(mobileSheetPatient)} />}
+                        <span className="pt-msheet-cam" aria-hidden><Camera size={13} /></span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          aria-label={`صورة ${mobileSheetPatient.name}`}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = '';
+                            void pickPhoto(mobileSheetPatient.id, file);
+                          }}
+                          hidden
+                        />
+                      </label>
+                      <div className="pt-msheet-title">
+                        <a
+                          href={`#/patients/${mobileSheetPatient.id}`}
+                          className="pt-msheet-name-link"
+                          onClick={() => setMobileSheetPatient(null)}
+                        >
+                          <h3>{mobileSheetPatient.name}</h3>
+                          <ArrowLeft size={16} aria-hidden />
+                        </a>
+                        <div className="pt-msheet-badges">
+                          <span className="pt-msheet-cond"><HeartPulse size={11} aria-hidden /> {mobileSheetPatient.condition}</span>
+                          <span className="pt-msheet-age"><bdi>{mobileSheetPatient.age}</bdi> سنة</span>
+                          <span className="pt-msheet-file" dir="ltr">{mobileSheetPatient.file}</span>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  )}
+                    <button
+                      type="button"
+                      className="pt-msheet-close"
+                      onClick={() => setMobileSheetPatient(null)}
+                      aria-label="إغلاق"
+                    >
+                      <X size={18} aria-hidden />
+                    </button>
+                  </div>
+
+                  {/* Address + Contact Actions */}
+                  <div className="pt-msheet-meta">
+                    <span className="pt-msheet-addr">
+                      <MapPin size={13} aria-hidden />
+                      <span>{mobileSheetPatient.address}</span>
+                    </span>
+                    {phoneDigits && (
+                      <div className="pt-msheet-contact">
+                        <a href={`tel:${phoneDigits}`} className="pt-msheet-call" aria-label={`اتصال بـ ${mobileSheetPatient.name}`}>
+                          <Phone size={13} aria-hidden />
+                          <bdi dir="ltr">{mobileSheetPatient.phone}</bdi>
+                        </a>
+                        <a href={waHref} target="_blank" rel="noopener noreferrer" className="pt-msheet-wa" aria-label={`واتساب ${mobileSheetPatient.name}`}>
+                          <WhatsAppMark />
+                          <span>واتساب</span>
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Scrollable Body */}
+                <div className="pt-msheet-scroll">
+                  {/* Grand Total + 2x2 Financial Breakdown */}
+                  <div className="pt-msheet-summary">
+                    <div className="pt-msheet-grand">
+                      <div>
+                        <span>إجمالي المساعدات المقدّمة</span>
+                        <small><bdi>{mobileSheetPatient.records.length}</bdi> مراجعات عبر <bdi>{sheetTotals.foundations.length}</bdi> مؤسسات</small>
+                      </div>
+                      <strong><bdi>{formatNumber(grandTotal)}</bdi> <span>{me.currency}</span></strong>
+                    </div>
+
+                    <div className="pt-msheet-kpis">
+                      <div>
+                        <span><HandCoins size={12} className="ink-green" aria-hidden /> مبالغ مسلّمة</span>
+                        <b className="ink-green"><bdi>{formatNumber(sheetTotals.cash)}</bdi> <small>{me.currency}</small></b>
+                      </div>
+                      <div>
+                        <span><Pill size={12} className="ink-teal" aria-hidden /> شراء دواء</span>
+                        <b className="ink-teal"><bdi>{formatNumber(sheetTotals.medicine)}</bdi> <small>{me.currency}</small></b>
+                      </div>
+                      <div>
+                        <span><Stethoscope size={12} className="ink-amber" aria-hidden /> كشفيات طبية</span>
+                        <b className="ink-amber"><bdi>{formatNumber(sheetTotals.exams)}</bdi> <small>{me.currency}</small></b>
+                      </div>
+                      <div>
+                        <span><Building2 size={12} className="ink-violet" aria-hidden /> المؤسسات</span>
+                        <b className="ink-violet"><bdi>{sheetTotals.foundations.length}</bdi> <small>من {FOUNDATIONS.length}</small></b>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Clean Segmented Tabs */}
+                  <div className="pt-msheet-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mobileSheetTab === 'records'}
+                      className={mobileSheetTab === 'records' ? 'is-on' : undefined}
+                      onClick={() => setMobileSheetTab('records')}
+                    >
+                      المراجعات (<bdi>{mobileSheetPatient.records.length}</bdi>)
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={mobileSheetTab === 'foundations'}
+                      className={mobileSheetTab === 'foundations' ? 'is-on' : undefined}
+                      onClick={() => setMobileSheetTab('foundations')}
+                    >
+                      المؤسسات (<bdi>{foundationBreakdown.length}</bdi>)
+                    </button>
+                  </div>
+
+                  <div className="pt-msheet-body">
+                    {mobileSheetTab === 'records' ? (
+                      <div className="pt-msheet-records">
+                        {mobileSheetPatient.records.map((rec, idx) => {
+                          const recTotal = rec.cash + rec.medicine + rec.exams;
+                          return (
+                            <article key={`${rec.date}-${idx}`} className="pt-msheet-rec">
+                              <div className="pt-msheet-rec-top">
+                                <strong><UserRound size={13} aria-hidden /> {rec.doctor}</strong>
+                                <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={rec.date} /></span>
+                              </div>
+                              <div className="pt-msheet-rec-meta">
+                                <span><Building2 size={12} aria-hidden /> {rec.foundation}</span>
+                                <span><UserCheck size={12} aria-hidden /> {rec.delegate}</span>
+                              </div>
+                              {rec.note && (
+                                <p className="pt-msheet-note">
+                                  <FileText size={12} aria-hidden /> {rec.note}
+                                </p>
+                              )}
+                              <div className="pt-msheet-rec-foot">
+                                <div className="pt-msheet-pills">
+                                  {rec.cash > 0 && <span className="is-cash">نقدي: <bdi>{formatNumber(rec.cash)}</bdi></span>}
+                                  {rec.medicine > 0 && <span className="is-med">دواء: <bdi>{formatNumber(rec.medicine)}</bdi></span>}
+                                  {rec.exams > 0 && <span className="is-exam">كشفية: <bdi>{formatNumber(rec.exams)}</bdi></span>}
+                                </div>
+                                <b className="pt-msheet-rec-sum"><bdi>{formatNumber(recTotal)}</bdi> {me.currency}</b>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="pt-msheet-founds">
+                        {foundationBreakdown.map((item) => (
+                          <div key={item.foundation} className="pt-msheet-fitem">
+                            <div className="pt-msheet-fitem-top">
+                              <div>
+                                <strong>{item.foundation}</strong>
+                                <small>{item.count} {item.count === 1 ? 'مساعدة' : 'مساعدات'} • <bdi>{item.pct}%</bdi></small>
+                              </div>
+                              <b><bdi>{formatNumber(item.total)}</bdi> <span>{me.currency}</span></b>
+                            </div>
+                            <div className="pt-msheet-bar" aria-hidden>
+                              <span style={{ width: `${Math.max(6, item.pct)}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="pt-msheet-foot">
@@ -516,7 +573,7 @@ export function PatientsPage({ me }: { me: Me }) {
                     <ArrowLeft size={15} aria-hidden />
                   </a>
                 </div>
-              </div>
+              </aside>
             </div>
           );
         })(),
