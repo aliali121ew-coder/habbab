@@ -33,7 +33,10 @@ export interface Overview {
   patients: number;
   months: MonthTotal[];
   delegate: { id: number; full_name: string; phone: string | null; address: string | null; avatar_url: string | null } | null;
+  /** Empty when fetched with `delegates=0`; use delegate_count for the number. */
   delegates: DelegateSummary[];
+  /** Active delegates (0 for a delegate's own view). */
+  delegate_count: number;
 }
 
 export interface DelegateProfile {

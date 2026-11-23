@@ -359,8 +359,8 @@ export function ExpensesPage({ me }: { me: Me }) {
     let live = true;
     void (async () => {
       const [thisYear, lastYear, lastSheet] = await Promise.all([
-        api<Overview>(`/collections/overview?year=${year}`).catch(() => null),
-        api<Overview>(`/collections/overview?year=${year - 1}`).catch(() => null),
+        api<Overview>(`/collections/overview?year=${year}&delegates=0`).catch(() => null),
+        api<Overview>(`/collections/overview?year=${year - 1}&delegates=0`).catch(() => null),
         api<MonthSheet>(`/expenses?from=${year - 1}-12-01&to=${year - 1}-12-31`).catch(() => null),
       ]);
       if (!live) return;

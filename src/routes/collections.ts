@@ -2,7 +2,7 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
-import { invalidateRefData, kvCached } from '../lib/cache';
+import { invalidateRefData, kvCached, refData } from '../lib/cache';
 import { hashPassword } from '../lib/crypto';
 import { all, auditInsertedStmt, auditStmt, batch, first, nextCursor, PAGE_SIZE, stmt } from '../lib/db';
 import { cursorParam, fail, idParam, parseOrFail, readJson, zAmount, zDate, zId, zMonth } from '../lib/http';
@@ -115,7 +115,11 @@ collections.get('/overview', async (c) => {
   // The late count walks the whole living register (one subscriber row plus up to four
   // transaction probes each), so it is shared from KV for 5 minutes; the cheap per-delegate
   // figures beside it stay live, and photo links are signed per user after the cache.
-  const lateByDelegate = isDelegate(c) ? null : await kvCached(c, `coll:late:v1:${focus}`, 300, async () => {
+  // `delegates=0`: the caller needs the totals and months only (home, expenses), so skip the
+  // per-delegate list — one row and one signed photo link per delegate — and send its count.
+  const withList = c.req.query('delegates') !== '0';
+  const delegateCount = isDelegate(c) ? 0 : (await refData(c)).delegates.length;
+  const lateByDelegate = isDelegate(c) || !withList ? null : await kvCached(c, `coll:late:v1:${focus}`, 300, async () => {
     const rows = await all<{ delegate_id: number; late: number }>(
       c,
       `SELECT s.delegate_id, COUNT(*) AS late FROM subscribers s
@@ -154,6 +158,7 @@ collections.get('/overview', async (c) => {
       avatar_url: await avatarUrl(c, delegateRow.avatar_key),
     },
     delegates,
+    delegate_count: delegateCount,
   });
 });
 

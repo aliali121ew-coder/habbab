@@ -93,7 +93,7 @@ export function HomePage({ me }: { me: Me }) {
     const range = monthRange(now);
     try {
       const [nextOverview, nextSheet] = await Promise.all([
-        api<Overview>(`/collections/overview?year=${now.getFullYear()}`),
+        api<Overview>(`/collections/overview?year=${now.getFullYear()}&delegates=0`),
         api<MonthSheet>(`/expenses?from=${range.from}&to=${range.to}`).catch(() => null),
       ]);
       setOverview(nextOverview);
@@ -148,7 +148,7 @@ export function HomePage({ me }: { me: Me }) {
   const rate = overview.alive > 0 ? Math.round((paidCount / overview.alive) * 100) : 0;
 
   const sections: { href: string; icon: LucideIcon; label: string; value: string; note: string; alert?: boolean }[] = [
-    { href: '#/delegates', icon: UsersRound, label: 'المندوبون', value: formatNumber(overview.delegates.length), note: `${formatNumber(overview.alive)} مشترك` },
+    { href: '#/delegates', icon: UsersRound, label: 'المندوبون', value: formatNumber(overview.delegate_count), note: `${formatNumber(overview.alive)} مشترك` },
     {
       href: '#/families', icon: HeartHandshake, label: 'العوائل', value: formatNumber(families.length),
       note: `${formatNumber(families.filter((f) => f.arrears > 0).length)} متأخرات`, alert: families.some((f) => f.arrears > 0),
