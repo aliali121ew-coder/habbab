@@ -372,13 +372,15 @@ export function PatientsPage({ me }: { me: Me }) {
               <div className="pt-msheet">
                 <div className="pt-msheet-head">
                   <div className="pt-msheet-who">
-                    <label className={`pt-m-card-icon tone-${mobileSheetPatient.tone} pt-msheet-avatar`} title="تغيير الصورة">
+                    <label className={`pt-msheet-photo tone-${mobileSheetPatient.tone}`} title="اضغط لإضافة أو تغيير الصورة">
                       {photos[mobileSheetPatient.id]
                         ? <img src={photos[mobileSheetPatient.id]} alt={mobileSheetPatient.name} />
-                        : initials(mobileSheetPatient.name)}
+                        : <AvatarSilhouette female={isFemale(mobileSheetPatient)} />}
+                      <span className="pt-msheet-cam" aria-hidden><Camera size={13} /></span>
                       <input
                         type="file"
                         accept="image/*"
+                        aria-label={`صورة ${mobileSheetPatient.name}`}
                         onChange={(event) => {
                           const file = event.target.files?.[0];
                           event.target.value = '';
@@ -388,7 +390,14 @@ export function PatientsPage({ me }: { me: Me }) {
                       />
                     </label>
                     <div className="pt-msheet-title">
-                      <h3>{mobileSheetPatient.name}</h3>
+                      <a
+                        href={`#/patients/${mobileSheetPatient.id}`}
+                        className="pt-msheet-name-link"
+                        onClick={() => setMobileSheetPatient(null)}
+                      >
+                        <h3>{mobileSheetPatient.name}</h3>
+                        <ArrowLeft size={16} aria-hidden />
+                      </a>
                       <p>
                         <bdi dir="ltr">{mobileSheetPatient.file}</bdi>
                         {mobileSheetPatient.phone && (
