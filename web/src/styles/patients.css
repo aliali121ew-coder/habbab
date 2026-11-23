@@ -1938,7 +1938,8 @@
   }
   .pt-card small { font-size: .7rem; line-height: 1.3; }
 
-  /* Hide chart & tall side profile card on phones */
+  /* Hide header banner, chart & tall side profile card on phones (report moved to Reports page) */
+  .pt-top,
   .pt-profile,
   .pt-chart,
   .pt-table-wrap {

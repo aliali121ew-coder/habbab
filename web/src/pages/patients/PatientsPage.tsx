@@ -11,7 +11,6 @@ import { printWhenReady } from '../../components/printWhenReady';
 import { loadFamiliesStore } from '../../data/families';
 import { WhatsAppMark } from '../subscribers/WhatsAppButton';
 import { PatientRecordSheet } from './PatientRecordSheet';
-import { PatientsReportSheet } from './PatientsReportSheet';
 import { FOUNDATIONS, OWN_FOUNDATION, PATIENTS, type AidRecord, type Patient } from './sample';
 
 const FOUNDATION_BRANDS: Record<string, { from: string; to: string; short: string }> = {
@@ -108,7 +107,7 @@ export function PatientsPage({ me }: { me: Me }) {
     total: number;
     pct: number;
   } | null>(null);
-  const [printing, setPrinting] = useState<Patient | 'register' | null>(null);
+  const [printing, setPrinting] = useState<Patient | null>(null);
   const [sort, setSort] = useState<SortState<ListKey>>({ key: 'date', dir: 'desc' });
   const sortBy = (key: ListKey) => setSort((current) => nextSort(current, key, key === 'name' || key === 'doctor' ? 'asc' : 'desc'));
 
@@ -185,9 +184,6 @@ export function PatientsPage({ me }: { me: Me }) {
           <h1>المرضى</h1>
           <p>السجل المشترك بين المؤسسات لكل المساعدات المقدّمة للمرضى</p>
         </div>
-        <button type="button" className="pt-report" onClick={() => setPrinting('register')}>
-          <Printer size={17} aria-hidden /> طباعة تقرير
-        </button>
       </header>
 
       <section className="pt-cards" aria-label="الملخص">
@@ -809,9 +805,7 @@ export function PatientsPage({ me }: { me: Me }) {
       )}
 
       {printing && createPortal(
-        printing === 'register'
-          ? <PatientsReportSheet rows={rows} currency={me.currency} query={query.trim()} sortLabel={LIST_LABELS[sort.key]} />
-          : <PatientRecordSheet patient={printing} currency={me.currency} />,
+        <PatientRecordSheet patient={printing} currency={me.currency} />,
         document.body,
       )}
     </div>
