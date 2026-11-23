@@ -8,10 +8,39 @@ import { formatNumber } from '../../format';
 import { compressAvatar } from '../../image';
 import { SortTh, compare, nextSort, type SortState } from '../../components/SortTh';
 import { printWhenReady } from '../../components/printWhenReady';
+import { loadFamiliesStore } from '../../data/families';
 import { WhatsAppMark } from '../subscribers/WhatsAppButton';
 import { PatientRecordSheet } from './PatientRecordSheet';
 import { PatientsReportSheet } from './PatientsReportSheet';
-import { FOUNDATIONS, OWN_FOUNDATION, PATIENTS, type Patient } from './sample';
+import { FOUNDATIONS, OWN_FOUNDATION, PATIENTS, type AidRecord, type Patient } from './sample';
+
+const FOUNDATION_BRANDS: Record<string, { from: string; to: string; short: string }> = {
+  'مؤسسة العين للرعاية': { from: '#0284c7', to: '#0369a1', short: 'العين' },
+  'جمعية الكفيل الخيرية': { from: '#059669', to: '#047857', short: 'الكفيل' },
+  'مؤسسة اليتيم': { from: '#d97706', to: '#b45309', short: 'اليتيم' },
+};
+const getFoundationBrand = (name: string) =>
+  FOUNDATION_BRANDS[name] ?? { from: '#4f46e5', to: '#4338ca', short: name.slice(0, 6) };
+
+interface StoredFamilyPayment {
+  date: string;
+  amount: number;
+  type: string;
+  receivedBy?: string;
+  by?: string;
+}
+interface StoredFamilyVisit {
+  date: string;
+  delegateName?: string;
+  note?: string;
+}
+interface StoredFamily {
+  id: number;
+  name: string;
+  members?: Array<{ name: string }>;
+  payments?: StoredFamilyPayment[];
+  visits?: StoredFamilyVisit[];
+}
 
 const FEMALE_NAMES = new Set([
   'زينب', 'فاطمة', 'مريم', 'نور', 'سارة', 'هدى', 'زهراء', 'رقية', 'خديجة', 'عائشة',
@@ -72,6 +101,13 @@ export function PatientsPage({ me }: { me: Me }) {
   const [selectedId, setSelectedId] = useState(PATIENTS[0].id);
   const [mobileSheetPatient, setMobileSheetPatient] = useState<Patient | null>(null);
   const [mobileSheetTab, setMobileSheetTab] = useState<'records' | 'foundations'>('records');
+  const [activeFoundationModal, setActiveFoundationModal] = useState<{
+    foundation: string;
+    patientName: string;
+    records: AidRecord[];
+    total: number;
+    pct: number;
+  } | null>(null);
   const [printing, setPrinting] = useState<Patient | 'register' | null>(null);
   const [sort, setSort] = useState<SortState<ListKey>>({ key: 'date', dir: 'desc' });
   const sortBy = (key: ListKey) => setSort((current) => nextSort(current, key, key === 'name' || key === 'doctor' ? 'asc' : 'desc'));
@@ -356,16 +392,34 @@ export function PatientsPage({ me }: { me: Me }) {
           const grandTotal = sheetTotals.cash + sheetTotals.medicine + sheetTotals.exams;
           const phoneDigits = mobileSheetPatient.phone.replace(/\D/g, '');
           const waHref = `https://wa.me/${phoneDigits.startsWith('0') ? `964${phoneDigits.slice(1)}` : phoneDigits}`;
-          const foundationBreakdown = FOUNDATIONS.map((foundation) => {
-            const recs = mobileSheetPatient.records.filter((r) => r.foundation === foundation);
-            const total = recs.reduce((s, r) => s + r.cash + r.medicine + r.exams, 0);
-            return {
-              foundation,
-              count: recs.length,
-              total,
-              pct: grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0,
-            };
-          }).filter((item) => item.total > 0).sort((a, b) => b.total - a.total);
+
+          // Match this patient in the Needy Families store for our own foundation's reviews/payments
+          const familiesStore = loadFamiliesStore() as StoredFamily[];
+          const matchedFamily = familiesStore.find(
+            (f) =>
+              f.members?.some((m) => m.name.trim() === mobileSheetPatient.name.trim()) ||
+              f.name.includes(mobileSheetPatient.name.trim()),
+          ) ?? null;
+
+          const ownFamilyPayments = matchedFamily?.payments ?? [];
+          const ownFamilyVisits = matchedFamily?.visits ?? [];
+          const ownTotalCount = ownFamilyPayments.length + ownFamilyVisits.length;
+
+          // Other foundations ONLY (exclude account owner foundation)
+          const externalFoundations = FOUNDATIONS.filter((f) => f !== OWN_FOUNDATION)
+            .map((foundation) => {
+              const recs = mobileSheetPatient.records.filter((r) => r.foundation === foundation);
+              const total = recs.reduce((s, r) => s + r.cash + r.medicine + r.exams, 0);
+              return {
+                foundation,
+                records: recs,
+                count: recs.length,
+                total,
+                pct: grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0,
+              };
+            })
+            .filter((item) => item.total > 0)
+            .sort((a, b) => b.total - a.total);
           return (
             <div
               className="pt-msheet-backdrop"
@@ -488,7 +542,7 @@ export function PatientsPage({ me }: { me: Me }) {
                       className={mobileSheetTab === 'records' ? 'is-on' : undefined}
                       onClick={() => setMobileSheetTab('records')}
                     >
-                      المراجعات (<bdi>{mobileSheetPatient.records.length}</bdi>)
+                      المراجعات (<bdi>{ownTotalCount}</bdi>)
                     </button>
                     <button
                       type="button"
@@ -497,58 +551,118 @@ export function PatientsPage({ me }: { me: Me }) {
                       className={mobileSheetTab === 'foundations' ? 'is-on' : undefined}
                       onClick={() => setMobileSheetTab('foundations')}
                     >
-                      المؤسسات (<bdi>{foundationBreakdown.length}</bdi>)
+                      المؤسسات (<bdi>{externalFoundations.length}</bdi>)
                     </button>
                   </div>
 
                   <div className="pt-msheet-body">
                     {mobileSheetTab === 'records' ? (
                       <div className="pt-msheet-records">
-                        {mobileSheetPatient.records.map((rec, idx) => {
-                          const recTotal = rec.cash + rec.medicine + rec.exams;
-                          return (
-                            <article key={`${rec.date}-${idx}`} className="pt-msheet-rec">
-                              <div className="pt-msheet-rec-top">
-                                <strong><UserRound size={13} aria-hidden /> {rec.doctor}</strong>
-                                <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={rec.date} /></span>
-                              </div>
-                              <div className="pt-msheet-rec-meta">
-                                <span><Building2 size={12} aria-hidden /> {rec.foundation}</span>
-                                <span><UserCheck size={12} aria-hidden /> {rec.delegate}</span>
-                              </div>
-                              {rec.note && (
-                                <p className="pt-msheet-note">
-                                  <FileText size={12} aria-hidden /> {rec.note}
-                                </p>
-                              )}
-                              <div className="pt-msheet-rec-foot">
-                                <div className="pt-msheet-pills">
-                                  {rec.cash > 0 && <span className="is-cash">نقدي: <bdi>{formatNumber(rec.cash)}</bdi></span>}
-                                  {rec.medicine > 0 && <span className="is-med">دواء: <bdi>{formatNumber(rec.medicine)}</bdi></span>}
-                                  {rec.exams > 0 && <span className="is-exam">كشفية: <bdi>{formatNumber(rec.exams)}</bdi></span>}
-                                </div>
-                                <b className="pt-msheet-rec-sum"><bdi>{formatNumber(recTotal)}</bdi> {me.currency}</b>
-                              </div>
-                            </article>
-                          );
-                        })}
+                        {/* Owner Foundation Header Strip linked to Needy Families */}
+                        <div className="pt-msheet-own-bar">
+                          <img src="/logo.jpg" alt="" className="pt-msheet-own-logo" />
+                          <div className="pt-msheet-own-info">
+                            <strong>مؤسسة أحباب الحسين الثقافية الخيرية</strong>
+                            <small>بيانات المراجعات من سجل العوائل المتعففة</small>
+                          </div>
+                          {matchedFamily && (
+                            <a
+                              href={`#/families/${matchedFamily.id}`}
+                              className="pt-msheet-own-link"
+                              onClick={() => setMobileSheetPatient(null)}
+                            >
+                              ملف العائلة <ArrowLeft size={12} aria-hidden />
+                            </a>
+                          )}
+                        </div>
+
+                        {ownFamilyPayments.map((pay, idx) => (
+                          <article key={`fp-${pay.date}-${idx}`} className="pt-msheet-rec">
+                            <div className="pt-msheet-rec-top">
+                              <strong><HandCoins size={13} className="ink-green" aria-hidden /> {pay.type}</strong>
+                              <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={pay.date} /></span>
+                            </div>
+                            <div className="pt-msheet-rec-meta">
+                              {pay.receivedBy && <span><UserRound size={12} aria-hidden /> المستلم: {pay.receivedBy}</span>}
+                              {pay.by && <span><UserCheck size={12} aria-hidden /> {pay.by}</span>}
+                            </div>
+                            <div className="pt-msheet-rec-foot">
+                              <span className="pt-msheet-source-tag">العوائل المتعففة</span>
+                              <b className="pt-msheet-rec-sum ink-green"><bdi>{formatNumber(pay.amount)}</bdi> {me.currency}</b>
+                            </div>
+                          </article>
+                        ))}
+
+                        {ownFamilyVisits.map((visit, idx) => (
+                          <article key={`fv-${visit.date}-${idx}`} className="pt-msheet-rec">
+                            <div className="pt-msheet-rec-top">
+                              <strong><UserCheck size={13} aria-hidden /> زيارة ميدانية — {visit.delegateName || 'المندوب'}</strong>
+                              <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={visit.date} /></span>
+                            </div>
+                            {visit.note && (
+                              <p className="pt-msheet-note">
+                                <FileText size={12} aria-hidden /> {visit.note}
+                              </p>
+                            )}
+                          </article>
+                        ))}
+
+                        {ownTotalCount === 0 && (
+                          <p className="pt-empty">لا توجد مراجعات مسجلة لهذا المريض في سجل العوائل المتعففة حالياً.</p>
+                        )}
                       </div>
                     ) : (
                       <div className="pt-msheet-founds">
-                        {foundationBreakdown.map((item) => (
-                          <div key={item.foundation} className="pt-msheet-fitem">
-                            <div className="pt-msheet-fitem-top">
-                              <div>
-                                <strong>{item.foundation}</strong>
-                                <small>{item.count} {item.count === 1 ? 'مساعدة' : 'مساعدات'} • <bdi>{item.pct}%</bdi></small>
+                        {externalFoundations.map((item) => {
+                          const brand = getFoundationBrand(item.foundation);
+                          return (
+                            <button
+                              key={item.foundation}
+                              type="button"
+                              className="pt-msheet-fitem pt-msheet-fitem-btn"
+                              onClick={() =>
+                                setActiveFoundationModal({
+                                  foundation: item.foundation,
+                                  patientName: mobileSheetPatient.name,
+                                  records: item.records,
+                                  total: item.total,
+                                  pct: item.pct,
+                                })
+                              }
+                            >
+                              <div className="pt-msheet-fitem-top">
+                                <div className="pt-msheet-fitem-who">
+                                  <span
+                                    className="pt-msheet-flogo"
+                                    style={{ background: `linear-gradient(135deg, ${brand.from}, ${brand.to})` }}
+                                    aria-hidden
+                                  >
+                                    <Building2 size={16} />
+                                  </span>
+                                  <div>
+                                    <strong>{item.foundation}</strong>
+                                    <small>{item.count} {item.count === 1 ? 'مساعدة' : 'مساعدات'} • اضغط لعرض التفاصيل</small>
+                                  </div>
+                                </div>
+                                <div className="pt-msheet-fitem-end">
+                                  <b><bdi>{formatNumber(item.total)}</bdi> <span>{me.currency}</span></b>
+                                  <ChevronLeft size={15} className="pt-m-card-chev" aria-hidden />
+                                </div>
                               </div>
-                              <b><bdi>{formatNumber(item.total)}</bdi> <span>{me.currency}</span></b>
-                            </div>
-                            <div className="pt-msheet-bar" aria-hidden>
-                              <span style={{ width: `${Math.max(6, item.pct)}%` }} />
-                            </div>
-                          </div>
-                        ))}
+                              <div className="pt-msheet-bar" aria-hidden>
+                                <span
+                                  style={{
+                                    width: `${Math.max(6, item.pct)}%`,
+                                    background: `linear-gradient(270deg, ${brand.from}, ${brand.to})`,
+                                  }}
+                                />
+                              </div>
+                            </button>
+                          );
+                        })}
+                        {externalFoundations.length === 0 && (
+                          <p className="pt-empty">لا توجد مساعدات مسجلة من مؤسسات أخرى لهذا المريض.</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -577,6 +691,117 @@ export function PatientsPage({ me }: { me: Me }) {
                   </a>
                 </div>
               </aside>
+            </div>
+          );
+        })(),
+        document.body,
+      )}
+
+      {activeFoundationModal && createPortal(
+        (() => {
+          const brand = getFoundationBrand(activeFoundationModal.foundation);
+          const cashSum = activeFoundationModal.records.reduce((s, r) => s + r.cash, 0);
+          const medSum = activeFoundationModal.records.reduce((s, r) => s + r.medicine, 0);
+          const examSum = activeFoundationModal.records.reduce((s, r) => s + r.exams, 0);
+          return (
+            <div
+              className="pt-fmodal-backdrop"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`تفاصيل مساعدات ${activeFoundationModal.foundation}`}
+              dir="rtl"
+              onClick={(e) => { if (e.target === e.currentTarget) setActiveFoundationModal(null); }}
+            >
+              <div className="pt-fmodal">
+                {/* Colored Brand Header with Foundation Logo & Name */}
+                <div
+                  className="pt-fmodal-head"
+                  style={{ background: `linear-gradient(135deg, ${brand.from}, ${brand.to})` }}
+                >
+                  <div className="pt-fmodal-top">
+                    <div className="pt-fmodal-brand">
+                      <span className="pt-fmodal-logo" aria-hidden>
+                        <Building2 size={22} />
+                      </span>
+                      <div>
+                        <h3>{activeFoundationModal.foundation}</h3>
+                        <p>مساعدات المريض: {activeFoundationModal.patientName}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="pt-fmodal-close"
+                      onClick={() => setActiveFoundationModal(null)}
+                      aria-label="إغلاق"
+                    >
+                      <X size={17} aria-hidden />
+                    </button>
+                  </div>
+
+                  <div className="pt-fmodal-totals">
+                    <div>
+                      <span>إجمالي المساهمة</span>
+                      <strong><bdi>{formatNumber(activeFoundationModal.total)}</bdi> <small>{me.currency}</small></strong>
+                    </div>
+                    <div>
+                      <span>عدد المساعدات</span>
+                      <strong><bdi>{activeFoundationModal.records.length}</bdi></strong>
+                    </div>
+                    <div>
+                      <span>النسبة</span>
+                      <strong><bdi>{activeFoundationModal.pct}%</bdi></strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Breakdown + Detailed Aid Records */}
+                <div className="pt-fmodal-body">
+                  <div className="pt-fmodal-split">
+                    <div>
+                      <span>نقدي</span>
+                      <b className="ink-green"><bdi>{formatNumber(cashSum)}</bdi></b>
+                    </div>
+                    <div>
+                      <span>دواء</span>
+                      <b className="ink-teal"><bdi>{formatNumber(medSum)}</bdi></b>
+                    </div>
+                    <div>
+                      <span>كشفيات</span>
+                      <b className="ink-amber"><bdi>{formatNumber(examSum)}</bdi></b>
+                    </div>
+                  </div>
+
+                  <div className="pt-fmodal-list">
+                    {activeFoundationModal.records.map((rec, idx) => {
+                      const recTotal = rec.cash + rec.medicine + rec.exams;
+                      return (
+                        <article key={`${rec.date}-${idx}`} className="pt-msheet-rec">
+                          <div className="pt-msheet-rec-top">
+                            <strong><UserRound size={13} aria-hidden /> {rec.doctor}</strong>
+                            <span className="pt-msheet-date"><CalendarDays size={12} aria-hidden /> <DateText iso={rec.date} /></span>
+                          </div>
+                          <div className="pt-msheet-rec-meta">
+                            <span><UserCheck size={12} aria-hidden /> المندوب: {rec.delegate}</span>
+                          </div>
+                          {rec.note && (
+                            <p className="pt-msheet-note">
+                              <FileText size={12} aria-hidden /> {rec.note}
+                            </p>
+                          )}
+                          <div className="pt-msheet-rec-foot">
+                            <div className="pt-msheet-pills">
+                              {rec.cash > 0 && <span className="is-cash">نقدي: <bdi>{formatNumber(rec.cash)}</bdi></span>}
+                              {rec.medicine > 0 && <span className="is-med">دواء: <bdi>{formatNumber(rec.medicine)}</bdi></span>}
+                              {rec.exams > 0 && <span className="is-exam">كشفية: <bdi>{formatNumber(rec.exams)}</bdi></span>}
+                            </div>
+                            <b className="pt-msheet-rec-sum"><bdi>{formatNumber(recTotal)}</bdi> {me.currency}</b>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
             </div>
           );
         })(),
