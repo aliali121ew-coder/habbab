@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import { Check } from 'lucide-react';
 import { api, type GridRow } from '../../api';
+import { useBranding } from '../../branding';
 import { MONTH_NAMES, formatNumber } from '../../format';
 import { formatUnpaidSummary } from './SubscriberModal';
 import { buildStatementPdf } from './statementPdf';
@@ -19,7 +20,7 @@ export function WhatsAppMark() {
 
 // A receipt the user sends once a payment is recorded: the latest paid month, the amount,
 // the date, and anything still outstanding.
-function receipt(row: GridRow, year: number, currentMonth: number | null, currency: string) {
+function receipt(row: GridRow, year: number, currentMonth: number | null, currency: string, foundation: string) {
   let lastMonth = -1;
   for (let month = 11; month >= 0; month -= 1) {
     if (row.paid_mask & (1 << month)) { lastMonth = month; break; }
@@ -28,13 +29,13 @@ function receipt(row: GridRow, year: number, currentMonth: number | null, curren
   const lines = [`السلام عليكم ${row.full_name}،`];
   if (lastMonth >= 0) {
     lines.push(
-      'تم استلام اشتراككم الشهري لدى مؤسسة أحباب الحسين الثقافية الخيرية.',
+      `تم استلام اشتراككم الشهري لدى ${foundation}.`,
       `الشهر: ${MONTH_NAMES[lastMonth]} ${year}`,
       `المبلغ: ${formatNumber(row.monthly_fee)} ${currency}`,
     );
     if (row.last_paid_date) lines.push(`تاريخ التسديد: ${row.last_paid_date.slice(0, 10)}`);
   } else {
-    lines.push('نشكركم على اشتراككم لدى مؤسسة أحباب الحسين الثقافية الخيرية.');
+    lines.push(`نشكركم على اشتراككم لدى ${foundation}.`);
   }
   if (unpaid.count > 0) lines.push(`الأشهر غير المسددة حتى الآن: ${unpaid.text}`);
   lines.push('شكراً لكم، تقبّل الله أعمالكم.');
@@ -171,6 +172,7 @@ interface Props {
 
 // The subscriber's latest statement, with the receipt as its message.
 export function WhatsAppButton({ row, year, currentMonth, currency, delegateName }: Props) {
+  const brand = useBranding();
   if (!row.phone) {
     return <span className="no-phone-tag" title="أضف رقم هاتف للمشترك لإرسال رسالة واتساب">لا يوجد رقم هاتف</span>;
   }
@@ -179,7 +181,7 @@ export function WhatsAppButton({ row, year, currentMonth, currency, delegateName
       build={() => buildStatementPdf({ row, year, currentMonth, currency, delegateName })}
       phonePath={`/collections/subscriber/${row.id}/whatsapp`}
       cacheKey={`${row.id}-${year}-${row.paid_mask}-${row.last_paid_date ?? ''}`}
-      text={receipt(row, year, currentMonth, currency)}
+      text={receipt(row, year, currentMonth, currency, brand.name)}
       title={`إرسال كشف ${row.full_name} على واتساب`}
     />
   );

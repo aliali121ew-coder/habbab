@@ -66,3 +66,26 @@ export async function compressReceipt(file: File): Promise<Blob> {
   if (!blob || blob.size > RECEIPT_MAX) throw new Error('تعذّر ضغط الصورة، جرّب صورة أوضح أو أصغر');
   return blob;
 }
+
+const BRAND_MAX = 600 * 1024;
+
+// A logo, stamp or signature: scaled to at most `side` pixels on its longest edge, keeping its
+// transparent background (WebP, or PNG where the browser cannot write WebP — never JPEG, which
+// would put a white box behind a stamp or signature).
+export async function compressBrandImage(file: File, side = 800): Promise<Blob> {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => {
+    throw new Error('تعذّر قراءة الصورة');
+  });
+  const scale = Math.min(1, side / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d')!;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const webp = await encode(canvas, 'image/webp', 0.9);
+  const blob = webp?.type === 'image/webp' ? webp : await encode(canvas, 'image/png', 1);
+  if (!blob || blob.size > BRAND_MAX) throw new Error('الصورة كبيرة جداً، جرّب صورة أصغر');
+  return blob;
+}

@@ -4,6 +4,7 @@ import { Check, Printer, X } from 'lucide-react';
 import { api, type GridRow, type SubscriberDetail } from '../../api';
 import { MONTH_NAMES, formatNumber, isPaid, today } from '../../format';
 import { FoundationStamp } from './FoundationStamp';
+import { useBranding } from '../../branding';
 
 // The sheet is laid out once at A4 and scaled to fit smaller pages if needed.
 const PAPER = {
@@ -13,8 +14,11 @@ const PAPER = {
 } as const;
 type Paper = keyof typeof PAPER;
 
-export const FOUNDATION = 'مؤسسة أحباب الحسين الثقافية الخيرية';
-const ADDRESS = 'بابل - قضاء الهاشمية - حي الزهراء';
+// The banner prints the name on two lines: «مؤسسة أحباب الحسين» over «الثقافية الخيرية».
+export function splitName(name: string): [string, string] {
+  const words = name.trim().split(/\s+/);
+  return words.length > 3 ? [words.slice(0, 3).join(' '), words.slice(3).join(' ')] : [name, ''];
+}
 
 interface Props {
   row: GridRow;
@@ -109,6 +113,7 @@ export interface StatementSheetProps {
 
 // The subscriber's statement for one year: the printed page, and the PDF sent on WhatsApp.
 export function StatementSheet({ row, year, currentMonth, currency, delegateName, detail, paper = 'A4', id }: StatementSheetProps) {
+  const brand = useBranding();
   const paymentByMonth = new Map<number, { amount: number; tx_date: string }>();
   detail?.payments?.forEach((p) => {
     const m = Number(p.period.slice(5, 7)) - 1;
@@ -160,17 +165,16 @@ export function StatementSheet({ row, year, currentMonth, currency, delegateName
               <rect width="100%" height="100%" fill="url(#sheet-lattice)" />
             </svg>
             <div className="sheet-banner-name">
-              <h1>مؤسسة أحباب الحسين</h1>
-              <h2>الثقافية الخيرية</h2>
-              <p>{ADDRESS}</p>
+              <h1>{splitName(brand.name)[0]}</h1>
+              {splitName(brand.name)[1] && <h2>{splitName(brand.name)[1]}</h2>}
+              {brand.address && <p>{brand.address}</p>}
             </div>
             <span className="sheet-logo-ring">
-              <img src="/logo.jpg" alt={`شعار ${FOUNDATION}`} />
+              {brand.logo && <img src={brand.logo} alt={`شعار ${brand.name}`} />}
             </span>
             <div className="sheet-banner-contact">
-              <span>للتواصل والاستفسار</span>
-              <bdi dir="ltr">07808337805</bdi>
-              <bdi dir="ltr">0760107408</bdi>
+              {brand.phones.length > 0 && <span>للتواصل والاستفسار</span>}
+              {brand.phones.map((phone) => <bdi key={phone} dir="ltr">{phone}</bdi>)}
               <span>تاريخ الإصدار: <bdi>{formatDate(today())}</bdi></span>
             </div>
           </header>
@@ -236,22 +240,22 @@ export function StatementSheet({ row, year, currentMonth, currency, delegateName
           <div className="sheet-approval">
             <section>
               <h4>المحاسب</h4>
-              <p className="sheet-approval-name">صباح محمد العيساوي</p>
-              <span className="sheet-sig"><img src="/signature.png" alt="توقيع المحاسب" /></span>
+              <p className="sheet-approval-name">{brand.accountant_name ?? ''}</p>
+              <span className="sheet-sig">{brand.signature && <img src={brand.signature} alt="توقيع المحاسب" />}</span>
               <div className="sheet-sign-line"><span>التوقيع</span></div>
             </section>
             <FoundationStamp />
             <section>
               <h4>مدير المؤسسة</h4>
-              <p className="sheet-approval-name">سماحة السيد علي كاظم داود الشريفي</p>
-              <span className="sheet-sig"><img src="/signature-manager.png" alt="توقيع المدير" /></span>
+              <p className="sheet-approval-name">{brand.manager_name ?? ''}</p>
+              <span className="sheet-sig">{brand.signature2 && <img src={brand.signature2} alt="توقيع المدير" />}</span>
               <div className="sheet-sign-line"><span>التوقيع</span></div>
             </section>
           </div>
 
           <footer className="sheet-footer">
-            <span>{FOUNDATION}</span>
-            <span>{ADDRESS}</span>
+            <span>{brand.name}</span>
+            {brand.address && <span>{brand.address}</span>}
           </footer>
         </div>
       </div>

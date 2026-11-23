@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { api, type GridRow, type SubscriberDetail } from '../../api';
+import { BrandingSnapshot } from '../../branding';
 import { StatementSheet } from './PrintSheetModal';
 
 interface Options {
@@ -28,7 +29,9 @@ export async function buildStatementPdf({ row, year, currentMonth, currency, del
   try {
     flushSync(() => {
       root.render(
-        <StatementSheet row={row} year={year} currentMonth={currentMonth} currency={currency} delegateName={delegateName} detail={detail} />,
+        <BrandingSnapshot>
+          <StatementSheet row={row} year={year} currentMonth={currentMonth} currency={currency} delegateName={delegateName} detail={detail} />
+        </BrandingSnapshot>,
       );
     });
     await document.fonts.ready;

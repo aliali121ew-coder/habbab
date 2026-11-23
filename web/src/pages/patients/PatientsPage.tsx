@@ -4,6 +4,7 @@ import {
   ArrowLeft, Building2, CalendarCheck, CalendarDays, HandHeart, Camera, ChevronLeft, FileText, HandCoins, HeartPulse, MapPin, Phone, Pill, Printer, Search, Stethoscope, UserCheck, UserRound, UsersRound, X,
 } from 'lucide-react';
 import type { Me } from '../../api';
+import { useBranding } from '../../branding';
 import { formatNumber } from '../../format';
 import { compressAvatar } from '../../image';
 import { SortTh, compare, nextSort, type SortState } from '../../components/SortTh';
@@ -96,6 +97,7 @@ const LIST_LABELS: Record<ListKey, string> = {
 };
 
 export function PatientsPage({ me }: { me: Me }) {
+  const brand = useBranding();
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState(PATIENTS[0]?.id ?? 0);
   const [mobileSheetPatient, setMobileSheetPatient] = useState<Patient | null>(null);
@@ -574,9 +576,9 @@ export function PatientsPage({ me }: { me: Me }) {
                       <div className="pt-msheet-records">
                         {/* Owner Foundation Header Strip linked to Needy Families */}
                         <div className="pt-msheet-own-bar">
-                          <img src="/logo.jpg" alt="" className="pt-msheet-own-logo" />
+                          {brand.logo && <img src={brand.logo} alt="" className="pt-msheet-own-logo" />}
                           <div className="pt-msheet-own-info">
-                            <strong>مؤسسة أحباب الحسين الثقافية الخيرية</strong>
+                            <strong>{brand.name}</strong>
                             <small>بيانات المراجعات من سجل العوائل المتعففة</small>
                           </div>
                           {matchedFamily && (

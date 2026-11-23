@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
 import { useRoute } from './route';
 import { hasFeature, routeFeature } from './features';
+import { BrandingProvider } from './branding';
 import type { Feature, Role } from './api';
 
 // The page a role lands on by default needs this feature (the manager's home needs none).
@@ -31,8 +32,10 @@ const pages = {
   patients: () => import('./pages/patients/PatientsPage'),
   subscribers: () => import('./pages/subscribers/SubscribersPage'),
   system: () => import('./pages/system/SystemPage'),
+  settings: () => import('./pages/settings/SettingsPage'),
 };
 const SystemPage = lazy(() => pages.system().then((m) => ({ default: m.SystemPage })));
+const SettingsPage = lazy(() => pages.settings().then((m) => ({ default: m.SettingsPage })));
 const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.DelegatesPage })));
 const ComingSoonPage = lazy(() => pages.soon().then((m) => ({ default: m.ComingSoonPage })));
 const ReportsPage = lazy(() => pages.reports().then((m) => ({ default: m.ReportsPage })));
@@ -111,6 +114,7 @@ export function App() {
   }
 
   return (
+    <BrandingProvider name={me.foundation_name} foundationId={me.foundation_id}>
     <Shell me={me} onSignedOut={() => { clearLocalRecords(); setMe(null); setStatus('login'); }}>
       <OfflineBar userId={me.id} currency={me.currency} />
       <Suspense fallback={<div className="page-loading" aria-busy="true"><span className="boot-star" /></div>}>
@@ -118,6 +122,8 @@ export function App() {
         ? <SystemPage me={me} />
         : !hasFeature(me, routeFeature(route) ?? ROLE_FEATURE[me.role])
         ? <StateMessage kind="empty" title="هذه الصفحة غير مفعّلة لمؤسستك" hint="يفعّلها مدير النظام من صفحة المؤسسات." />
+        : route === 'soon:settings' && me.role === 'admin'
+        ? <SettingsPage />
         : route === 'soon:reports' && me.role === 'admin'
         ? <ReportsPage me={me} />
         : typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'
@@ -145,5 +151,6 @@ export function App() {
                         : <HomePage me={me} />}
       </Suspense>
     </Shell>
+    </BrandingProvider>
   );
 }

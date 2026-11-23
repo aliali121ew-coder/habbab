@@ -163,7 +163,14 @@ const lists = [
   ['monthly closings', await f2('GET', '/closings'), (r) => (r.json?.items ?? []).length === 0],
   ['expenses of the month', await f2('GET', `/expenses?month=${thisMonth}`), (r) => (r.json?.items ?? []).length === 0],
   ['expense ledger', await f2('GET', `/expenses/ledger?year=${year}`), (r) => (r.json?.cells ?? []).length === 0],
+  ['letterhead is its own', await f2('GET', '/branding'), (r) => r.json?.name === 'مؤسسة اختبار العزل' && !r.json.logo && !r.json.stamp && !r.json.signature && !r.json.address && r.json.phones.length === 0 && !r.json.accountant_name],
 ];
+// Foundation 1's built-in images are public files; its uploaded ones are not reachable from here.
+const img = await f2('GET', '/branding/image/logo');
+check('no letterhead image of another foundation', img.status === 404, `status ${img.status}`);
+const patchName = await f2('PATCH', '/branding', { address: 'عنوان اختبار' });
+check('letterhead edit stays in its foundation', patchName.status === 200
+  && sql(`SELECT address FROM foundations WHERE id = 1`)[0].address === 'بابل - قضاء الهاشمية - حي الزهراء', `status ${patchName.status}`);
 for (const [name, r, ok] of lists) check(name, r.status === 200 && ok(r), `status ${r.status}`);
 
 // The delegate of foundation 2 sees only their own

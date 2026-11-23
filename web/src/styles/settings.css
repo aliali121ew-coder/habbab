@@ -1,0 +1,92 @@
+/* الإعدادات: the foundation's letterhead. Colours follow the theme (--bar-active). */
+.set { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+
+.set-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--bar-active) 18%, var(--line));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 10%, #fff), #fff 60%);
+}
+.set-head-icon {
+  width: 44px; height: 44px; flex: none;
+  display: grid; place-items: center;
+  border-radius: 14px; background: var(--bar-active); color: #fff;
+}
+.set-head > div { min-width: 0; }
+.set-head h1 { margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--ink); }
+.set-head p { margin: 2px 0 0; font-size: .8rem; color: var(--ink-3); }
+:root[data-theme="dark"] .set-head {
+  border-color: color-mix(in srgb, var(--bar-active) 24%, var(--line));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--bar-active) 18%, var(--surface)), var(--surface) 60%);
+}
+
+.set-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--bar-active) 12%, var(--line));
+  background: var(--surface);
+  box-shadow: 0 4px 14px -8px rgb(15 23 42 / 14%);
+}
+.set-card h2 { margin: 0; font-size: .98rem; font-weight: 800; color: var(--ink); }
+:root[data-theme="dark"] .set-card { box-shadow: 0 4px 14px -8px rgb(0 0 0 / 45%); }
+
+/* Four image slots: 2 per row on phones, 4 on wide screens. */
+.set-slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (min-width: 900px) { .set-slots { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.set-slot {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bar-active) 3%, var(--surface));
+}
+.set-slot-preview {
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--bar-active) 25%, var(--line));
+  /* Checkered ground: a transparent stamp or signature shows exactly as it will print. */
+  background: repeating-conic-gradient(#f1f5f9 0% 25%, #fff 0% 50%) 50% / 16px 16px;
+}
+.set-slot-preview img { max-width: 88%; max-height: 88%; object-fit: contain; }
+.set-slot-preview.is-round img { border-radius: 50%; }
+.set-slot-preview span { font-size: .72rem; color: var(--ink-3); }
+:root[data-theme="dark"] .set-slot-preview { background: repeating-conic-gradient(#334155 0% 25%, #1e293b 0% 50%) 50% / 16px 16px; }
+.set-slot-text { display: grid; min-width: 0; }
+.set-slot-text b { font-size: .84rem; color: var(--ink); white-space: nowrap; }
+.set-slot-text small { font-size: .7rem; color: var(--ink-3); }
+.set-slot-actions { display: flex; gap: 6px; }
+.set-slot-actions .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: .8rem; padding-inline: 10px; }
+.set-slot-actions .btn:first-child { flex: 1; }
+.set-spin { color: var(--bar-active); animation: set-spin 1s linear infinite; }
+@keyframes set-spin { to { transform: rotate(360deg); } }
+
+.set-name {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--bar-active) 7%, var(--surface));
+  color: var(--bar-active);
+}
+.set-name span { display: grid; min-width: 0; }
+.set-name b { color: var(--ink); font-size: .88rem; }
+.set-name small { color: var(--ink-3); font-size: .7rem; }
+:root[data-theme="dark"] .set-name { background: color-mix(in srgb, var(--bar-active) 14%, transparent); }
+
+.set-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 10px; }
+.set-row.two { grid-template-columns: 1fr 1fr; }
+@media (max-width: 640px) { .set-row, .set-row.two { grid-template-columns: 1fr; } }
+
+.set-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.set-saved { font-size: .8rem; font-weight: 700; color: #047857; }
+:root[data-theme="dark"] .set-saved { color: #6ee7b7; }
+.set-error { margin: 0; color: var(--danger); font-size: .78rem; }

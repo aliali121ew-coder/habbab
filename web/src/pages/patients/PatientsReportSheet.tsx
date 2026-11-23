@@ -1,10 +1,9 @@
 import { HandCoins, MapPin, Phone, Pill, Stethoscope, UsersRound } from 'lucide-react';
 import { formatNumber, today } from '../../format';
-import { FOUNDATION } from '../subscribers/PrintSheetModal';
+import { useBranding } from '../../branding';
 import { FOUNDATIONS, type Patient } from './sample';
 
 const shortDate = (iso: string) => `${iso.slice(0, 4)}-${Number(iso.slice(5, 7))}-${Number(iso.slice(8, 10))}`;
-const CONTACT = { address: 'بابل - قضاء الهاشمية - حي الزهراء', phones: ['07808337805', '0760107408'] };
 
 export interface ReportRow {
   patient: Patient;
@@ -29,16 +28,17 @@ export function PatientsReportSheet({ rows, currency, query, sortLabel }: Props)
   const sum = (key: 'cash' | 'medicine' | 'exams') => rows.reduce((total, row) => total + row[key], 0);
   const visits = rows.reduce((total, row) => total + row.patient.records.length, 0);
   const foundations = new Set(rows.flatMap((row) => row.patient.records.map((record) => record.foundation))).size;
+  const brand = useBranding();
 
   return (
     <div className="rec rec-report" dir="rtl">
       <span className="rec-frame" aria-hidden />
-      <img className="rec-watermark" src="/logo.jpg" alt="" />
+      {brand.logo && <img className="rec-watermark" src={brand.logo} alt="" />}
 
       <header className="rec-head">
         <div className="rec-org">
-          <img src="/logo.jpg" alt="" />
-          <strong>{FOUNDATION}</strong>
+          {brand.logo && <img src={brand.logo} alt="" />}
+          <strong>{brand.name}</strong>
         </div>
         <span className="rec-gold-tab" aria-hidden />
         <div className="rec-title">
@@ -113,12 +113,12 @@ export function PatientsReportSheet({ rows, currency, query, sortLabel }: Props)
 
       <footer className="rec-foot">
         <div className="rec-sign">
-          <section className="sig-slot"><h4>توقيع المحاسب</h4><img className="sig-img" src="/signature.png" alt="توقيع المحاسب" /><span className="rec-line" /></section>
-          <section className="sig-slot"><h4>توقيع المدير</h4><img className="sig-img" src="/signature-manager.png" alt="توقيع المدير" /><span className="rec-line" /></section>
+          <section className="sig-slot"><h4>توقيع المحاسب</h4>{brand.signature && <img className="sig-img" src={brand.signature} alt="توقيع المحاسب" />}<span className="rec-line" /></section>
+          <section className="sig-slot"><h4>توقيع المدير</h4>{brand.signature2 && <img className="sig-img" src={brand.signature2} alt="توقيع المدير" />}<span className="rec-line" /></section>
         </div>
         <div className="rec-contact">
-          <span><Phone size={12} aria-hidden /><bdi dir="ltr">{CONTACT.phones.join(' · ')}</bdi></span>
-          <span><MapPin size={12} aria-hidden />{CONTACT.address}</span>
+          {brand.phones.length > 0 && <span><Phone size={12} aria-hidden /><bdi dir="ltr">{brand.phones.join(' · ')}</bdi></span>}
+          {brand.address && <span><MapPin size={12} aria-hidden />{brand.address}</span>}
         </div>
       </footer>
       <div className="rec-base" aria-hidden />

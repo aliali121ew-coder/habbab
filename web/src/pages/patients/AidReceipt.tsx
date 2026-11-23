@@ -1,10 +1,10 @@
 import {
-  Activity, Building2, CalendarDays, Cake, FileText, HandCoins, HeartPulse, Mail, MapPin, Phone, Pill, Stethoscope, UserRound,
+  Activity, Building2, CalendarDays, Cake, FileText, HandCoins, HeartPulse, MapPin, Phone, Pill, Stethoscope, UserRound,
   type LucideIcon,
 } from 'lucide-react';
+import { phonesLine, useBranding } from '../../branding';
 import { formatNumber, today } from '../../format';
 import { FoundationStamp } from '../subscribers/FoundationStamp';
-import { FOUNDATION } from '../subscribers/PrintSheetModal';
 import type { AidRecord, Patient } from './sample';
 
 export type AidKind = 'cash' | 'medicine' | 'exams';
@@ -16,14 +16,6 @@ const KIND: Record<AidKind, { label: string; icon: LucideIcon }> = {
 };
 
 const shortDate = (iso: string) => `${iso.slice(0, 4)}-${Number(iso.slice(5, 7))}-${Number(iso.slice(8, 10))}`;
-
-// The foundation's contact details, as on the subscribers' printed sheets. No email has been
-// given yet: its line is left out of the receipt until one is set here.
-const FOUNDATION_CONTACT = {
-  address: 'بابل - قضاء الهاشمية - حي الزهراء',
-  phones: ['07808337805', '0760107408'],
-  email: '',
-};
 
 // 290000 → «مئتان وتسعون ألف»: the amount in words, as written on receipts.
 const ONES = ['', 'واحد', 'اثنان', 'ثلاثة', 'أربعة', 'خمسة', 'ستة', 'سبعة', 'ثمانية', 'تسعة'];
@@ -78,13 +70,14 @@ interface Props {
 export function AidReceipt({ patient, aid, number, currency }: Props) {
   const kind = KIND[aid.kind];
   const printed = shortDate(today());
+  const brand = useBranding();
 
   return (
     <div className="rcp" dir="rtl">
       <aside className="rcp-band">
         <div className="rcp-org">
-          <img src="/logo.jpg" alt="" />
-          <strong>{FOUNDATION}</strong>
+          {brand.logo && <img src={brand.logo} alt="" />}
+          <strong>{brand.name}</strong>
         </div>
 
         <section className="rcp-patient">
@@ -101,9 +94,8 @@ export function AidReceipt({ patient, aid, number, currency }: Props) {
         <section className="rcp-org-card">
           <h2>للاتصال والاستفسار :</h2>
           <ul>
-            <li><MapPin size={12} aria-hidden /><span>{FOUNDATION_CONTACT.address}</span></li>
-            <li><Phone size={12} aria-hidden /><bdi dir="ltr">{FOUNDATION_CONTACT.phones.join(' - ')}</bdi></li>
-            {FOUNDATION_CONTACT.email && <li><Mail size={12} aria-hidden /><bdi dir="ltr">{FOUNDATION_CONTACT.email}</bdi></li>}
+            {brand.address && <li><MapPin size={12} aria-hidden /><span>{brand.address}</span></li>}
+            {brand.phones.length > 0 && <li><Phone size={12} aria-hidden /><bdi dir="ltr">{phonesLine(brand.phones)}</bdi></li>}
           </ul>
         </section>
 
@@ -143,7 +135,7 @@ export function AidReceipt({ patient, aid, number, currency }: Props) {
 
         <footer className="rcp-sign">
           <section className="sig-slot"><h4>توقيع المستلم</h4><span className="rcp-line" /></section>
-          <section className="sig-slot"><h4>توقيع المحاسب</h4><img className="sig-img" src="/signature.png" alt="توقيع المحاسب" /><span className="rcp-line" /></section>
+          <section className="sig-slot"><h4>توقيع المحاسب</h4>{brand.signature && <img className="sig-img" src={brand.signature} alt="توقيع المحاسب" />}<span className="rcp-line" /></section>
           <FoundationStamp />
         </footer>
 

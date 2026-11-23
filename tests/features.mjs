@@ -1,4 +1,4 @@
-// Foundations and features test, against the local dev server (npm run dev, port 8787).
+﻿// Foundations and features test, against the local dev server (npm run dev, port 8787).
 // Needs the local `admin` to be the system admin (UPDATE users SET is_system = 1 WHERE username = 'admin').
 // The system admin creates a foundation with three features; its manager is refused every other
 // section by the server; the system admin enters it, changes its features, suspends it; a
@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const BASE = process.env.BASE ?? 'http://localhost:8787';
-const NAME = 'مؤسسة اختبار الصفحات';
+const NAME = 'Ù…Ø¤Ø³Ø³Ø© Ø§Ø®ØªØ¨Ø§Ø± Ø§Ù„ØµÙØ­Ø§Øª';
 const USER = 'feat_admin';
 const PASSWORD = 'Feature-Test-1';
 
@@ -54,12 +54,12 @@ check('system admin signs in', sys.status === 200, `status ${sys.status}`);
 
 // Create a foundation that does aid, donations and patients only.
 const created = await sys.call('POST', '/system/foundations', {
-  name: NAME, features: ['aid', 'donations', 'patients'], admin_full_name: 'مدير الصفحات', admin_username: USER, admin_password: PASSWORD,
+  name: NAME, features: ['aid', 'donations', 'patients'], admin_full_name: 'Ù…Ø¯ÙŠØ± Ø§Ù„ØµÙØ­Ø§Øª', admin_username: USER, admin_password: PASSWORD,
 });
 check('create foundation', created.status === 201, `status ${created.status} ${JSON.stringify(created.json)}`);
 const fId = created.json?.id;
 const dup = await sys.call('POST', '/system/foundations', {
-  name: NAME, features: [], admin_full_name: 'آخر', admin_username: 'feat_other', admin_password: PASSWORD,
+  name: NAME, features: [], admin_full_name: 'Ø¢Ø®Ø±', admin_username: 'feat_other', admin_password: PASSWORD,
 });
 check('duplicate name refused', dup.status === 409, `status ${dup.status}`);
 const list = await sys.call('GET', '/system/foundations');
@@ -79,14 +79,14 @@ check('/me shows the foundation and its features', me.json?.foundation_id === fI
 
 for (const [name, method, path, body] of [
   ['subscribers list', 'GET', '/subscribers?status=alive'],
-  ['add subscriber', 'POST', '/subscribers', { full_name: 'اختبار' }],
+  ['add subscriber', 'POST', '/subscribers', { full_name: 'Ø§Ø®ØªØ¨Ø§Ø±' }],
   ['collections grid', 'GET', `/collections/grid?year=${year}`],
   ['collections pay', 'POST', '/collections/pay', { subscriber_id: 1, period: month, amount: 1000, tx_date: `${month}-02` }],
   ['printed register', 'GET', `/collections/print?year=${year}`],
   ['monthly closings', 'GET', '/closings'],
   ['delegates', 'GET', '/delegates'],
   ['expenses', 'GET', `/expenses?month=${month}`],
-  ['add expense', 'POST', '/expenses', { category: 'food', amount: 1000, spent_on: `${month}-02`, beneficiary_name: 'اختبار', details: 'اختبار' }],
+  ['add expense', 'POST', '/expenses', { category: 'food', amount: 1000, spent_on: `${month}-02`, beneficiary_name: 'Ø§Ø®ØªØ¨Ø§Ø±', details: 'Ø§Ø®ØªØ¨Ø§Ø±' }],
   ['system foundations', 'GET', '/system/foundations'],
   ['enter another foundation', 'POST', '/system/enter', { foundation_id: 1 }],
 ]) {
@@ -95,7 +95,7 @@ for (const [name, method, path, body] of [
 }
 for (const [name, method, path, body] of [
   ['overview totals (open)', 'GET', `/collections/overview?year=${year}&delegates=0`],
-  ['register lookup (open)', 'POST', '/subscribers/lookup', { q: 'محمد' }],
+  ['register lookup (open)', 'POST', '/subscribers/lookup', { q: 'Ù…Ø­Ù…Ø¯' }],
   ['prescriptions (patients on)', 'GET', '/prescriptions'],
   ['dashboard', 'GET', '/dashboard'],
 ]) {
@@ -103,7 +103,7 @@ for (const [name, method, path, body] of [
   check(`allowed: ${name}`, r.status === 200, `status ${r.status}`);
 }
 const ov = await mgr.call('GET', `/collections/overview?year=${year}&delegates=0`);
-check('overview holds nothing of foundation 1', ov.json?.alive === 0 && ov.json?.delegate_count === 0, JSON.stringify({ alive: ov.json?.alive }));
+check('overview holds nothing of foundation 1', ov.json?.alive === 0 && ov.json?.delegate_count === 0, JSON.stringify({ alive: ov.json?.alive, delegates: ov.json?.delegate_count, deceased: ov.json?.deceased, months: ov.json?.months?.reduce((s, m) => s + m.paid_amount, 0) }));
 
 // The system admin switches expenses on: /me follows at once.
 const patched = await sys.call('PATCH', `/system/foundations/${fId}`, { features: ['aid', 'donations', 'patients', 'expenses'] });

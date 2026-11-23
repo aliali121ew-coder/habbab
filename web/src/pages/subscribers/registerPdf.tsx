@@ -1,6 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { api, type PrintRow } from '../../api';
+import { BrandingSnapshot } from '../../branding';
 import { RegisterSheets, buildRegisterGroups } from './RegisterPrintModal';
 
 interface Options {
@@ -29,9 +30,9 @@ export async function buildRegisterPdf({ year, cutoff, status, delegateId, deleg
   const root = createRoot(host);
   try {
     flushSync(() => {
-      root.render(<>{buildRegisterGroups(items, cutoff, currency, delegateName).map((group) => (
+      root.render(<BrandingSnapshot>{buildRegisterGroups(items, cutoff, currency, delegateName).map((group) => (
         <RegisterSheets key={group.key} report={group.report} year={year} cutoff={cutoff} status={status} delegateName={group.name} />
-      ))}</>);
+      ))}</BrandingSnapshot>);
     });
     await document.fonts.ready;
     await Promise.all([...host.querySelectorAll('img')].map((img) => img.decode().catch(() => undefined)));

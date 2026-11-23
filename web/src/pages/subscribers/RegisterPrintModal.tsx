@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Printer, X } from 'lucide-react';
 import { api, type PrintRow } from '../../api';
 import { MONTH_NAMES, formatNumber, isPaid, today } from '../../format';
+import { phonesLine, useBranding } from '../../branding';
 import { FoundationStamp } from './FoundationStamp';
 import { FrameCorner } from './PrintSheetModal';
 import { SendPdfButton, WhatsAppMark } from './WhatsAppButton';
@@ -166,6 +167,7 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
   const title = status === 'deceased' ? 'سجل تسديد المشتركين المتوفين' : 'سجل تسديد المشتركين';
   const untilMonth = cutoff >= 0 ? `${MONTH_NAMES[cutoff]} ${year}` : `بداية ${year}`;
   const issued = plainDate(today());
+  const brand = useBranding();
 
   const head = (
     <tr>
@@ -187,11 +189,11 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
               <>
                 <header className="reg-head">
                   <div className="reg-org">
-                    <img src="/logo.jpg" alt="شعار مؤسسة أحباب الحسين الثقافية الخيرية" />
+                    {brand.logo && <img src={brand.logo} alt={`شعار ${brand.name}`} />}
                     <div>
-                      <strong>مؤسسة أحباب الحسين الثقافية الخيرية</strong>
-                      <span>بابل - قضاء الهاشمية - حي الزهراء</span>
-                      <bdi dir="ltr">07808337805 - 0760107408</bdi>
+                      <strong>{brand.name}</strong>
+                      {brand.address && <span>{brand.address}</span>}
+                      {brand.phones.length > 0 && <bdi dir="ltr">{phonesLine(brand.phones)}</bdi>}
                     </div>
                   </div>
                   <div className="reg-title">
@@ -210,7 +212,7 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
               <>
                 <header className="reg-head compact">
                   <div className="reg-org">
-                    <img src="/logo.jpg" alt="" />
+                    {brand.logo && <img src={brand.logo} alt="" />}
                     <strong>{title}</strong>
                   </div>
                   <p>المندوب: <b>{delegateName}</b> · لغاية شهر <b>{untilMonth}</b></p>
@@ -244,16 +246,16 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
                 <div className="reg-approval">
                   <section>
                     <h4>المحاسب</h4>
-                    <p>صباح محمد العيساوي</p>
-                    <span className="reg-sig"><img src="/signature.png" alt="توقيع المحاسب" /></span>
+                    {brand.accountant_name && <p>{brand.accountant_name}</p>}
+                    <span className="reg-sig">{brand.signature && <img src={brand.signature} alt="توقيع المحاسب" />}</span>
                     <span className="line" />
                     <small>التوقيع</small>
                   </section>
                   <FoundationStamp />
                   <section>
                     <h4>مدير المؤسسة</h4>
-                    <p>سماحة السيد علي كاظم داود الشريفي</p>
-                    <span className="reg-sig"><img src="/signature-manager.png" alt="توقيع المدير" /></span>
+                    {brand.manager_name && <p>{brand.manager_name}</p>}
+                    <span className="reg-sig">{brand.signature2 && <img src={brand.signature2} alt="توقيع المدير" />}</span>
                     <span className="line" />
                     <small>التوقيع</small>
                   </section>
@@ -262,8 +264,8 @@ export function RegisterSheets({ report, year, cutoff, status, delegateName }: S
             )}
 
             <footer className="reg-foot">
-              <span>مؤسسة أحباب الحسين الثقافية الخيرية</span>
-              <span>{page.close ? 'بابل - قضاء الهاشمية - حي الزهراء' : 'يتبع في الصفحة التالية'}</span>
+              <span>{brand.name}</span>
+              <span>{page.close ? brand.address ?? '' : 'يتبع في الصفحة التالية'}</span>
             </footer>
           </div>
         </section>
@@ -294,6 +296,7 @@ export function buildRegisterGroups(rows: PrintRow[], cutoff: number, currency: 
 }
 
 export function RegisterPrintModal({ year, cutoff, status, delegateId, delegateName, currency, canSend = false, onClose }: Props) {
+  const brand = useBranding();
   const [rows, setRows] = useState<PrintRow[] | null>(null);
   const [error, setError] = useState('');
 
@@ -358,7 +361,7 @@ export function RegisterPrintModal({ year, cutoff, status, delegateId, delegateN
                 text={[
                   `السلام عليكم ${delegateName}،`,
                   `مرفق سجل تسديد مشتركيكم${status === 'deceased' ? ' المتوفين' : ''} لسنة ${year} لغاية شهر ${cutoff >= 0 ? MONTH_NAMES[cutoff] : 'بداية السنة'}.`,
-                  'مؤسسة أحباب الحسين الثقافية الخيرية',
+                  brand.name,
                 ].join('\n')}
                 build={() => buildRegisterPdf({ year, cutoff, status, delegateId, delegateName, currency })}
               />

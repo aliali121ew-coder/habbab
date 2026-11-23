@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, X } from 'lucide-react';
+import { phonesLine, useBranding } from '../../branding';
 import { formatNumber, today } from '../../format';
 import { FoundationStamp } from '../subscribers/FoundationStamp';
 import { Divider, Frame } from '../subscribers/RegisterPrintModal';
@@ -37,6 +38,7 @@ const plainDate = (iso: string) => iso.slice(0, 10).split('-').map(Number).join(
 // own line with its full details and amount, the heading's total beside its first line. Always a
 // single page: when the entries are many, the table's type steps down until it fits.
 export function ExpensesPrintModal({ title, isMonth, items, filterNote, currency, onClose }: Props) {
+  const brand = useBranding();
   const pageRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); };
@@ -111,11 +113,11 @@ export function ExpensesPrintModal({ title, isMonth, items, filterNote, currency
               <div className="reg-page" ref={pageRef}>
                 <header className="reg-head">
                   <div className="reg-org">
-                    <img src="/logo.jpg" alt="شعار مؤسسة أحباب الحسين الثقافية الخيرية" />
+                    {brand.logo && <img src={brand.logo} alt={`شعار ${brand.name}`} />}
                     <div>
-                      <strong>مؤسسة أحباب الحسين الثقافية الخيرية</strong>
-                      <span>بابل - قضاء الهاشمية - حي الزهراء</span>
-                      <bdi dir="ltr">07808337805 - 0760107408</bdi>
+                      <strong>{brand.name}</strong>
+                      {brand.address && <span>{brand.address}</span>}
+                      {brand.phones.length > 0 && <bdi dir="ltr">{phonesLine(brand.phones)}</bdi>}
                     </div>
                   </div>
                   <div className="reg-title">
@@ -172,22 +174,22 @@ export function ExpensesPrintModal({ title, isMonth, items, filterNote, currency
                 <div className="reg-approval">
                     <section>
                       <h4>المحاسب</h4>
-                      <p>صباح محمد العيساوي</p>
+                      {brand.accountant_name && <p>{brand.accountant_name}</p>}
                       <span className="line" />
                       <small>التوقيع</small>
                     </section>
                     <FoundationStamp />
                     <section>
                       <h4>مدير المؤسسة</h4>
-                      <p>سماحة السيد علي كاظم داود الشريفي</p>
+                      {brand.manager_name && <p>{brand.manager_name}</p>}
                       <span className="line" />
                       <small>التوقيع</small>
                     </section>
                 </div>
 
                 <footer className="reg-foot">
-                  <span>مؤسسة أحباب الحسين الثقافية الخيرية</span>
-                  <span>بابل - قضاء الهاشمية - حي الزهراء</span>
+                  <span>{brand.name}</span>
+                  {brand.address && <span>{brand.address}</span>}
                 </footer>
               </div>
             </section>

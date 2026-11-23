@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
+import { useBranding } from '../branding';
 import { initialOf } from '../format';
 import { useRoute } from '../route';
 import { SOON_PAGES } from '../soonPages';
@@ -140,6 +141,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
   const [open, setOpen] = useState(false);
   const { theme, toggle, palette, setPalette } = useTheme();
   const route = useRoute();
+  const brand = useBranding();
 
   const signOut = async () => {
     // Payments recorded offline are kept on this device through sign-out (they are money already
@@ -176,7 +178,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
           </div>
         </div>
         <div className="rail-brand">
-          <span className="rail-mark rail-logo"><img src="/logo.jpg" alt="" /></span>
+          <span className="rail-mark rail-logo">{brand.logo ? <img src={brand.logo} alt="" /> : <Khatam size={26} />}</span>
           <span className="rail-name">
             <strong>سجلات الخير</strong>
             <small>المشتركون والمساعدات</small>

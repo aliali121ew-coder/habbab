@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Building2, ChevronLeft, HandCoins, HeartHandshake, Info, MessageCircle, Phone, Pill, Repeat, Stethoscope, Wallet } from 'lucide-react';
+import { useBranding } from '../../branding';
 import { formatIQDParts, formatIQDText } from '../../mock/family';
 import type { AidSource, AidSourceStatus } from '../../types/family';
 import { SideSheet } from './SideSheet';
@@ -9,8 +10,6 @@ export const AID_STATUS: Record<AidSourceStatus, { label: string; bg: string; co
   late: { label: 'متأخر', bg: 'var(--fp-rose-soft)', color: 'var(--fp-rose)' },
   paused: { label: 'متوقف', bg: 'var(--fp-muted-2)', color: 'var(--fp-ink-3)' },
 };
-
-export const FOUNDATION_NAME = 'مؤسسة أحباب الحسين الثقافية الخيرية';
 
 const ORG_TONES = [
   { bg: 'var(--fp-amber-soft)', color: 'var(--fp-amber)' },
@@ -56,6 +55,7 @@ export function FoundationSheet({ programs, onOpenProgram, onClose }: {
   onOpenProgram: (program: AidSource) => void;
   onClose: () => void;
 }) {
+  const brand = useBranding();
   const due = programs.reduce((sum, a) => sum + a.monthlyAmount, 0);
   const dueParts = formatIQDParts(due);
   const late = programs.filter((p) => p.status === 'late').length;
@@ -74,16 +74,18 @@ export function FoundationSheet({ programs, onOpenProgram, onClose }: {
   ];
 
   return (
-    <SideSheet title={FOUNDATION_NAME} onClose={onClose} bare>
+    <SideSheet title={brand.name} onClose={onClose} bare>
       {/* Header */}
       <div className="px-6 pb-5 pt-10 text-center" style={{ backgroundImage: `linear-gradient(180deg, color-mix(in srgb, ${tone} 15%, transparent) 0%, transparent 100%)` }}>
-        <img
-          src="/logo.jpg"
-          alt=""
-          className="mx-auto h-[72px] w-[72px] rounded-full object-cover"
-          style={{ boxShadow: `0 12px 26px -12px ${tone}, 0 0 0 4px var(--fp-card)` }}
-        />
-        <h2 className="mt-3 text-lg font-extrabold leading-snug" style={{ color: 'var(--fp-ink)' }}>{FOUNDATION_NAME}</h2>
+        {brand.logo ? (
+          <img
+            src={brand.logo}
+            alt=""
+            className="mx-auto h-[72px] w-[72px] rounded-full object-cover"
+            style={{ boxShadow: `0 12px 26px -12px ${tone}, 0 0 0 4px var(--fp-card)` }}
+          />
+        ) : <span className="mx-auto flex w-fit"><OrgLogo name={brand.name} /></span>}
+        <h2 className="mt-3 text-lg font-extrabold leading-snug" style={{ color: 'var(--fp-ink)' }}>{brand.name}</h2>
         <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
           <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}>{countPrograms(programs.length)}</span>
           {late > 0

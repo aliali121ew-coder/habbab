@@ -23,8 +23,9 @@ export interface Patient {
   records: AidRecord[];
 }
 
-// The foundation this copy of the app belongs to; its own purchases are counted apart.
-export const OWN_FOUNDATION = 'مؤسسة أحباب الحسين الثقافية الخيرية';
+// The foundation's own records are tagged with this; the patients register moves to the server
+// (phase 4), where each record carries its foundation's id instead.
+export const OWN_FOUNDATION = 'المؤسسة';
 
 // Foundations that appear in the patients register; others are added when they join.
 export const FOUNDATIONS: string[] = [OWN_FOUNDATION];

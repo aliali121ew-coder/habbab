@@ -3,7 +3,8 @@ import { ChevronDown, ChevronLeft, FileText } from 'lucide-react';
 import { formatIQDText } from '../../mock/family';
 import type { AidSource, FamilyMember } from '../../types/family';
 import { InitialsAvatar } from '../shared/InitialsAvatar';
-import { FOUNDATION_NAME, OrgLogo, orgTone } from './AidSections';
+import { useBranding } from '../../branding';
+import { OrgLogo, orgTone } from './AidSections';
 
 // Short tag for each of the foundation's programs.
 const PROGRAM_TAGS: Record<string, string> = {
@@ -37,6 +38,7 @@ const countPeople = (n: number) => (n === 1 ? 'فرد واحد' : n === 2 ? 'ف�
 
 /** One column per organization, holding the family members it helps. */
 export function AidBoard({ members, internal, external, onOpenFoundation, onOpenSource, onOpenMember }: Props) {
+  const brand = useBranding();
   const byId = new Map(members.map((m) => [m.id, m]));
   // Phone: which organization is expanded (one at a time).
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -52,10 +54,12 @@ export function AidBoard({ members, internal, external, onOpenFoundation, onOpen
   const columns: Column[] = [
     {
       key: 'foundation',
-      name: FOUNDATION_NAME,
+      name: brand.name,
       subtitle: `${formatIQDText(foundationDue)} شهرياً`,
       tone: { bg: 'var(--fp-primary-soft)', color: 'var(--fp-primary)' },
-      logo: <img src="/logo.jpg" alt="" className="h-8 w-8 shrink-0 rounded-full border object-cover" style={{ borderColor: 'var(--fp-border)' }} />,
+      logo: brand.logo
+        ? <img src={brand.logo} alt="" className="h-8 w-8 shrink-0 rounded-full border object-cover" style={{ borderColor: 'var(--fp-border)' }} />
+        : <OrgLogo name={brand.name} size="sm" />,
       paused: false,
       people: foundationPeople,
       onOpen: onOpenFoundation,
