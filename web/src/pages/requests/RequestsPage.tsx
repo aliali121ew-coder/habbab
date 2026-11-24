@@ -48,7 +48,7 @@ export interface Request {
   delegateId: number | null; source: 'staff' | 'public'; deliveredAt: string | null; deliveredNote: string;
 }
 type Role = 'admin' | 'delegate';
-interface Delegate { id: number; name: string }
+export interface Delegate { id: number; name: string }
 
 // The pin colour of each type on the map (the same hues as the cards).
 const KIND_COLOR: Record<Kind, string> = {
@@ -140,6 +140,7 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
         step={view.step}
         draft={draft}
         setDraft={setDraft}
+        delegates={delegates}
         busy={busy}
         error={error}
         editing={!!editing}
@@ -149,6 +150,7 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
             kind: draft.kind, title: draft.title?.trim(), details: draft.details?.trim() || undefined,
             name: draft.name?.trim(), phone: draft.phone?.trim(), province: draft.province, area: draft.area?.trim() || undefined,
             landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, priority: draft.priority ?? 'normal',
+            delegateId: draft.delegateId ?? null,
             lat: draft.lat ?? null, lng: draft.lng ?? null,
           };
           const saved = editing
@@ -594,8 +596,9 @@ function PlaceCard({ r }: { r: Partial<Request> }) {
 
 /* ───────────── new request: three steps ───────────── */
 
-export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing, mapToken, submitLabel }: {
+export function NewRequest({ step, draft, setDraft, delegates = [], go, onSubmit, busy, error, editing, mapToken, submitLabel }: {
   step: 1 | 2 | 3; draft: Partial<Request>; setDraft: Dispatch<SetStateAction<Partial<Request>>>;
+  delegates?: Delegate[];
   go: (s: 0 | 1 | 2 | 3) => void; onSubmit: () => void; busy: boolean; error: string; editing: boolean;
   /** The public page passes the token it got with the foundation (no session there). */
   mapToken?: string | null; submitLabel?: string;
@@ -793,6 +796,15 @@ export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, e
             <span>رقم الهاتف</span>
             <span className="rq-input"><Phone size={18} /><input dir="ltr" inputMode="numeric" maxLength={11} value={draft.phone ?? ''}
               onChange={(e) => set({ phone: e.target.value.replace(/\D/g, '') })} placeholder="07xxxxxxxxx" /></span>
+          </label>
+          <label className="rq-field">
+            <span>المندوب</span>
+            <span className="rq-input"><UserCheck size={18} />
+              <select name="delegateId" value={draft.delegateId ?? ''} onChange={(e) => set({ delegateId: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">لا شيء</option>
+                {delegates.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </span>
           </label>
 
           <h3 className="rq-section">تفاصيل الطلب</h3>

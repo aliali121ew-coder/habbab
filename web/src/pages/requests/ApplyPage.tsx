@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { CalendarClock, CheckCircle2, HandHeart, Lock } from 'lucide-react';
 import { api } from '../../api';
-import { NewRequest, type Request } from './RequestsPage';
+import { NewRequest, type Delegate, type Request } from './RequestsPage';
 
 /* The public page a foundation shares with families: #/apply/<code>. No account. While the
    foundation's window is open, a family sends a request in the same three steps (type, place on
    the map, details); outside it the page says when it opens or that it is closed. */
 
-interface Info { foundation: string; state: 'open' | 'scheduled' | 'closed'; from: string | null; until: string | null; mapToken: string | null }
+interface Info { foundation: string; state: 'open' | 'scheduled' | 'closed'; from: string | null; until: string | null; mapToken: string | null; delegates?: Delegate[] }
 
 const fmt = (iso: string | null) => (iso
   ? new Date(iso).toLocaleString('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' })
@@ -36,6 +36,7 @@ export function ApplyPage({ code }: { code: string }) {
           kind: draft.kind, title: draft.title?.trim(), details: draft.details?.trim() || undefined,
           name: draft.name?.trim(), phone: draft.phone?.trim(), province: draft.province, area: draft.area?.trim() || undefined,
           landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, priority: draft.priority ?? 'normal',
+          delegateId: draft.delegateId ?? null,
           lat: draft.lat ?? null, lng: draft.lng ?? null, website,
         },
       });
@@ -90,6 +91,7 @@ export function ApplyPage({ code }: { code: string }) {
         step={step}
         draft={draft}
         setDraft={setDraft}
+        delegates={info.delegates}
         go={(s) => { setError(''); setStep(s); }}
         onSubmit={submit}
         busy={busy}

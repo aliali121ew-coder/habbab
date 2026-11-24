@@ -4,7 +4,7 @@ import type { AppEnv } from '../env';
 import { all, first, stmt } from '../lib/db';
 import { parseFeatures } from '../lib/features';
 import { fail, readJson } from '../lib/http';
-import { REQUEST_COLUMNS, requestColumns, windowState, zRequest, type RequestRow } from './requests';
+import { ensureActiveDelegate, REQUEST_COLUMNS, requestColumns, windowState, zRequest, type RequestRow } from './requests';
 
 // The public link a foundation gives to families: /#/apply/<code>. No account. It accepts
 // requests only while the foundation's window is open (checked here on every send), from an
@@ -31,12 +31,18 @@ async function foundationByCode(c: Ctx, code: string) {
 
 apply.get('/:code', async (c) => {
   const f = await foundationByCode(c, c.req.param('code'));
+  const state = windowState({ from: f.requests_open_from, until: f.requests_open_until });
+  const delegates = state === 'open'
+    ? await all<{ id: number; full_name: string }>(c,
+        "SELECT id, full_name FROM users WHERE foundation_id = ? AND role = 'delegate' AND active = 1 ORDER BY full_name", f.id)
+    : [];
   return c.json({
     foundation: f.name,
-    state: windowState({ from: f.requests_open_from, until: f.requests_open_until }),
+    state,
     from: f.requests_open_from,
     until: f.requests_open_until,
     mapToken: c.env.MAPBOX_TOKEN ?? null,
+    delegates: delegates.map((d) => ({ id: d.id, name: d.full_name })),
   });
 });
 
@@ -51,6 +57,8 @@ apply.post('/:code', async (c) => {
   }
   const body = await readJson(c, z.intersection(zRequest, z.object({ website: z.string().max(0, 'طلب غير مسموح').optional() })));
   const v = requestColumns(body);
+  const delegateId = body.delegateId ?? null;
+  await ensureActiveDelegate(c, f.id, delegateId);
 
   const recent = await all<{ id: number }>(c,
     `SELECT id FROM help_requests WHERE foundation_id = ? AND phone = ? AND status IN ('pending', 'review')
@@ -65,12 +73,16 @@ apply.post('/:code', async (c) => {
   if ((today?.n ?? 0) >= DAILY_PUBLIC_LIMIT) fail(429, 'وصل عدد الطلبات اليوم إلى الحد، حاول غداً');
 
   const [created] = await c.env.DB.batch([
-    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, priority, lat, lng, source, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'public', NULL) RETURNING ${REQUEST_COLUMNS}`,
-      f.id, v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.priority, v.lat, v.lng),
+    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, priority, delegate_id, lat, lng, source, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'public', NULL) RETURNING ${REQUEST_COLUMNS}`,
+      f.id, v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.priority, delegateId, v.lat, v.lng),
     stmt(c, `INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id, detail)
              VALUES (?, NULL, 'create_public', 'help_request', last_insert_rowid(), ?)`,
       f.id, JSON.stringify({ label: `${v.title} — ${v.name}` })),
+    ...(delegateId !== null
+      ? [stmt(c, "INSERT INTO notifications (foundation_id, user_id, kind, title, body, link) VALUES (?, ?, 'request_assigned', 'طلب جديد مسند إليك', ?, '#/soon/requests')",
+          f.id, delegateId, `${v.name} — ${v.title}`)]
+      : []),
   ]);
   const row = created.results[0] as RequestRow;
   return c.json({ id: row.id }, 201);

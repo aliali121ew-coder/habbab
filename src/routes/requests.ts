@@ -56,9 +56,18 @@ export const zRequest = z.object({
   landmark: z.string().trim().max(200).optional(),
   members: z.coerce.number().int().min(1).max(30).default(1),
   priority: z.enum(['normal', 'medium', 'high']).default('normal'),
+  delegateId: z.number().int().positive().nullable().optional(),
   lat: z.number().min(-90).max(90).nullable().optional(),
   lng: z.number().min(-180).max(180).nullable().optional(),
 }).refine((b) => (b.lat == null) === (b.lng == null), { message: 'الموقع على الخريطة غير مكتمل' });
+
+export async function ensureActiveDelegate(c: Ctx, foundationId: number, delegateId: number | null) {
+  if (delegateId === null) return;
+  const row = await first<{ id: number }>(c,
+    "SELECT id FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate' AND active = 1",
+    delegateId, foundationId);
+  if (!row) fail(422, 'المندوب غير موجود أو موقوف');
+}
 
 export const requestColumns = (b: z.infer<typeof zRequest>) => ({
   kind: b.kind, title: b.title, details: b.details || null, name: b.name, phone: b.phone, province: b.province,
@@ -149,11 +158,16 @@ requests.post('/window/link', async (c) => {
 requests.post('/', async (c) => {
   const body = await readJson(c, zRequest);
   const v = requestColumns(body);
+  const delegateId = body.delegateId ?? null;
+  await ensureActiveDelegate(c, fid(c), delegateId);
   const [created] = await batch(c, [
-    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, priority, lat, lng, source, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'staff', ?) RETURNING ${REQUEST_COLUMNS}`,
-      fid(c), v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.priority, v.lat, v.lng, c.get('user').id),
+    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, priority, delegate_id, lat, lng, source, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'staff', ?) RETURNING ${REQUEST_COLUMNS}`,
+      fid(c), v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.priority, delegateId, v.lat, v.lng, c.get('user').id),
     auditInsertedStmt(c, 'create', 'help_request', auditDetail(`${v.title} — ${v.name}`)),
+    ...(delegateId !== null
+      ? [notifyStmt(c, delegateId, 'request_assigned', 'طلب جديد مسند إليك', `${v.name} — ${v.title}`, '#/soon/requests')]
+      : []),
   ]);
   return c.json(shapeRequest(created.results[0] as RequestRow), 201);
 });
@@ -163,7 +177,9 @@ requests.patch('/:id', async (c) => {
   const body = await readJson(c, zRequest);
   const current = await load(c, id);
   if (Date.now() - Date.parse(current.created_at) > EDIT_WINDOW_MS) fail(409, 'انتهت مهلة التعديل');
-  const next = requestColumns(body);
+  const nextDelegateId = body.delegateId === undefined ? current.delegate_id : body.delegateId;
+  if (nextDelegateId !== current.delegate_id) await ensureActiveDelegate(c, fid(c), nextDelegateId);
+  const next = { ...requestColumns(body), delegate_id: nextDelegateId };
   const changes = diff(current as unknown as Record<string, unknown>, next);
   if (!Object.keys(changes).length) return c.json(shapeRequest(current));
   const keys = Object.keys(next) as (keyof typeof next)[];
@@ -172,6 +188,9 @@ requests.patch('/:id', async (c) => {
     stmt(c, `UPDATE help_requests SET ${keys.map((k) => `${k} = ?`).join(', ')}, updated_at = ? WHERE id = ? AND foundation_id = ? RETURNING ${REQUEST_COLUMNS}`,
       ...keys.map((k) => next[k]), new Date().toISOString(), id, fid(c)),
     auditStmt(c, 'update', 'help_request', id, auditDetail(`${next.title} — ${next.name}`, changes)),
+    ...(nextDelegateId !== null && nextDelegateId !== current.delegate_id
+      ? [notifyStmt(c, nextDelegateId, 'request_assigned', 'طلب جديد مسند إليك', `${next.name} — ${next.title}`, '#/soon/requests')]
+      : []),
   ]);
   return c.json(shapeRequest(updated.results[0] as RequestRow));
 });
