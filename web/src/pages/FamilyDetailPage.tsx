@@ -16,11 +16,12 @@ import { addMember, getFamily, payFamily, removeMember, updateFamily, updateMemb
 import { toFamilyDetail, toInitials } from '../mock/family';
 import { familyIdFromHash } from '../route';
 import type { CaseOfficer, FamilyMember } from '../types/family';
+import { FamiliesRoleContext } from '../components/families/role';
 
 // Member ids on the page are "mem-<family>-<member id on the server>".
 const memberIdOf = (member: FamilyMember) => Number(member.id.split('-').pop());
 
-export function FamilyDetailPage() {
+function FamilyDetailScreen() {
   const familyId = familyIdFromHash();
   // The family as the server returns it; the page's own shape is derived from it.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -223,4 +224,9 @@ export function FamilyDetailPage() {
       </div>
     </MotionConfig>
   );
+}
+
+/** A family's file: the manager's, or a delegate's own family (no reassigning). */
+export function FamilyDetailPage({ role = 'admin' }: { role?: 'admin' | 'delegate' }) {
+  return <FamiliesRoleContext.Provider value={role}><FamilyDetailScreen /></FamiliesRoleContext.Provider>;
 }

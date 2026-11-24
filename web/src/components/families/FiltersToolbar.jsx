@@ -4,6 +4,7 @@ import { ArrowUpDown, Check, ChevronDown, Search, SlidersHorizontal, X } from 'l
 import { DELEGATES } from '../../data/families';
 import { PAYMENT_STATUS_LABELS, SORT_LABELS } from '../../utils/format';
 import { DelegateAvatar, useLiveDelegates } from './DelegateChip';
+import { useIsDelegate } from './role';
 
 const SEGMENT_ITEMS = [
   { key: 'all', label: 'الكل', dot: null },
@@ -67,6 +68,7 @@ export function FiltersToolbar({
     active ? 'bg-[var(--bar-active)] text-white shadow-sm' : 'border border-slate-200/80 bg-white text-slate-700'
   }`;
 
+  const isDelegate = useIsDelegate();
   const liveDelegates = useLiveDelegates();
   const delegatesList = liveDelegates;
   const activeDelegate = delegatesList.find((d) => String(d.id) === String(filters.delegateId));
@@ -143,6 +145,7 @@ export function FiltersToolbar({
             ))}
           </div>
 
+          {!isDelegate && <>
           <h3 className="mt-5 text-[13px] font-semibold text-slate-500">المندوب</h3>
           <ul className="mt-2 divide-y divide-slate-100 rounded-2xl border border-slate-200/80">
             {[{ id: 'all', name: 'كل المندوبين' }, ...delegatesList].map((del) => {
@@ -159,6 +162,7 @@ export function FiltersToolbar({
               );
             })}
           </ul>
+          </>}
 
           <div className="sticky bottom-0 mt-4 flex gap-2 bg-white pt-2">
             <button type="button" onClick={() => onChange({ delegateId: 'all', paymentStatus: 'all', sortBy: 'entitlement_desc' })} className="h-12 flex-1 rounded-2xl border border-slate-200 text-sm font-semibold text-slate-700">
@@ -230,7 +234,8 @@ export function FiltersToolbar({
             />
           </div>
 
-          {/* Custom Delegate Picker with Avatar & Family Count */}
+          {/* Custom Delegate Picker with Avatar & Family Count (the manager only) */}
+          {!isDelegate && (
           <div className="relative" ref={delegateRef}>
             <button
               type="button"
@@ -307,6 +312,7 @@ export function FiltersToolbar({
               </div>
             )}
           </div>
+          )}
 
           {/* Payment Status Select */}
           <label className="inline-flex items-center">

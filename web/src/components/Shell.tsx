@@ -30,7 +30,8 @@ const NAV: NavItem[] = [
   { id: 'delegates', label: 'المندوبون', icon: UsersRound, href: '#/delegates', roles: ['admin'], group: 'main', feature: 'subscribers' },
   // A delegate's own register; the manager reaches each delegate's register from the delegates page.
   { id: 'subscribers', label: 'سجل المشتركين', icon: Users, href: '#/', roles: ['delegate'], group: 'main', feature: 'subscribers' },
-  { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin'], group: 'main', feature: 'families' },
+  // The manager: every family; a delegate: their own families only (the server sends only those).
+  { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin', 'delegate'], group: 'main', feature: 'families' },
   { id: 'expenses', label: 'الحركات المالية', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records', feature: 'expenses' },
   { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health'], group: 'records', feature: 'patients' },
   // A delegate's requests on the map, with the road route to each.

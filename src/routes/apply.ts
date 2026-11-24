@@ -4,13 +4,17 @@ import type { AppEnv } from '../env';
 import { all, first, stmt } from '../lib/db';
 import { parseFeatures } from '../lib/features';
 import { fail, readJson } from '../lib/http';
-import { ensureActiveDelegate, REQUEST_COLUMNS, requestColumns, windowState, zRequest, type RequestRow } from './requests';
+import { normalizeName } from '../lib/text';
+import { REQUEST_COLUMNS, requestColumns, windowState, zRequest, type RequestRow } from './requests';
 
 // The public link a foundation gives to families: /#/apply/<code>. No account. It accepts
 // requests only while the foundation's window is open (checked here on every send), from an
 // active foundation that has طلبات المساعدة switched on. Guarded by a per-address limit, a daily
-// ceiling per foundation, a
-// hidden field that people leave empty, and one open request per phone number a day.
+// ceiling per foundation, a hidden field that people leave empty, and one open request per
+// phone number a day.
+// The foundation's delegates are never listed here. A family already registered with the
+// foundation (the head's name and phone both match its file) sees its own delegate, and the
+// request goes to that delegate; anyone else sees no delegate at all.
 export const apply = new Hono<AppEnv>();
 
 const DAILY_PUBLIC_LIMIT = 1000;
@@ -31,19 +35,44 @@ async function foundationByCode(c: Ctx, code: string) {
 
 apply.get('/:code', async (c) => {
   const f = await foundationByCode(c, c.req.param('code'));
-  const state = windowState({ from: f.requests_open_from, until: f.requests_open_until });
-  const delegates = state === 'open'
-    ? await all<{ id: number; full_name: string }>(c,
-        "SELECT id, full_name FROM users WHERE foundation_id = ? AND role = 'delegate' AND active = 1 ORDER BY full_name", f.id)
-    : [];
   return c.json({
     foundation: f.name,
-    state,
+    state: windowState({ from: f.requests_open_from, until: f.requests_open_until }),
     from: f.requests_open_from,
     until: f.requests_open_until,
     mapToken: c.env.MAPBOX_TOKEN ?? null,
-    delegates: delegates.map((d) => ({ id: d.id, name: d.full_name })),
   });
+});
+
+const digits = (phone: string) => phone.replace(/\D/g, '');
+
+/** The registered family whose head's name and phone both match, with its active delegate. */
+async function registeredFamily(c: Ctx, foundationId: number, name: string, phone: string) {
+  const want = digits(phone);
+  if (want.length < 10) return null;
+  const rows = await all<{ id: number; phone: string | null; delegate_id: number | null; delegate_name: string | null }>(c,
+    `SELECT f.id, f.phone, u.id AS delegate_id, u.full_name AS delegate_name
+     FROM families f LEFT JOIN users u ON u.id = f.delegate_id AND u.foundation_id = f.foundation_id AND u.role = 'delegate' AND u.active = 1
+     WHERE f.foundation_id = ? AND f.head_norm = ? AND f.deleted_at IS NULL LIMIT 20`,
+    foundationId, normalizeName(name));
+  return rows.find((r) => r.phone && digits(r.phone) === want) ?? null;
+}
+
+const zWho = z.object({
+  name: z.string().trim().min(3).max(120),
+  phone: z.string().trim().regex(/^07\d{9}$/),
+});
+
+// A family checks whether it is registered: its delegate, or nothing.
+apply.post('/:code/family', async (c) => {
+  const ip = c.req.header('cf-connecting-ip') ?? 'local';
+  const limit = await c.env.APPLY_LIMITER?.limit({ key: ip });
+  if (limit && !limit.success) fail(429, 'محاولات كثيرة، حاول بعد دقيقة');
+  const f = await foundationByCode(c, c.req.param('code'));
+  if (windowState({ from: f.requests_open_from, until: f.requests_open_until }) !== 'open') fail(409, 'التسجيل مغلق حالياً');
+  const { name, phone } = await readJson(c, zWho);
+  const family = await registeredFamily(c, f.id, name, phone);
+  return c.json({ registered: !!family, delegate: family?.delegate_id ? family.delegate_name : null });
 });
 
 apply.post('/:code', async (c) => {
@@ -57,8 +86,9 @@ apply.post('/:code', async (c) => {
   }
   const body = await readJson(c, z.intersection(zRequest, z.object({ website: z.string().max(0, 'طلب غير مسموح').optional() })));
   const v = requestColumns(body);
-  const delegateId = body.delegateId ?? null;
-  await ensureActiveDelegate(c, f.id, delegateId);
+  // The family's own delegate when it is registered; a delegate sent by the page is ignored.
+  const family = await registeredFamily(c, f.id, v.name, v.phone);
+  const delegateId = family?.delegate_id ?? null;
 
   const recent = await all<{ id: number }>(c,
     `SELECT id FROM help_requests WHERE foundation_id = ? AND phone = ? AND status IN ('pending', 'review')

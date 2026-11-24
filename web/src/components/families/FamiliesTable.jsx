@@ -387,6 +387,7 @@ export function FamiliesTable({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {onBulkPay && (
             <button
               type="button"
               onClick={() => {
@@ -398,6 +399,7 @@ export function FamiliesTable({
               <HandCoins className="h-3.5 w-3.5" aria-hidden />
               <span>صرف جماعي</span>
             </button>
+            )}
 
             <button
               type="button"

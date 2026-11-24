@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, CheckCircle2, HandHeart, Lock } from 'lucide-react';
+import { CalendarClock, CheckCircle2, HandHeart, Lock, UserCheck } from 'lucide-react';
 import { api } from '../../api';
-import { NewRequest, type Delegate, type Request } from './RequestsPage';
+import { NewRequest, type Request } from './RequestsPage';
 
 /* The public page a foundation shares with families: #/apply/<code>. No account. While the
    foundation's window is open, a family sends a request in the same three steps (type, place on
-   the map, details); outside it the page says when it opens or that it is closed. */
+   the map, details); outside it the page says when it opens or that it is closed.
+   No delegates are listed: a family already registered with the foundation (its head's name and
+   phone match the file) sees its own delegate, and the request goes to that delegate. */
 
-interface Info { foundation: string; state: 'open' | 'scheduled' | 'closed'; from: string | null; until: string | null; mapToken: string | null; delegates?: Delegate[] }
+interface Info { foundation: string; state: 'open' | 'scheduled' | 'closed'; from: string | null; until: string | null; mapToken: string | null }
 
 const fmt = (iso: string | null) => (iso
   ? new Date(iso).toLocaleString('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' })
@@ -22,6 +24,20 @@ export function ApplyPage({ code }: { code: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const [mine, setMine] = useState<{ registered: boolean; delegate: string | null } | null>(null);
+
+  // Once the name and phone are filled in: is this a registered family, and who is its delegate?
+  const who = step === 3 && (draft.name?.trim().length ?? 0) >= 3 && /^07\d{9}$/.test(draft.phone ?? '') ? `${draft.name!.trim()}|${draft.phone}` : '';
+  useEffect(() => {
+    setMine(null);
+    if (!who) return undefined;
+    const [name, phone] = who.split('|');
+    const t = window.setTimeout(() => {
+      api<{ registered: boolean; delegate: string | null }>(`/apply/${encodeURIComponent(code)}/family`, { method: 'POST', body: { name, phone } })
+        .then(setMine).catch(() => setMine(null));
+    }, 700);
+    return () => window.clearTimeout(t);
+  }, [who, code]);
 
   useEffect(() => {
     api<Info>(`/apply/${encodeURIComponent(code)}`).then(setInfo).catch((e: Error) => setLoadError(e.message));
@@ -36,7 +52,6 @@ export function ApplyPage({ code }: { code: string }) {
           kind: draft.kind, title: draft.title?.trim(), details: draft.details?.trim() || undefined,
           name: draft.name?.trim(), phone: draft.phone?.trim(), province: draft.province, area: draft.area?.trim() || undefined,
           landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, priority: draft.priority ?? 'normal',
-          delegateId: draft.delegateId ?? null,
           lat: draft.lat ?? null, lng: draft.lng ?? null, website,
         },
       });
@@ -91,7 +106,12 @@ export function ApplyPage({ code }: { code: string }) {
         step={step}
         draft={draft}
         setDraft={setDraft}
-        delegates={info.delegates}
+        delegateSlot={mine?.registered ? (
+          <div className="rq-mine" role="status">
+            <UserCheck size={18} />
+            <span>عائلة مسجلة لدى المؤسسة{mine.delegate ? <> — مندوبك: <b>{mine.delegate}</b></> : ''}</span>
+          </div>
+        ) : null}
         go={(s) => { setError(''); setStep(s); }}
         onSubmit={submit}
         busy={busy}

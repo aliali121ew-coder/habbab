@@ -6,6 +6,7 @@ import {
 import { DELEGATES } from '../../data/families';
 import { CATEGORY_CONFIG, formatIQD, totalEntitlement } from '../../utils/format';
 import { useLiveDelegates } from './DelegateChip';
+import { useIsDelegate } from './role';
 
 const toDigits = (val) => String(val ?? '')
   .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
@@ -32,6 +33,7 @@ const PAYMENT_TYPES = [
 export function AddFamilyModal({ open, onClose, onCreate }) {
   const dialogRef = useRef(null);
   const delegatesList = useLiveDelegates();
+  const isDelegate = useIsDelegate();
   const [name, setName] = useState('');
   const [headName, setHeadName] = useState('');
   const [region, setRegion] = useState('الكاظمية');
@@ -177,6 +179,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
               </div>
             </div>
 
+            {!isDelegate && (
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-slate-600">المندوب المسؤول</span>
               <select
@@ -189,6 +192,7 @@ export function AddFamilyModal({ open, onClose, onCreate }) {
                 ))}
               </select>
             </label>
+            )}
 
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-slate-600">الحالة الاجتماعية</span>
@@ -547,6 +551,7 @@ export function PaymentModal({ family, onClose, onConfirm }) {
 export function EditAidModal({ family, onClose, onSave }) {
   const dialogRef = useRef(null);
   const delegatesList = useLiveDelegates();
+  const isDelegate = useIsDelegate();
   const [category, setCategory] = useState('intensive');
   const [delegateId, setDelegateId] = useState('');
   const [salary, setSalary] = useState('0');
@@ -653,6 +658,7 @@ export function EditAidModal({ family, onClose, onSave }) {
 
           {/* Delegate & Aid Type */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {!isDelegate && (
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-slate-600">المندوب المسؤول</span>
               <select
@@ -668,6 +674,7 @@ export function EditAidModal({ family, onClose, onSave }) {
                 ))}
               </select>
             </label>
+            )}
 
             <label className="block">
               <span className="mb-1.5 block text-xs font-semibold text-slate-600">نوع المساعدة الإضافية</span>

@@ -30,6 +30,7 @@ import { FamilyMobileList } from '../components/families/FamilyMobileList';
 import { KpiCards } from '../components/families/KpiCards';
 import { PageHeader } from '../components/families/PageHeader';
 import { totalEntitlement } from '../utils/format';
+import { FamiliesRoleContext } from '../components/families/role';
 
 const DEFAULT_FILTERS = {
   query: '',
@@ -39,7 +40,7 @@ const DEFAULT_FILTERS = {
   sortBy: 'entitlement_desc',
 };
 
-export function FamiliesPage() {
+function FamiliesScreen({ isDelegate }) {
   // From the server; every change below is saved there first, then the list is read again.
   const { families, loading, error, reload } = useFamilies();
   const [selectedMonth, setSelectedMonth] = useState(AVAILABLE_MONTHS[0].id);
@@ -114,7 +115,8 @@ export function FamiliesPage() {
 
   const handleSaveFamilyAid = (familyId, patch) => save(() => updateFamily(familyId, {
     category: patch.category,
-    ...(patch.delegate ? { delegateId: patch.delegate.id } : {}),
+    // A delegate cannot move a family to another delegate (the server refuses it).
+    ...(patch.delegate && !isDelegate ? { delegateId: patch.delegate.id } : {}),
     entitlements: patch.entitlements,
   }));
 
@@ -212,7 +214,7 @@ export function FamiliesPage() {
                 onOpenFullFile={handleOpenFullFile}
                 onPay={setPayingFamily}
                 onEditAid={setEditingAidFamily}
-                onBulkPay={handleBulkPay}
+                onBulkPay={isDelegate ? undefined : handleBulkPay}
                 onBulkPrint={(list) => setPrintingList(list)}
               />
             )}
@@ -261,5 +263,14 @@ export function FamiliesPage() {
         document.body,
       )}
     </div>
+  );
+}
+
+/** العوائل المتعففة: the manager sees every family; a delegate only their own, without the manager's tools. */
+export function FamiliesPage({ role = 'admin' }) {
+  return (
+    <FamiliesRoleContext.Provider value={role}>
+      <FamiliesScreen isDelegate={role === 'delegate'} />
+    </FamiliesRoleContext.Provider>
   );
 }

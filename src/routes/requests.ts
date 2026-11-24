@@ -14,9 +14,10 @@ import { notifyStmt } from './notifications';
 export const requests = new Hono<AppEnv>();
 requests.use('*', requireRole('admin', 'delegate'));
 requests.use('*', async (c, next) => {
-  // A delegate may only read their own list.
-  const listing = c.req.method === 'GET' && /\/requests\/?$/.test(c.req.path);
-  if (c.get('user').role !== 'admin' && !listing) fail(403, 'ليست لديك صلاحية لهذا الإجراء');
+  // A delegate may read their own list and send a request for one of their families (it is theirs).
+  const root = /\/requests\/?$/.test(c.req.path);
+  const allowed = root && (c.req.method === 'GET' || c.req.method === 'POST');
+  if (c.get('user').role !== 'admin' && !allowed) fail(403, 'ليست لديك صلاحية لهذا الإجراء');
   await next();
 });
 
@@ -158,14 +159,16 @@ requests.post('/window/link', async (c) => {
 requests.post('/', async (c) => {
   const body = await readJson(c, zRequest);
   const v = requestColumns(body);
-  const delegateId = body.delegateId ?? null;
+  // A delegate's request is theirs; the manager may give it to any active delegate.
+  const user = c.get('user');
+  const delegateId = user.role === 'delegate' ? user.id : body.delegateId ?? null;
   await ensureActiveDelegate(c, fid(c), delegateId);
   const [created] = await batch(c, [
     stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, priority, delegate_id, lat, lng, source, created_by)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'staff', ?) RETURNING ${REQUEST_COLUMNS}`,
       fid(c), v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.priority, delegateId, v.lat, v.lng, c.get('user').id),
     auditInsertedStmt(c, 'create', 'help_request', auditDetail(`${v.title} — ${v.name}`)),
-    ...(delegateId !== null
+    ...(delegateId !== null && delegateId !== user.id // no message to yourself
       ? [notifyStmt(c, delegateId, 'request_assigned', 'طلب جديد مسند إليك', `${v.name} — ${v.title}`, '#/soon/requests')]
       : []),
   ]);

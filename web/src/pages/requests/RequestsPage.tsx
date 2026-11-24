@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import {
   AlertTriangle, ArrowRight, BriefcaseMedical, CheckCircle2, ChevronLeft, Clock, FileText, Filter, HandHeart,
   Lock, MapPin, Paperclip, Pencil, Phone, Pill, Plus, Search, ShoppingBasket, Sofa, Trash2, Type, User, Users, Wallet,
@@ -69,6 +69,7 @@ type View = { at: 'list' } | { at: 'detail'; id: number } | { at: 'new'; step: 1
 export function RequestsPage({ role = 'admin' }: { role?: Role }) {
   const [requests, setRequests] = useState<Request[] | null>(null);
   const [delegates, setDelegates] = useState<Delegate[]>([]);
+  const [myFamilies, setMyFamilies] = useState<FamilyOption[]>([]);
   const [loadError, setLoadError] = useState('');
   const [view, setView] = useState<View>({ at: 'list' });
   // A delegate works from the map; the manager starts on the list.
@@ -84,6 +85,12 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
       .then((data) => setRequests(data.items))
       .catch((e: Error) => setLoadError(e.message));
     if (role === 'admin') api<{ items: Delegate[] }>('/requests/delegates').then((d) => setDelegates(d.items)).catch(() => undefined);
+    // A delegate fills a request from one of their own families (the server sends only theirs).
+    if (role === 'delegate') {
+      api<{ items: { id: number; name: string; headName: string; phone: string; region: string; members?: unknown[] }[] }>('/families')
+        .then((d) => setMyFamilies(d.items.map((x) => ({ id: x.id, name: x.name, headName: x.headName, phone: x.phone, region: x.region, members: x.members?.length ?? 1 }))))
+        .catch(() => setMyFamilies([]));
+    }
   }, [role]);
   useEffect(load, [load]);
 
@@ -141,6 +148,7 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
         draft={draft}
         setDraft={setDraft}
         delegates={delegates}
+        families={role === 'delegate' ? myFamilies : undefined}
         busy={busy}
         error={error}
         editing={!!editing}
@@ -223,7 +231,7 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
       <div className="rq-head">
         <h1>{role === 'delegate' ? 'طلباتي' : 'طلبات المساعدة'}</h1>
         {modeSwitch}
-        {role === 'admin' && <button type="button" className="rq-primary rq-new-wide" onClick={onNew}><Plus size={18} /> طلب جديد</button>}
+        <button type="button" className="rq-primary rq-new-wide" onClick={onNew}><Plus size={18} /> طلب جديد</button>
       </div>
 
       {role === 'admin' && <WindowPanel />}
@@ -292,7 +300,7 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
         </ul>
       )}
 
-      {role === 'admin' && <button type="button" className="rq-fab" onClick={onNew}><Plus size={22} /> طلب جديد</button>}
+      <button type="button" className="rq-fab" onClick={onNew}><Plus size={22} /> طلب جديد</button>
 
       {peek && <PeekSheet r={peek} onClose={() => setPeek(null)} onOpen={() => { setPeek(null); onOpen(peek.id); }} />}
     </div>
@@ -596,14 +604,28 @@ function PlaceCard({ r }: { r: Partial<Request> }) {
 
 /* ───────────── new request: three steps ───────────── */
 
-export function NewRequest({ step, draft, setDraft, delegates = [], go, onSubmit, busy, error, editing, mapToken, submitLabel }: {
+/** One of a delegate's registered families, to fill a request from. */
+export interface FamilyOption { id: number; name: string; headName: string; phone: string; region: string; members: number }
+
+export function NewRequest({ step, draft, setDraft, delegates = [], delegateSlot, families, go, onSubmit, busy, error, editing, mapToken, submitLabel }: {
   step: 1 | 2 | 3; draft: Partial<Request>; setDraft: Dispatch<SetStateAction<Partial<Request>>>;
   delegates?: Delegate[];
+  /** Shown in place of the delegate field (the public page: a registered family's delegate). */
+  delegateSlot?: ReactNode;
+  /** A delegate's own families: pick one, or a new family kept in this request only. */
+  families?: FamilyOption[];
   go: (s: 0 | 1 | 2 | 3) => void; onSubmit: () => void; busy: boolean; error: string; editing: boolean;
   /** The public page passes the token it got with the foundation (no session there). */
   mapToken?: string | null; submitLabel?: string;
 }) {
   const set = (patch: Partial<Request>) => setDraft((prev) => ({ ...prev, ...patch }));
+  const [familyChoice, setFamilyChoice] = useState('');
+  const pickFamily = (value: string) => {
+    setFamilyChoice(value);
+    const fam = families?.find((f) => String(f.id) === value);
+    if (fam) set({ name: fam.headName || fam.name, phone: fam.phone.replace(/\D/g, ''), members: Math.max(1, Math.min(30, fam.members || 1)) });
+    else if (value === 'new') set({ name: '', phone: '', members: 1 });
+  };
   const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
   const flySeqRef = useRef(0);
   const mapZoomRef = useRef(editing && draft.lat != null ? 16 : 5.5);
@@ -787,7 +809,25 @@ export function NewRequest({ step, draft, setDraft, delegates = [], go, onSubmit
       {step === 3 && (
         <>
           <PlaceCard r={draft} />
-          <h3 className="rq-section">المعلومات الشخصية</h3>
+          {families && (
+            <>
+              <h3 className="rq-section">العائلة</h3>
+              <label className="rq-field">
+                <span>اختر عائلة من عوائلك</span>
+                <span className="rq-input"><Users size={18} />
+                  <select value={familyChoice} onChange={(e) => pickFamily(e.target.value)}>
+                    <option value="">— اختر —</option>
+                    {families.map((f) => <option key={f.id} value={String(f.id)}>{f.name}{f.region ? ` — ${f.region}` : ''}</option>)}
+                    <option value="new">+ عائلة جديدة (لهذا الطلب فقط)</option>
+                  </select>
+                </span>
+              </label>
+              {familyChoice === 'new' && (
+                <p className="rq-family-note">اكتب بيانات العائلة أدناه. تُحفظ مع هذا الطلب فقط ولا تُضاف إلى سجل العوائل.</p>
+              )}
+            </>
+          )}
+          <h3 className="rq-section">{families ? 'بيانات العائلة' : 'المعلومات الشخصية'}</h3>
           <label className="rq-field">
             <span>الاسم الكامل</span>
             <span className="rq-input"><User size={18} /><input value={draft.name ?? ''} onChange={(e) => set({ name: e.target.value })} placeholder="أدخل اسمك الكامل" /></span>
@@ -797,6 +837,9 @@ export function NewRequest({ step, draft, setDraft, delegates = [], go, onSubmit
             <span className="rq-input"><Phone size={18} /><input dir="ltr" inputMode="numeric" maxLength={11} value={draft.phone ?? ''}
               onChange={(e) => set({ phone: e.target.value.replace(/\D/g, '') })} placeholder="07xxxxxxxxx" /></span>
           </label>
+          {/* The manager picks any delegate; the public page shows only a registered family's own
+              delegate (delegateSlot); a delegate's own request needs no field (it is theirs). */}
+          {delegateSlot ?? (delegates.length > 0 && (
           <label className="rq-field">
             <span>المندوب</span>
             <span className="rq-input"><UserCheck size={18} />
@@ -806,6 +849,7 @@ export function NewRequest({ step, draft, setDraft, delegates = [], go, onSubmit
               </select>
             </span>
           </label>
+          ))}
 
           <h3 className="rq-section">تفاصيل الطلب</h3>
           <label className="rq-field">

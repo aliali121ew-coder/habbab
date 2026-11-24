@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useIsDelegate } from './role';
 import { MessageCircle, Phone } from 'lucide-react';
 import { api } from '../../api';
 import { DELEGATES } from '../../data/families';
@@ -68,14 +69,17 @@ function fetchLiveDelegates(force = false) {
 }
 
 export function useLiveDelegates() {
+  const delegate = useIsDelegate();
   const [data, setData] = useState(() => cachedData ?? { list: [], byName: {}, byId: {} });
 
   useEffect(() => {
+    if (delegate) return undefined; // a delegate has no list of the other delegates
     listeners.add(setData);
     void fetchLiveDelegates(true);
     return () => { listeners.delete(setData); };
-  }, []);
+  }, [delegate]);
 
+  if (delegate) return [];
   return data.list.length > 0 ? data.list : DELEGATES;
 }
 

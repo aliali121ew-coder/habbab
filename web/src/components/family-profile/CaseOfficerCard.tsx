@@ -66,6 +66,8 @@ export function CaseOfficerCard({ officer, officers, onChangeOfficer, onCopyPhon
           المندوب المسؤول
         </span>
 
+        {/* Only the manager has the list of delegates (a delegate gets none). */}
+        {officers.length > 0 && (
         <button
           type="button"
           onClick={() => { setPickerOpen((p) => !p); setQuery(''); }}
@@ -78,6 +80,7 @@ export function CaseOfficerCard({ officer, officers, onChangeOfficer, onCopyPhon
         >
           تغيير المندوب
         </button>
+        )}
       </div>
 
       {/* Delegate profile */}

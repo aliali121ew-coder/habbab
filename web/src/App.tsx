@@ -151,10 +151,10 @@ export function App() {
         ? <ReportsPage me={me} />
         : typeof route === 'string' && route.startsWith('soon:') && me.role === 'admin'
         ? <ComingSoonPage slug={route.slice(5)} />
-        : route === 'family-detail' && me.role === 'admin'
-        ? <FamilyDetailPage />
-        : route === 'families' && me.role === 'admin'
-          ? <FamiliesPage />
+        : route === 'family-detail' && (me.role === 'admin' || me.role === 'delegate')
+        ? <FamilyDetailPage role={me.role === 'delegate' ? 'delegate' : 'admin'} />
+        : route === 'families' && (me.role === 'admin' || me.role === 'delegate')
+          ? <FamiliesPage role={me.role === 'delegate' ? 'delegate' : 'admin'} />
           : route === 'soon:requests' && me.role === 'delegate'
           ? <RequestsPage role="delegate" />
           : me.role === 'delegate'
