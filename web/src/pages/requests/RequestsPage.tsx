@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import {
   AlertTriangle, ArrowRight, BriefcaseMedical, CheckCircle2, ChevronLeft, Clock, FileText, Filter, HandHeart,
   Lock, MapPin, Paperclip, Pencil, Phone, Pill, Plus, Search, ShoppingBasket, Sofa, Trash2, Type, User, Users, Wallet,
-  Crosshair, CalendarClock, Copy, Link2, List, Map as MapIcon, Navigation, PackageCheck, RefreshCw, Share2, UserCheck, type LucideIcon,
+  Crosshair, CalendarClock, ClipboardCheck, Copy, Link2, List, Map as MapIcon, Navigation, PackageCheck, RefreshCw, Share2, UserCheck, type LucideIcon,
 } from 'lucide-react';
 import { api, forgetRecent } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
@@ -39,7 +39,15 @@ const STATUS: Record<Status, string> = { pending: 'قيد الانتظار', rev
 const PICKABLE: Status[] = ['pending', 'review', 'approved', 'rejected'];
 export type Priority = 'normal' | 'medium' | 'high';
 export const PRIORITY: Record<Priority, string> = { normal: 'عادية', medium: 'متوسطة', high: 'قصوى' };
-const FILTERS: (Status | 'all')[] = ['all', 'pending', 'review', 'approved', 'delivered', 'rejected'];
+// «القائمة»: requests waiting for a decision. «الطلبات»: every request with the whole line of
+// stages, to see where each one has got to (and a step line on each card).
+type Mode = 'list' | 'map' | 'done';
+const OPEN_FILTERS: (Status | 'all')[] = ['all', 'pending', 'review'];
+const DONE_FILTERS: (Status | 'all')[] = ['all', 'pending', 'review', 'approved', 'delivered', 'rejected'];
+const STEPS: { s: Status; label: string }[] = [
+  { s: 'pending', label: 'استلام' }, { s: 'review', label: 'مراجعة' }, { s: 'approved', label: 'موافقة' }, { s: 'delivered', label: 'تسليم' },
+];
+const waiting = (s: Status) => s === 'pending' || s === 'review';
 
 export interface Request {
   id: number; kind: Kind; title: string; details: string; name: string; phone: string;
@@ -73,7 +81,7 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
   const [loadError, setLoadError] = useState('');
   const [view, setView] = useState<View>({ at: 'list' });
   // A delegate works from the map; the manager starts on the list.
-  const [mode, setMode] = useState<'list' | 'map'>(role === 'delegate' ? 'map' : 'list');
+  const [mode, setMode] = useState<Mode>(role === 'delegate' ? 'map' : 'list');
   const [focus, setFocus] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<Request>>({});
   const [busy, setBusy] = useState(false);
@@ -185,7 +193,7 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
 const isOpen = (r: Request) => r.status === 'pending' || r.status === 'review' || r.status === 'approved';
 
 function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
-  requests: Request[]; role: Role; mode: 'list' | 'map'; setMode: (m: 'list' | 'map') => void; focus: number | null;
+  requests: Request[]; role: Role; mode: Mode; setMode: (m: Mode) => void; focus: number | null;
   onOpen: (id: number) => void; onNew: () => void;
 }) {
   const [q, setQ] = useState('');
@@ -200,14 +208,17 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
 
   const shown = useMemo(() => {
     const term = q.trim();
-    return requests.filter((r) => (status === 'all' || r.status === status) && (kind === 'all' || r.kind === kind)
+    return requests.filter((r) => (mode === 'done' || waiting(r.status))
+      && (status === 'all' || r.status === status) && (kind === 'all' || r.kind === kind)
       && (!term || [r.title, r.name, r.phone, r.province, r.area].some((v) => v.includes(term))));
-  }, [requests, q, status, kind]);
+  }, [requests, q, status, kind, mode]);
 
   const modeSwitch = (
-    <div className="rq-mode" role="tablist" aria-label="طريقة العرض">
-      <button type="button" role="tab" aria-selected={mode === 'list'} className={mode === 'list' ? 'on' : ''} onClick={() => setMode('list')}><List size={17} /> القائمة</button>
+    <div className="rq-mode" role="tablist" aria-label="طريقة العرض" style={{ '--i': ['list', 'map', 'done'].indexOf(mode) } as React.CSSProperties}>
+      <span className="rq-mode-pill" aria-hidden />
+      <button type="button" role="tab" aria-selected={mode === 'list'} className={mode === 'list' ? 'on' : ''} onClick={() => { setMode('list'); setStatus('all'); }}><List size={17} /> القائمة</button>
       <button type="button" role="tab" aria-selected={mode === 'map'} className={mode === 'map' ? 'on' : ''} onClick={() => setMode('map')}><MapIcon size={17} /> الخريطة</button>
+      <button type="button" role="tab" aria-selected={mode === 'done'} className={mode === 'done' ? 'on' : ''} onClick={() => { setMode('done'); setStatus('all'); }}><ClipboardCheck size={17} /> الطلبات</button>
     </div>
   );
 
@@ -229,12 +240,12 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
   return (
     <div dir="rtl" className="rq">
       <div className="rq-head">
-        <h1>{role === 'delegate' ? 'طلباتي' : 'طلبات المساعدة'}</h1>
+        <h1>{mode === 'done' ? (role === 'delegate' ? 'تتبّع طلباتي' : 'تتبّع الطلبات') : role === 'delegate' ? 'طلباتي' : 'طلبات المساعدة'}</h1>
         {modeSwitch}
         <button type="button" className="rq-primary rq-new-wide" onClick={onNew}><Plus size={18} /> طلب جديد</button>
       </div>
 
-      {role === 'admin' && <WindowPanel />}
+      {role === 'admin' && mode === 'list' && <WindowPanel />}
 
       <label className="rq-search">
         <Search size={18} aria-hidden />
@@ -242,7 +253,7 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
       </label>
 
       <div className="rq-chips" role="tablist">
-        {FILTERS.map((f) => (
+        {(mode === 'done' ? DONE_FILTERS : OPEN_FILTERS).map((f) => (
           <button key={f} type="button" role="tab" aria-selected={status === f} className={status === f ? 'on' : ''} onClick={() => setStatus(f)}>
             {f === 'all' ? 'الكل' : STATUS[f]}
           </button>
@@ -288,6 +299,7 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
                       <span className="rq-tag"><Clock size={14} /> {when(r.createdAt)}</span>
                       <span className="rq-tag"><Users size={14} /> {r.members} أفراد</span>
                     </span>
+                    {mode === 'done' && <StageLine s={r.status} />}
                     <span className="rq-card-foot">
                       <EditLock r={r} />
                       <span className="rq-card-go" aria-hidden><ChevronLeft size={18} /></span>
@@ -339,6 +351,21 @@ function PeekSheet({ r, onClose, onOpen }: { r: Request; onClose: () => void; on
         </div>
       </div>
     </div>
+  );
+}
+
+/** Where a request has got to: received → review → approved → delivered (or refused). */
+function StageLine({ s }: { s: Status }) {
+  const at = s === 'rejected' ? 1 : STEPS.findIndex((x) => x.s === s);
+  return (
+    <span className={`rq-stage${s === 'rejected' ? ' refused' : ''}`} aria-label={`مرحلة الطلب: ${STATUS[s]}`}>
+      {STEPS.map((step, i) => (
+        <span key={step.s} className={`rq-step${i < at ? ' done' : i === at ? ' now' : ''}`}>
+          <i aria-hidden />
+          <small>{s === 'rejected' && i === at ? 'رُفض' : step.label}</small>
+        </span>
+      ))}
+    </span>
   );
 }
 

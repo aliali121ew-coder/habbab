@@ -83,3 +83,42 @@
 .rq-sheet-actions .rq-primary > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rq-sheet-actions .rq-primary svg { flex: none; }
 @media (max-width: 340px) { .rq-pk-grid { grid-template-columns: 1fr; } }
+
+/* ── «القائمة · الخريطة · الطلبات»: three equal tabs and a pill that slides to the chosen one ── */
+.rq-mode {
+  position: relative; display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 !important;
+  padding: 4px; border-radius: 14px; isolation: isolate;
+}
+.rq-mode button { position: relative; z-index: 1; justify-content: center; padding: 0 12px; transition: color .25s ease; white-space: nowrap; }
+.rq-mode button.on { background: transparent !important; box-shadow: none !important; }
+.rq-mode-pill {
+  position: absolute; z-index: 0; top: 4px; bottom: 4px; right: 4px; width: calc((100% - 8px) / 3);
+  border-radius: 11px; background: var(--surface); box-shadow: 0 2px 8px -4px rgb(15 23 42 / 30%);
+  transform: translateX(calc(var(--i, 0) * -100%));
+  transition: transform .32s cubic-bezier(.2, .8, .2, 1);
+}
+:root[data-theme="dark"] .rq-mode-pill { background: color-mix(in srgb, var(--rq) 30%, transparent); box-shadow: none; }
+@media (prefers-reduced-motion: reduce) { .rq-mode-pill { transition: none; } }
+@media (max-width: 380px) { .rq-mode button { padding: 0 8px; font-size: .8rem; } }
+
+/* ── «الطلبات»: the stage line on each card (received → review → approved → delivered) ── */
+.rq-stage { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 2px 0; }
+.rq-step { position: relative; display: grid; justify-items: center; gap: 4px; min-width: 0; }
+.rq-step::before {
+  content: ""; position: absolute; top: 6px; left: 50%; width: 100%; height: 3px; border-radius: 3px; /* to the step before it (on the right) */
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.rq-step:first-child::before { display: none; }
+.rq-step.done::before, .rq-step.now::before { background: var(--k1); }
+.rq-step i {
+  position: relative; z-index: 1; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--surface); border: 3px solid color-mix(in srgb, var(--ink) 18%, transparent);
+}
+.rq-step.done i { background: var(--k1); border-color: var(--k1); }
+.rq-step.now i { border-color: var(--k1); box-shadow: 0 0 0 4px color-mix(in srgb, var(--k1) 25%, transparent); }
+.rq-step small { font-size: .7rem; color: var(--ink-3); white-space: nowrap; }
+.rq-step.done small, .rq-step.now small { color: color-mix(in srgb, var(--k1) 60%, var(--ink)); font-weight: 700; }
+.rq-stage.refused .rq-step.now i { border-color: #dc2626; box-shadow: 0 0 0 4px rgb(220 38 38 / 22%); }
+.rq-stage.refused .rq-step.now small { color: #b91c1c; }
+:root[data-theme="dark"] .rq-step.done small, :root[data-theme="dark"] .rq-step.now small { color: color-mix(in srgb, var(--k1) 55%, #fff); }
+:root[data-theme="dark"] .rq-stage.refused .rq-step.now small { color: #fca5a5; }
