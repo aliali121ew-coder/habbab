@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ArrowLeft, ArrowRight, ArrowUp, Box, Clock, CornerUpLeft, CornerUpRight, Crosshair, Flag, Gauge, Layers, ListOrdered,
+  ArrowLeft, ArrowRight, ArrowUp, Box, Clock, CloudDownload, Trash2, CornerUpLeft, CornerUpRight, Crosshair, Flag, Gauge, ListOrdered,
   LoaderCircle, LocateFixed, MapPin, Minus, Navigation, Phone, Plus, Route as RouteIcon, Undo2, Volume2, VolumeX, X,
 } from 'lucide-react';
 import {
   createMap, formatDistance, formatDuration, mapboxgl, precisePosition, prepareMapbox, roadRoute, straightDistance,
-  styleUrl, type MapStyle,
 } from '../../maps/mapbox';
 import { bearing, keepAwake, progress, speak, track, turnArrow, type Progress, type Track } from '../../maps/navigation';
+import {
+  availableMaps, downloadMap, formatSize, nearestSaved, offlineSupported, PROVINCES, removeMap, savedMaps,
+  type Available, type Saved,
+} from '../../maps/offline';
+
+// The offline map (MapLibre + the saved province) loads only when the internet is gone.
+const OfflineRequestsMap = lazy(() => import('./OfflineMap').then((m) => ({ default: m.OfflineRequestsMap })));
 
 /* Every map of طلبات المساعدة, on Mapbox. Loaded only when a map is on screen.
    - PickMap: the pin stays in the middle and the map moves under it (choosing a request's place).
@@ -51,14 +57,6 @@ function NoMap({ className, text = 'الخريطة غير مفعّلة بعد. �
   );
 }
 
-function StyleSwitch({ map, style, setStyle }: { map: React.RefObject<mapboxgl.Map | null>; style: MapStyle; setStyle: (s: MapStyle) => void }) {
-  return (
-    <button type="button" aria-label={style === 'streets' ? 'قمر صناعي' : 'شوارع'} title={style === 'streets' ? 'قمر صناعي' : 'شوارع'}
-      onClick={() => { const next = style === 'streets' ? 'satellite' : 'streets'; setStyle(next); map.current?.setStyle(styleUrl(next), { diff: false, localFontFamily: undefined, localIdeographFontFamily: undefined }); }}>
-      <Layers size={21} />
-    </button>
-  );
-}
 
 // A GPS pin (the same drawing for the pin in the middle of the place picker).
 const PIN_SVG = '<svg viewBox="0 0 24 32" aria-hidden="true"><path class="rq-gps-body" d="M12 0C5.4 0 0 5.2 0 11.7 0 20.4 12 32 12 32s12-11.6 12-20.3C24 5.2 18.6 0 12 0z"/><circle class="rq-gps-eye" cx="12" cy="11.5" r="4.6"/></svg>';
@@ -136,14 +134,13 @@ export function PickMap({ lat, lng, onMove, token }: {
   const puck = useRef<MePuck | null>(null);
   const moved = useRef(onMove);
   moved.current = onMove;
-  const [style, setStyle] = useState<MapStyle>('satellite');
   const [locating, setLocating] = useState(false);
   const [hint, setHint] = useState('');
 
   useEffect(() => {
     if (!ready || !box.current) return;
     const has = lat != null && lng != null;
-    const m = createMap(box.current, { center: has ? [lng, lat] : undefined, zoom: has ? 17.5 : 5.5, style: 'satellite' });
+    const m = createMap(box.current, { center: has ? [lng, lat] : undefined, zoom: has ? 17.5 : 5.5, style: 'streets' });
     m.on('moveend', () => { const c = m.getCenter(); moved.current(c.lat, c.lng, nearestProvince(c.lat, c.lng)); });
     map.current = m;
     puck.current = new MePuck(m);
@@ -165,7 +162,6 @@ export function PickMap({ lat, lng, onMove, token }: {
       <div ref={box} className="rq-map-canvas" />
       <GpsPin className="rq-map-pin" />
       <div className="rq-map-tools">
-        <StyleSwitch map={map} style={style} setStyle={setStyle} />
         <button type="button" onClick={() => map.current?.zoomIn()} aria-label="تكبير"><Plus size={22} /></button>
         <button type="button" onClick={() => map.current?.zoomOut()} aria-label="تصغير"><Minus size={22} /></button>
         <button type="button" className="rq-tool-accent" onClick={locate} aria-label="موقعي" disabled={locating}>
@@ -184,7 +180,7 @@ export function ShowMap({ lat, lng }: { lat: number; lng: number }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!ready || !box.current) return;
-    const m = createMap(box.current, { center: [lng, lat], zoom: 16.5, style: 'satellite', interactive: false });
+    const m = createMap(box.current, { center: [lng, lat], zoom: 16.5, style: 'streets', interactive: false });
     return () => { m.remove(); };
   }, [ready, lat, lng]);
   if (ready === null) return null;
@@ -228,7 +224,104 @@ const ARROWS = {
 
 const clock = (secondsAhead: number) => new Date(Date.now() + secondsAhead * 1000).toLocaleTimeString('ar-IQ-u-nu-latn', { hour: 'numeric', minute: '2-digit' });
 
-export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onOpen: (id: number) => void; focus?: number | null }) {
+function useOnline() {
+  const [online, setOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const on = () => setOnline(true); const off = () => setOnline(false);
+    window.addEventListener('online', on); window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
+  }, []);
+  return online;
+}
+
+/** The requests map: Mapbox online; with no internet, the saved province's map. */
+export function RequestsMap(props: { items: MapRequest[]; onOpen: (id: number) => void; focus?: number | null }) {
+  const online = useOnline();
+  const [saved, setSaved] = useState<Saved[] | null>(null);
+  useEffect(() => { void savedMaps().then(setSaved).catch(() => setSaved([])); }, [online]);
+  if (!online && saved && saved.length) {
+    const first = props.items[0];
+    const slug = nearestSaved(saved, first ? [first.lng, first.lat] : null)!;
+    return <Suspense fallback={<div className="rq-map-big" />}><OfflineRequestsMap slug={slug} items={props.items} onOpen={props.onOpen} /></Suspense>;
+  }
+  if (!online) {
+    return <NoMap className="rq-map-big" text="لا يوجد إنترنت. نزّل خريطة محافظتك عندما يتوفر الاتصال لتعمل بدونه." />;
+  }
+  return <OnlineRequestsMap {...props} onSaved={() => void savedMaps().then(setSaved)} />;
+}
+
+/* ───────────── downloading maps for offline use ───────────── */
+
+function DownloadMaps({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [available, setAvailable] = useState<Available[] | null>(null);
+  const [saved, setSaved] = useState<Saved[]>([]);
+  const [busy, setBusy] = useState<{ slug: string; share: number } | null>(null);
+  const [error, setError] = useState('');
+  const [space, setSpace] = useState('');
+
+  const refresh = useCallback(async () => {
+    setSaved(await savedMaps());
+    const est = await navigator.storage?.estimate?.().catch(() => undefined);
+    if (est?.quota) setSpace(`المساحة المتاحة للتطبيق: ${formatSize(Math.max(0, est.quota - (est.usage ?? 0)))}`);
+  }, []);
+
+  useEffect(() => {
+    availableMaps().then(setAvailable).catch((e: Error) => setError(e.message));
+    void refresh();
+  }, [refresh]);
+
+  async function get(slug: string) {
+    setError('');
+    setBusy({ slug, share: 0 });
+    try {
+      await downloadMap(slug, (share) => setBusy({ slug, share }));
+      await refresh();
+      onSaved();
+    } catch (e) { setError((e as Error).message); }
+    setBusy(null);
+  }
+
+  async function drop(slug: string) {
+    await removeMap(slug);
+    await refresh();
+    onSaved();
+  }
+
+  if (!offlineSupported()) return null;
+  return (
+    <div className="rq-route-card rq-dl" role="dialog" aria-label="تنزيل الخريطة">
+      <button type="button" className="rq-route-x" onClick={onClose} aria-label="إغلاق"><X size={18} /></button>
+      <strong className="rq-near-title"><CloudDownload size={18} /> تنزيل الخريطة للعمل بدون إنترنت</strong>
+      <p className="rq-dl-note">نزّل خريطة محافظتك مرة واحدة على شبكة واي فاي. عند انقطاع الإنترنت تظهر وحدها مع الطلبات وموقعك.</p>
+      {error && <p className="rq-route-err" role="alert">{error}</p>}
+      {!available ? <p className="rq-dl-note"><LoaderCircle size={14} className="rq-spin" /> جارٍ التحميل…</p> : (
+        <ul>
+          {PROVINCES.filter((p) => available.some((a) => a.slug === p.slug)).map((p) => {
+            const a = available.find((x) => x.slug === p.slug)!;
+            const have = saved.find((x) => x.slug === p.slug);
+            const running = busy?.slug === p.slug;
+            return (
+              <li key={p.slug} className={have ? 'have' : ''}>
+                <span className="rq-dl-name"><b>{p.name}</b><small>{have ? `محفوظة · ${formatSize(have.size)}` : formatSize(a.size)}</small></span>
+                {running ? (
+                  <span className="rq-dl-bar" aria-label={`${Math.round(busy!.share * 100)}%`}><i style={{ width: `${Math.round(busy!.share * 100)}%` }} /></span>
+                ) : have ? (
+                  <button type="button" className="rq-ghost rq-del" onClick={() => drop(p.slug)} disabled={!!busy}><Trash2 size={16} /></button>
+                ) : (
+                  <button type="button" className="rq-primary" onClick={() => get(p.slug)} disabled={!!busy}><CloudDownload size={16} /> تنزيل</button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {space && <small className="rq-help">{space}</small>}
+    </div>
+  );
+}
+
+function OnlineRequestsMap({ items, onOpen, focus, onSaved }: { items: MapRequest[]; onOpen: (id: number) => void; focus?: number | null; onSaved: () => void }) {
+  const [downloads, setDownloads] = useState(false);
   const ready = useToken();
   const box = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -238,7 +331,6 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
   const pending = useRef<AbortController | null>(null);
   const trackRef = useRef<Track | null>(null);
   const lineRef = useRef<[number, number][] | null>(null);
-  const [style, setStyle] = useState<MapStyle>('streets');
   const [selected, setSelected] = useState<MapRequest | null>(null);
   const [trip, setTrip] = useState<Track | null>(null);
   const [straight, setStraight] = useState<number | null>(null);
@@ -491,11 +583,11 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
 
       {!driving && (
         <div className="rq-map-tools">
-          <StyleSwitch map={map} style={style} setStyle={setStyle} />
           <button type="button" onClick={toggle3d} aria-label={is3d ? 'عرض مسطح' : 'عرض ثلاثي الأبعاد'} className={is3d ? 'on' : ''}><Box size={21} /></button>
           <button type="button" onClick={() => map.current?.zoomIn()} aria-label="تكبير"><Plus size={22} /></button>
           <button type="button" onClick={() => map.current?.zoomOut()} aria-label="تصغير"><Minus size={22} /></button>
           <button type="button" onClick={nearestFirst} aria-label="الأقرب إليّ" title="الأقرب إليّ" disabled={busy}><ListOrdered size={21} /></button>
+          <button type="button" onClick={() => { setDownloads(true); setSelected(null); setNear(null); }} aria-label="تنزيل الخريطة" title="تنزيل الخريطة"><CloudDownload size={21} /></button>
           <button type="button" className="rq-tool-accent" onClick={locate} aria-label="موقعي" disabled={busy}>
             {busy && !selected ? <LoaderCircle size={22} className="rq-spin" /> : <LocateFixed size={22} />}
           </button>
@@ -535,6 +627,8 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
           </div>
         </>
       )}
+
+      {downloads && !driving && <DownloadMaps onClose={() => setDownloads(false)} onSaved={onSaved} />}
 
       {/* ── the nearest requests to me ── */}
       {near && !driving && (

@@ -101,6 +101,8 @@ self.addEventListener('fetch', (event) => {
     || url.pathname.startsWith('/api/files/')
     // A family's request link must always show the window's current state.
     || url.pathname.startsWith('/api/apply/')
+    // Offline map files are large and kept by the app itself in its own cache.
+    || url.pathname.startsWith('/api/maps/offline/')
   ) {
     return;
   }
