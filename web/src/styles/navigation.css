@@ -104,3 +104,13 @@
 .rq-compass b { font-size: 1.3rem; font-weight: 800; color: var(--rq); }
 .rq-compass small { color: var(--ink-2); font-size: .78rem; line-height: 1.6; }
 :root[data-theme="dark"] .rq-compass b { color: color-mix(in srgb, var(--rq) 60%, #fff); }
+
+/* Map credits (Mapbox, OpenStreetMap): kept, as their terms require, in the official compact
+   form — the Mapbox mark as its 23px icon only, and the text folded into a small «ⓘ» that opens
+   in place. Tapping the mark does not leave the app; links in the opened text open a new tab. */
+.mapboxgl-ctrl-logo { width: 23px !important; height: 23px !important; pointer-events: none !important; opacity: .75; }
+.maplibregl-ctrl-attrib.maplibregl-compact, .mapboxgl-ctrl-attrib.mapboxgl-compact { margin: 6px !important; }
+.mapboxgl-ctrl-attrib-inner a, .maplibregl-ctrl-attrib-inner a { pointer-events: auto; }
+:root[data-theme="dark"] .mapboxgl-ctrl-attrib.mapboxgl-compact,
+:root[data-theme="dark"] .maplibregl-ctrl-attrib.maplibregl-compact { background-color: rgb(30 30 46 / 85%) !important; color: #cbd5e1 !important; }
+:root[data-theme="dark"] .mapboxgl-ctrl-attrib a, :root[data-theme="dark"] .maplibregl-ctrl-attrib a { color: #cbd5e1 !important; }

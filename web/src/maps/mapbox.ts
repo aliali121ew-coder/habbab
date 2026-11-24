@@ -67,11 +67,14 @@ export function createMap(container: HTMLElement, options: {
     center: options.center ?? IRAQ,
     zoom: options.zoom ?? 5.5,
     interactive: options.interactive ?? true,
-    attributionControl: true,
+    // The credits Mapbox and OpenStreetMap require stay on the map, in their official compact
+    // form: the text folded into a small «ⓘ» (styles/navigation.css keeps the logo icon-only).
+    attributionControl: false,
     pitchWithRotate: true,
     cooperativeGestures: false,
     language: 'ar',
   });
+  map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
   followTheme(map);
   return map;
 }
