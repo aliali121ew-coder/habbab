@@ -2,9 +2,9 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import {
   AlertTriangle, ArrowRight, BriefcaseMedical, CheckCircle2, ChevronLeft, Clock, FileText, Filter, HandHeart,
   Lock, MapPin, Paperclip, Pencil, Phone, Pill, Plus, Search, ShoppingBasket, Sofa, Trash2, Type, User, Users, Wallet,
-  Crosshair, CalendarClock, Copy, Link2, List, Map as MapIcon, Navigation, RefreshCw, Share2, UserCheck, type LucideIcon,
+  Crosshair, CalendarClock, Copy, Link2, List, Map as MapIcon, Navigation, PackageCheck, RefreshCw, Share2, UserCheck, type LucideIcon,
 } from 'lucide-react';
-import { api } from '../../api';
+import { api, forgetRecent } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 
 // The map (and its library) loads only when a step or a request needs it.
@@ -17,7 +17,7 @@ const RequestsMap = lazy(() => import('./RequestMap').then((m) => ({ default: m.
    and a three-step form (type, place, details). Requests are kept on the server, per foundation. */
 
 export type Kind = 'general' | 'doctor' | 'medicine' | 'food' | 'money' | 'home';
-type Status = 'pending' | 'review' | 'approved' | 'rejected';
+type Status = 'pending' | 'review' | 'approved' | 'rejected' | 'delivered';
 
 const KINDS: { id: Kind; title: string; hint: string; icon: LucideIcon }[] = [
   { id: 'general', title: 'طلب مساعدة عامة', hint: 'تقديم طلب مساعدة عامة لأي احتياج إنساني', icon: HandHeart },
@@ -29,16 +29,20 @@ const KINDS: { id: Kind; title: string; hint: string; icon: LucideIcon }[] = [
 ];
 const kindOf = (id: Kind) => KINDS.find((k) => k.id === id)!;
 
-const STATUS: Record<Status, string> = { pending: 'قيد الانتظار', review: 'قيد المراجعة', approved: 'تمت الموافقة', rejected: 'مرفوض' };
-const FILTERS: (Status | 'all')[] = ['all', 'pending', 'review', 'approved', 'rejected'];
+const STATUS: Record<Status, string> = { pending: 'قيد الانتظار', review: 'قيد المراجعة', approved: 'تمت الموافقة', rejected: 'مرفوض', delivered: 'تم التسليم' };
+// The statuses the manager picks by hand; «تم التسليم» has its own step (what was handed over).
+const PICKABLE: Status[] = ['pending', 'review', 'approved', 'rejected'];
+export type Priority = 'normal' | 'medium' | 'high';
+export const PRIORITY: Record<Priority, string> = { normal: 'عادية', medium: 'متوسطة', high: 'قصوى' };
+const FILTERS: (Status | 'all')[] = ['all', 'pending', 'review', 'approved', 'delivered', 'rejected'];
 
 const PROVINCES = ['بغداد', 'كربلاء', 'النجف', 'بابل', 'البصرة', 'واسط', 'ذي قار', 'ميسان', 'الديوانية', 'المثنى', 'ديالى', 'صلاح الدين', 'نينوى', 'كركوك', 'الأنبار', 'أربيل', 'السليمانية', 'دهوك'];
 
 export interface Request {
   id: number; kind: Kind; title: string; details: string; name: string; phone: string;
-  province: string; area: string; landmark: string; members: number; urgent: boolean;
+  province: string; area: string; landmark: string; members: number; priority: Priority;
   lat: number | null; lng: number | null; status: Status; createdAt: string;
-  delegateId: number | null; source: 'staff' | 'public';
+  delegateId: number | null; source: 'staff' | 'public'; deliveredAt: string | null; deliveredNote: string;
 }
 type Role = 'admin' | 'delegate';
 interface Delegate { id: number; name: string }
@@ -80,8 +84,22 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
   }, [role]);
   useEffect(load, [load]);
 
+  // The map stays current on its own: every 30 seconds, when the phone comes back to the app,
+  // and at once when a notification arrives (help delivered → that pin leaves the map).
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') { forgetRecent(); load(); } };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener('ahbab:notification', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('ahbab:notification', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [load]);
+
   const replace = (r: Request) => setRequests((list) => (list ?? []).map((x) => (x.id === r.id ? r : x)));
-  const startNew = () => { setError(''); setDraft({ members: 1, urgent: false }); setView({ at: 'new', step: 1 }); };
+  const startNew = () => { setError(''); setDraft({ members: 1, priority: 'normal' }); setView({ at: 'new', step: 1 }); };
 
   async function run<T>(work: () => Promise<T>) {
     setBusy(true); setError('');
@@ -100,6 +118,7 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
           onBack={() => { setError(''); setView({ at: 'list' }); }}
           onMap={() => { setFocus(r.id); setMode('map'); setView({ at: 'list' }); }}
           onAssign={(delegateId) => run(async () => replace(await api<Request>(`/requests/${r.id}/delegate`, { method: 'PATCH', body: { delegateId } })))}
+          onDeliver={(note) => run(async () => replace(await api<Request>(`/requests/${r.id}/deliver`, { method: 'PATCH', body: { note } })))}
           onEdit={() => { setError(''); setDraft({ ...r }); setView({ at: 'new', step: 1, editing: r.id }); }}
           onStatus={(status) => run(async () => replace(await api<Request>(`/requests/${r.id}/status`, { method: 'PATCH', body: { status } })))}
           onDelete={() => run(async () => {
@@ -126,7 +145,7 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
           const body = {
             kind: draft.kind, title: draft.title?.trim(), details: draft.details?.trim() || undefined,
             name: draft.name?.trim(), phone: draft.phone?.trim(), province: draft.province, area: draft.area?.trim() || undefined,
-            landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, urgent: !!draft.urgent,
+            landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, priority: draft.priority ?? 'normal',
             lat: draft.lat ?? null, lng: draft.lng ?? null,
           };
           const saved = editing
@@ -148,8 +167,9 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
 
 /* ───────────── the register ───────────── */
 
-// Requests stay on the map until they are approved (or refused).
-const isOpen = (r: Request) => r.status === 'pending' || r.status === 'review';
+// Requests stay on the map until the help is delivered (or the request is refused); an approved
+// one stays too, in green.
+const isOpen = (r: Request) => r.status === 'pending' || r.status === 'review' || r.status === 'approved';
 
 function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
   requests: Request[]; role: Role; mode: 'list' | 'map'; setMode: (m: 'list' | 'map') => void; focus: number | null;
@@ -162,7 +182,7 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
 
   const pins = useMemo(() => requests
     .filter((r) => isOpen(r) && r.lat != null && r.lng != null)
-    .map((r) => ({ id: r.id, name: r.name, kindTitle: kindOf(r.kind).title, color: KIND_COLOR[r.kind], lat: r.lat!, lng: r.lng!, urgent: r.urgent })),
+    .map((r) => ({ id: r.id, name: r.name, kindTitle: kindOf(r.kind).title, color: KIND_COLOR[r.kind], lat: r.lat!, lng: r.lng!, priority: r.priority, approved: r.status === 'approved' })),
   [requests]);
 
   const shown = useMemo(() => {
@@ -319,13 +339,14 @@ function EditLock({ r }: { r: Request }) {
 
 /* ───────────── details ───────────── */
 
-function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssign, onEdit, onStatus, onDelete }: {
+function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssign, onDeliver, onEdit, onStatus, onDelete }: {
   r: Request; busy: boolean; error: string; role: Role; delegates: Delegate[]; onBack: () => void; onMap: () => void;
-  onAssign: (delegateId: number | null) => void; onEdit: () => void; onStatus: (s: Status) => void; onDelete: () => void;
+  onAssign: (delegateId: number | null) => void; onDeliver: (note: string) => void; onEdit: () => void; onStatus: (s: Status) => void; onDelete: () => void;
 }) {
   const k = kindOf(r.kind);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const admin = role === 'admin';
+  const [handed, setHanded] = useState('');
   return (
     <div dir="rtl" className="rq rq-detail">
       <div className={`rq-hero kind-${r.kind}`}>
@@ -344,7 +365,7 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
         {admin && <EditLock r={r} />}
         {r.source === 'public' && <span className="rq-tag rq-tag-public"><Link2 size={14} /> من رابط العائلات</span>}
         <span className="rq-tag"><Clock size={14} /> {when(r.createdAt)}</span>
-        <span className="rq-tag"><AlertTriangle size={14} /> {r.urgent ? 'عالية' : 'عادية'}</span>
+        <span className="rq-tag"><AlertTriangle size={14} /> الأولوية {PRIORITY[r.priority]}</span>
         <span className="rq-tag"><Users size={14} /> {r.members} أفراد</span>
       </div>
 
@@ -392,12 +413,36 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
         </section>
       )}
 
+      {r.status === 'delivered' && (
+        <section className="rq-box rq-delivered">
+          <h2><PackageCheck size={18} /> تم تسليم المساعدة</h2>
+          <p>{r.deliveredNote}</p>
+          {r.deliveredAt && <small className="rq-help">{when(r.deliveredAt)}</small>}
+        </section>
+      )}
+
+      {admin && r.status !== 'delivered' && r.status !== 'rejected' && (
+        <section className="rq-box">
+          <h2>تسليم المساعدة</h2>
+          <label className="rq-input">
+            <PackageCheck size={18} />
+            <input value={handed} onChange={(e) => setHanded(e.target.value)} maxLength={300}
+              placeholder="ما الذي تم تسليمه؟ مثال: سلة غذائية + 100,000 د.ع" />
+          </label>
+          <button type="button" className="rq-primary rq-wide rq-deliver-btn" disabled={busy || handed.trim().length < 2}
+            onClick={() => onDeliver(handed.trim())}>
+            <PackageCheck size={18} /> تم التسليم
+          </button>
+          <small className="rq-help">يختفي الطلب من الخريطة ويصل إشعار للمندوب{r.delegateId ? '' : ' (عند إسناده)'}.</small>
+        </section>
+      )}
+
       {!admin && error && <p className="rq-error" role="alert">{error}</p>}
       {admin && <>
       <section className="rq-box">
         <h2>حالة الطلب</h2>
         <div className="rq-status-pick" role="radiogroup" aria-label="حالة الطلب">
-          {(Object.keys(STATUS) as Status[]).map((s) => (
+          {PICKABLE.map((s) => (
             <button key={s} type="button" role="radio" aria-checked={r.status === s} disabled={busy}
               className={`st-${s}${r.status === s ? ' on' : ''}`} onClick={() => r.status !== s && onStatus(s)}>
               {STATUS[s]}
@@ -662,9 +707,8 @@ export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, e
             <label className="rq-field">
               <span>الأولوية</span>
               <span className="rq-input"><AlertTriangle size={18} />
-                <select value={draft.urgent ? '1' : '0'} onChange={(e) => set({ urgent: e.target.value === '1' })}>
-                  <option value="0">عادية</option>
-                  <option value="1">عالية</option>
+                <select value={draft.priority ?? 'normal'} onChange={(e) => set({ priority: e.target.value as Priority })}>
+                  {(Object.keys(PRIORITY) as Priority[]).map((p) => <option key={p} value={p}>{PRIORITY[p]}</option>)}
                 </select>
               </span>
             </label>

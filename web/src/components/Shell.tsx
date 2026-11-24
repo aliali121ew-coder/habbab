@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
+import { NotificationBell } from './NotificationBell';
 import { useBranding } from '../branding';
 import { initialOf } from '../format';
 import { useRoute } from '../route';
@@ -304,6 +305,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
             >
               {initialOf(me.full_name)}
             </button>
+            {hasFeature(me, 'requests') && (me.role === 'admin' || me.role === 'delegate') && <NotificationBell />}
             <ThemeMenu palette={palette} onPick={setPalette} />
             <button
               type="button"

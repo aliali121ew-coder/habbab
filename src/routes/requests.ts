@@ -4,6 +4,7 @@ import type { AppEnv } from '../env';
 import { requireRole } from '../lib/auth';
 import { all, auditDetail, auditInsertedStmt, auditStmt, batch, diff, fid, first, stmt } from '../lib/db';
 import { fail, idParam, readJson } from '../lib/http';
+import { notifyStmt } from './notifications';
 
 // طلبات المساعدة. The foundation's own requests only.
 //  * The manager sees and manages them all, assigns each to a delegate, and opens or closes the
@@ -25,15 +26,17 @@ const EDIT_WINDOW_MS = 60 * 60 * 1000;
 
 export interface RequestRow {
   id: number; kind: string; title: string; details: string | null; name: string; phone: string;
-  province: string; area: string | null; landmark: string | null; members: number; urgent: number; lat: number | null; lng: number | null;
+  province: string; area: string | null; landmark: string | null; members: number; priority: string; lat: number | null; lng: number | null;
   status: string; delegate_id: number | null; source: string; created_at: string;
+  delivered_at: string | null; delivered_note: string | null;
 }
-export const REQUEST_COLUMNS = 'id, kind, title, details, name, phone, province, area, landmark, members, urgent, lat, lng, status, delegate_id, source, created_at';
+export const REQUEST_COLUMNS = 'id, kind, title, details, name, phone, province, area, landmark, members, priority, lat, lng, status, delegate_id, source, created_at, delivered_at, delivered_note';
 
 export const shapeRequest = (r: RequestRow) => ({
   id: r.id, kind: r.kind, title: r.title, details: r.details ?? '', name: r.name, phone: r.phone,
-  province: r.province, area: r.area ?? '', landmark: r.landmark ?? '', members: r.members, urgent: r.urgent === 1, lat: r.lat, lng: r.lng,
+  province: r.province, area: r.area ?? '', landmark: r.landmark ?? '', members: r.members, priority: r.priority, lat: r.lat, lng: r.lng,
   status: r.status, delegateId: r.delegate_id, source: r.source, createdAt: r.created_at,
+  deliveredAt: r.delivered_at, deliveredNote: r.delivered_note ?? '',
 });
 
 async function load(c: Ctx, id: number) {
@@ -52,14 +55,14 @@ export const zRequest = z.object({
   area: z.string().trim().max(120).optional(),
   landmark: z.string().trim().max(200).optional(),
   members: z.coerce.number().int().min(1).max(30).default(1),
-  urgent: z.boolean().default(false),
+  priority: z.enum(['normal', 'medium', 'high']).default('normal'),
   lat: z.number().min(-90).max(90).nullable().optional(),
   lng: z.number().min(-180).max(180).nullable().optional(),
 }).refine((b) => (b.lat == null) === (b.lng == null), { message: 'الموقع على الخريطة غير مكتمل' });
 
 export const requestColumns = (b: z.infer<typeof zRequest>) => ({
   kind: b.kind, title: b.title, details: b.details || null, name: b.name, phone: b.phone, province: b.province,
-  area: b.area || null, landmark: b.landmark || null, members: b.members, urgent: b.urgent ? 1 : 0,
+  area: b.area || null, landmark: b.landmark || null, members: b.members, priority: b.priority,
   lat: b.lat == null ? null : Math.round(b.lat * 1e6) / 1e6, lng: b.lng == null ? null : Math.round(b.lng * 1e6) / 1e6,
 });
 
@@ -147,9 +150,9 @@ requests.post('/', async (c) => {
   const body = await readJson(c, zRequest);
   const v = requestColumns(body);
   const [created] = await batch(c, [
-    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, urgent, lat, lng, source, created_by)
+    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, priority, lat, lng, source, created_by)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'staff', ?) RETURNING ${REQUEST_COLUMNS}`,
-      fid(c), v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.urgent, v.lat, v.lng, c.get('user').id),
+      fid(c), v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.priority, v.lat, v.lng, c.get('user').id),
     auditInsertedStmt(c, 'create', 'help_request', auditDetail(`${v.title} — ${v.name}`)),
   ]);
   return c.json(shapeRequest(created.results[0] as RequestRow), 201);
@@ -173,7 +176,7 @@ requests.patch('/:id', async (c) => {
   return c.json(shapeRequest(updated.results[0] as RequestRow));
 });
 
-const STATUS_LABEL: Record<string, string> = { pending: 'قيد الانتظار', review: 'قيد المراجعة', approved: 'تمت الموافقة', rejected: 'مرفوض' };
+const STATUS_LABEL: Record<string, string> = { pending: 'قيد الانتظار', review: 'قيد المراجعة', approved: 'تمت الموافقة', rejected: 'مرفوض', delivered: 'تم التسليم' };
 
 requests.patch('/:id/status', async (c) => {
   const id = idParam(c.req.param('id'));
@@ -203,6 +206,30 @@ requests.patch('/:id/delegate', async (c) => {
       delegateId, new Date().toISOString(), id, fid(c)),
     auditStmt(c, 'assign', 'help_request', id,
       auditDetail(`${current.title} — ${current.name}`, { delegate: [nameOf(current.delegate_id), nameOf(delegateId)] })),
+    ...(delegateId !== null
+      ? [notifyStmt(c, delegateId, 'request_assigned', 'طلب جديد مسند إليك', `${current.name} — ${current.title}`, '#/soon/requests')]
+      : []),
+  ]);
+  return c.json(shapeRequest(updated.results[0] as RequestRow));
+});
+
+// «تم التسليم»: the foundation's staff record that the help was handed over (and what it was).
+// The request leaves the map, and its delegate gets a notification straight away.
+requests.patch('/:id/deliver', async (c) => {
+  const id = idParam(c.req.param('id'));
+  const { note } = await readJson(c, z.object({ note: z.string().trim().min(2, 'اكتب ما تم تسليمه').max(300) }));
+  const current = await load(c, id);
+  if (current.status === 'delivered') fail(409, 'تم تسليم هذا الطلب مسبقاً');
+  if (current.status === 'rejected') fail(409, 'لا يمكن تسليم طلب مرفوض');
+  const now = new Date().toISOString();
+  const [updated] = await batch(c, [
+    stmt(c, `UPDATE help_requests SET status = 'delivered', delivered_at = ?, delivered_by = ?, delivered_note = ?, updated_at = ?
+             WHERE id = ? AND foundation_id = ? RETURNING ${REQUEST_COLUMNS}`,
+      now, c.get('user').id, note, now, id, fid(c)),
+    auditStmt(c, 'deliver', 'help_request', id, auditDetail(`${current.title} — ${current.name}`, undefined, note)),
+    ...(current.delegate_id !== null
+      ? [notifyStmt(c, current.delegate_id, 'request_delivered', 'تم تسليم المساعدة', `${current.name}: ${note}`, '#/soon/requests')]
+      : []),
   ]);
   return c.json(shapeRequest(updated.results[0] as RequestRow));
 });

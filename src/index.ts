@@ -9,6 +9,7 @@ import { branding } from './routes/branding';
 import { families } from './routes/families';
 import { patients } from './routes/patients';
 import { requests } from './routes/requests';
+import { notifications } from './routes/notifications';
 import { apply } from './routes/apply';
 import { fail } from './lib/http';
 import { audit, dashboard, delegates, meta, users } from './routes/admin';
@@ -76,6 +77,7 @@ api.use('/patients/*', requireFeature('patients'));
 api.route('/patients', patients);
 api.use('/requests/*', requireFeature('requests'));
 api.route('/requests', requests);
+api.route('/notifications', notifications);
 // The map key for the signed-in app (a public Mapbox token, limited to this site's address).
 api.get('/maps/config', (c) => c.json({ mapToken: c.env.MAPBOX_TOKEN ?? null }));
 api.route('/system', system);

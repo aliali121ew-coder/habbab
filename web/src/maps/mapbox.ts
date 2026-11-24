@@ -29,18 +29,22 @@ export function prepareMapbox(token?: string | null): Promise<string | null> {
 }
 
 const dark = () => document.documentElement.dataset.theme === 'dark';
-export const styleUrl = (style: MapStyle) =>
-  style === 'satellite' ? 'mapbox://styles/mapbox/satellite-streets-v12'
-    : dark() ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12';
 
-/** Every label in Arabic where the map has an Arabic name, else the local one. */
-export function arabicLabels(map: mapboxgl.Map) {
-  for (const layer of map.getStyle()?.layers ?? []) {
-    if (layer.type !== 'symbol') continue;
-    const field = map.getLayoutProperty(layer.id, 'text-field');
-    if (field == null) continue;
-    map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name_ar'], ['get', 'name']]);
-  }
+// Mapbox Standard: one style for day and night (its light preset), with roads, labels and 3D
+// buildings kept clear at every zoom. The old dark-v11 style lost its streets when zoomed in.
+export const styleUrl = (style: MapStyle) =>
+  style === 'satellite' ? 'mapbox://styles/mapbox/standard-satellite' : 'mapbox://styles/mapbox/standard';
+const basemapConfig = () => ({ lightPreset: dark() ? 'night' : 'day', showPointOfInterestLabels: true, showTransitLabels: false });
+
+/** Keeps the map's day/night in step with the app's theme while the map is open. */
+function followTheme(map: mapboxgl.Map) {
+  const apply = () => {
+    try { map.setConfigProperty('basemap', 'lightPreset', dark() ? 'night' : 'day'); } catch { /* style still loading */ }
+  };
+  const watch = new MutationObserver(apply);
+  watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  map.on('style.load', apply);
+  map.on('remove', () => watch.disconnect());
 }
 
 export const IRAQ: [number, number] = [44.2, 33.2]; // lng, lat
@@ -55,6 +59,7 @@ export function createMap(container: HTMLElement, options: {
   const map = new mapboxgl.Map({
     container,
     style: styleUrl(options.style ?? 'streets'),
+    config: { basemap: basemapConfig() },
     center: options.center ?? IRAQ,
     zoom: options.zoom ?? 5.5,
     interactive: options.interactive ?? true,
@@ -63,7 +68,7 @@ export function createMap(container: HTMLElement, options: {
     cooperativeGestures: false,
     language: 'ar',
   });
-  map.on('style.load', () => arabicLabels(map));
+  followTheme(map);
   return map;
 }
 

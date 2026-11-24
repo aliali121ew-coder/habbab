@@ -90,7 +90,7 @@ export function PickMap({ lat, lng, onMove, token }: {
   return (
     <div className="rq-map-live">
       <div ref={box} className="rq-map-canvas" />
-      <span className="rq-map-pin" aria-hidden><MapPin size={26} /></span>
+      <GpsPin className="rq-map-pin" />
       <div className="rq-map-tools">
         <StyleSwitch map={map} style={style} setStyle={setStyle} />
         <button type="button" onClick={() => map.current?.zoomIn()} aria-label="تكبير"><Plus size={22} /></button>
@@ -118,14 +118,27 @@ export function ShowMap({ lat, lng }: { lat: number; lng: number }) {
   return (
     <div className="rq-map-still">
       <div ref={box} className="rq-map-canvas" />
-      <span className="rq-map-pin" aria-hidden><MapPin size={22} /></span>
+      <GpsPin className="rq-map-pin" />
     </div>
   );
 }
 
 /* ───────────── all open requests ───────────── */
 
-export interface MapRequest { id: number; name: string; kindTitle: string; color: string; lat: number; lng: number; urgent: boolean }
+export interface MapRequest {
+  id: number; name: string; kindTitle: string; color: string; lat: number; lng: number;
+  priority: 'normal' | 'medium' | 'high'; approved: boolean;
+}
+
+/** The pin's state on the map: approved green; waiting red, blinking red for «قصوى» and orange for «متوسطة». */
+const pinState = (r: MapRequest) => (r.approved ? 'ok' : r.priority === 'high' ? 'high' : r.priority === 'medium' ? 'mid' : 'wait');
+const PIN_LABEL = { ok: 'تمت الموافقة', high: 'أولوية قصوى', mid: 'أولوية متوسطة', wait: 'بانتظار الموافقة' } as const;
+
+// A GPS pin (the same drawing for the pin in the middle of the place picker).
+const PIN_SVG = '<svg viewBox="0 0 24 32" aria-hidden="true"><path class="rq-gps-body" d="M12 0C5.4 0 0 5.2 0 11.7 0 20.4 12 32 12 32s12-11.6 12-20.3C24 5.2 18.6 0 12 0z"/><circle class="rq-gps-eye" cx="12" cy="11.5" r="4.6"/></svg>';
+function GpsPin({ className }: { className: string }) {
+  return <span className={className} aria-hidden dangerouslySetInnerHTML={{ __html: PIN_SVG }} />;
+}
 
 const ROUTE_SOURCE = 'rq-route';
 
@@ -135,22 +148,10 @@ function drawRoute(map: mapboxgl.Map, route: Route | null) {
   if (source) { source.setData(data); return; }
   if (!route) return;
   map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
-  map.addLayer({ id: 'rq-route-casing', type: 'line', source: ROUTE_SOURCE, layout: { 'line-cap': 'round', 'line-join': 'round' },
+  map.addLayer({ id: 'rq-route-casing', type: 'line', slot: 'middle', source: ROUTE_SOURCE, layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#1e3a8a', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 7, 17, 14] } });
-  map.addLayer({ id: 'rq-route-line', type: 'line', source: ROUTE_SOURCE, layout: { 'line-cap': 'round', 'line-join': 'round' },
+  map.addLayer({ id: 'rq-route-line', type: 'line', slot: 'middle', source: ROUTE_SOURCE, layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: { 'line-color': '#3b82f6', 'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 17, 9] } });
-}
-
-function add3dBuildings(map: mapboxgl.Map) {
-  if (map.getLayer('rq-3d') || !map.getSource('composite')) return;
-  map.addLayer({
-    id: 'rq-3d', source: 'composite', 'source-layer': 'building', type: 'fill-extrusion', minzoom: 14,
-    filter: ['==', ['get', 'extrude'], 'true'],
-    paint: {
-      'fill-extrusion-color': document.documentElement.dataset.theme === 'dark' ? '#3f3f52' : '#d6d3e0',
-      'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-base': ['get', 'min_height'], 'fill-extrusion-opacity': 0.75,
-    },
-  });
 }
 
 export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onOpen: (id: number) => void; focus?: number | null }) {
@@ -160,7 +161,6 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
   const markers = useRef<mapboxgl.Marker[]>([]);
   const me = useRef<mapboxgl.Marker | null>(null);
   const routeRef = useRef<Route | null>(null);
-  const tilted = useRef(false);
   const placed = useRef(false);
   const pending = useRef<AbortController | null>(null);
   const [style, setStyle] = useState<MapStyle>('streets');
@@ -178,7 +178,6 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
     const m = createMap(box.current, { style: 'streets' });
     m.on('style.load', () => {
       drawRoute(m, routeRef.current);
-      if (tilted.current) add3dBuildings(m);
     });
     m.on('click', () => setSelected(null));
     map.current = m;
@@ -192,11 +191,12 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
     if (!m) return;
     for (const mk of markers.current) mk.remove();
     markers.current = items.map((r) => {
+      const state = pinState(r);
       const el = document.createElement('button');
       el.type = 'button';
-      el.className = `rq-marker${r.urgent ? ' urgent' : ''}`;
-      el.style.setProperty('--pin', r.color);
-      el.setAttribute('aria-label', `${r.name} — ${r.kindTitle}`);
+      el.className = `rq-gps rq-gps-${state}`;
+      el.innerHTML = PIN_SVG;
+      el.setAttribute('aria-label', `${r.name} — ${r.kindTitle} — ${PIN_LABEL[state]}`);
       el.addEventListener('click', (ev) => {
         ev.stopPropagation();
         pending.current?.abort(); // a route still on its way belongs to the previous family
@@ -215,7 +215,7 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
     } else {
       const bounds = new mapboxgl.LngLatBounds();
       for (const r of items) bounds.extend([r.lng, r.lat]);
-      m.fitBounds(bounds, { padding: 70, maxZoom: 15, duration: 0 });
+      m.fitBounds(bounds, { padding: { top: 70, bottom: 70, left: 90, right: 50 }, maxZoom: 15, duration: 0 });
     }
   }, [items, ready, focus]);
 
@@ -273,9 +273,8 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
     const m = map.current;
     if (!m) return;
     const next = !is3d;
-    tilted.current = next;
     setIs3d(next);
-    if (next) { add3dBuildings(m); m.easeTo({ pitch: 60, zoom: Math.max(m.getZoom(), 16) }); } else m.easeTo({ pitch: 0, bearing: 0 });
+    if (next) m.easeTo({ pitch: 60, zoom: Math.max(m.getZoom(), 16) }); else m.easeTo({ pitch: 0, bearing: 0 });
   }
 
   const arrival = route ? new Date(Date.now() + route.duration * 1000).toLocaleTimeString('ar-IQ-u-nu-latn', { hour: 'numeric', minute: '2-digit' }) : '';
@@ -302,7 +301,7 @@ export function RequestsMap({ items, onOpen, focus }: { items: MapRequest[]; onO
             <span className="rq-route-dot" style={{ background: selected.color }} />
             <div>
               <strong>{selected.name}</strong>
-              <small>{selected.kindTitle}</small>
+              <small>{selected.kindTitle} · {PIN_LABEL[pinState(selected)]}</small>
             </div>
           </div>
 

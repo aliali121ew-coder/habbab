@@ -65,9 +65,9 @@ apply.post('/:code', async (c) => {
   if ((today?.n ?? 0) >= DAILY_PUBLIC_LIMIT) fail(429, 'وصل عدد الطلبات اليوم إلى الحد، حاول غداً');
 
   const [created] = await c.env.DB.batch([
-    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, urgent, lat, lng, source, created_by)
+    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, priority, lat, lng, source, created_by)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'public', NULL) RETURNING ${REQUEST_COLUMNS}`,
-      f.id, v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.urgent, v.lat, v.lng),
+      f.id, v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.priority, v.lat, v.lng),
     stmt(c, `INSERT INTO audit_log (foundation_id, user_id, action, entity, entity_id, detail)
              VALUES (?, NULL, 'create_public', 'help_request', last_insert_rowid(), ?)`,
       f.id, JSON.stringify({ label: `${v.title} — ${v.name}` })),

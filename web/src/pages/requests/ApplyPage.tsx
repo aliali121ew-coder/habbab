@@ -17,7 +17,7 @@ export function ApplyPage({ code }: { code: string }) {
   const [info, setInfo] = useState<Info | null>(null);
   const [loadError, setLoadError] = useState('');
   const [step, setStep] = useState<0 | 1 | 2 | 3>(0);
-  const [draft, setDraft] = useState<Partial<Request>>({ members: 1, urgent: false });
+  const [draft, setDraft] = useState<Partial<Request>>({ members: 1, priority: 'normal' });
   const [website, setWebsite] = useState(''); // left empty by people; filled by bots
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -35,7 +35,7 @@ export function ApplyPage({ code }: { code: string }) {
         body: {
           kind: draft.kind, title: draft.title?.trim(), details: draft.details?.trim() || undefined,
           name: draft.name?.trim(), phone: draft.phone?.trim(), province: draft.province, area: draft.area?.trim() || undefined,
-          landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, urgent: !!draft.urgent,
+          landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, priority: draft.priority ?? 'normal',
           lat: draft.lat ?? null, lng: draft.lng ?? null, website,
         },
       });

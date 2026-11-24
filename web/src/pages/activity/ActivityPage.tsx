@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Activity, Banknote, Download, FileText, Lock, LogIn, type LucideIcon, Pencil, Plus, RefreshCw, RotateCcw, Save, Search,
-  ShieldAlert, ShieldCheck, Trash2, UserCog, UsersRound, Database, Eye, LogOut,
+  ShieldAlert, ShieldCheck, Trash2, UserCog, UsersRound, Database, Eye, LogOut, PackageCheck,
 } from 'lucide-react';
 import { api, type Me } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
@@ -62,7 +62,7 @@ const FIELD: Record<string, string> = {
   ent_salary: 'الراتب الشهري', ent_aid: 'المساعدات', ent_medicine: 'الدواء', ent_checkups: 'الكشفيات', relation: 'الصلة', age: 'العمر',
   gender: 'الجنس', chronic: 'مرض مزمن', condition: 'الحالة المرضية', given_on: 'التاريخ', cash: 'نقد', medicine: 'دواء',
   exams: 'كشفية', doctor: 'الطبيب', delegate: 'المندوب', note: 'التفاصيل',
-  kind: 'نوع الطلب', title: 'عنوان الطلب', province: 'المحافظة', area: 'المنطقة', landmark: 'نقطة دالة', members: 'عدد الأفراد', urgent: 'الأولوية', lat: 'خط العرض', lng: 'خط الطول', open_from: 'يُفتح', open_until: 'يُغلق',
+  kind: 'نوع الطلب', title: 'عنوان الطلب', province: 'المحافظة', area: 'المنطقة', landmark: 'نقطة دالة', members: 'عدد الأفراد', urgent: 'الأولوية', lat: 'خط العرض', lng: 'خط الطول', priority: 'الأولوية', open_from: 'يُفتح', open_until: 'يُغلق',
 };
 
 interface Detail { label?: string; changes?: Record<string, [unknown, unknown]>; note?: string; text?: string }
@@ -188,6 +188,7 @@ function describe(entry: Entry, currency: string): Said {
     case 'window:help_request': return base('update', Pencil, 'فتح فترة استقبال الطلبات', 'البيانات');
     case 'window_close:help_request': return base('update', Lock, 'إغلاق استقبال الطلبات', 'البيانات');
     case 'window_link:help_request': return base('update', Pencil, 'رابط جديد لاستقبال الطلبات', 'البيانات');
+    case 'deliver:help_request': return base('money', PackageCheck, 'تسليم مساعدة لطلب', 'المالية', [detail.label, detail.note]);
     case 'create_foundation:foundation': return base('create', Plus, 'إنشاء مؤسسة', 'الحسابات', [detail.text]);
     case 'update_foundation:foundation': return base('update', Pencil, 'تعديل إعدادات المؤسسة', 'الحسابات');
     default:
