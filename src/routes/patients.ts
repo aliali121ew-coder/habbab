@@ -11,13 +11,19 @@ import { putEncrypted, readImage, signFileLink } from './prescriptions';
 // another foundation confirmed it holds the same patient, that foundation's aid too (cash,
 // medicine, exam fee, date and foundation name; its doctor, delegate and notes stay its own).
 export const patients = new Hono<AppEnv>();
-patients.use('*', requireRole('admin', 'health'));
+patients.use('*', requireRole('admin', 'health', 'delegate'));
+// A delegate reads the patients they follow (through the family, or given to them) and changes nothing.
+patients.use('*', async (c, next) => {
+  if (c.get('user').role === 'delegate' && c.req.method !== 'GET') fail(403, 'ليست لديك صلاحية لهذا الإجراء');
+  await next();
+});
 
 type Ctx = Context<AppEnv>;
 
 interface PatientRow {
   id: number; file_no: string; name: string; age: number | null; gender: string | null; condition: string | null;
   address: string | null; phone: string | null; notes: string | null; photo_key: string | null; link_id: number | null; created_at: string;
+  family_id: number | null; delegate_id: number | null; family_name: string | null; eff_delegate_id: number | null; eff_delegate_name: string | null;
 }
 interface AidRow {
   id: number; patient_id: number; given_on: string; cash: number; medicine: number; exams: number;
@@ -25,7 +31,15 @@ interface AidRow {
 }
 interface SharedRow { link_id: number; foundation: string; given_on: string; cash: number; medicine: number; exams: number }
 
-const COLUMNS = 'id, file_no, name, age, gender, condition, address, phone, notes, photo_key, link_id, created_at';
+// The patient, their family (when linked) and the delegate who follows them: the one given
+// directly, else the family's. Every read of a patient goes through this.
+const SELECT_PATIENT = `SELECT p.id, p.file_no, p.name, p.age, p.gender, p.condition, p.address, p.phone, p.notes, p.photo_key,
+    p.link_id, p.created_at, p.family_id, p.delegate_id, f.name AS family_name,
+    COALESCE(p.delegate_id, f.delegate_id) AS eff_delegate_id, u.full_name AS eff_delegate_name
+  FROM patients p
+  LEFT JOIN families f ON f.id = p.family_id AND f.foundation_id = p.foundation_id AND f.deleted_at IS NULL
+  LEFT JOIN users u ON u.id = COALESCE(p.delegate_id, f.delegate_id) AND u.foundation_id = p.foundation_id`;
+const DIFF_COLUMNS = ['name', 'age', 'gender', 'condition', 'address', 'phone', 'notes', 'family_id', 'delegate_id'];
 
 const ownName = async (c: Ctx) => (await first<{ name: string }>(c, 'SELECT name FROM foundations WHERE id = ?', fid(c)))?.name ?? '';
 
@@ -53,6 +67,10 @@ async function shape(c: Ctx, row: PatientRow, own: AidRow[], shared: SharedRow[]
     photo: row.photo_key ? await signFileLink(c, row.photo_key) : null,
     linked: row.link_id !== null,
     createdAt: row.created_at,
+    family: row.family_id && row.family_name ? { id: row.family_id, name: row.family_name } : null,
+    // Who follows the patient, and how: given directly, or through the family.
+    delegate: row.eff_delegate_id ? { id: row.eff_delegate_id, name: row.eff_delegate_name ?? '', via: row.delegate_id ? 'direct' : 'family' } : null,
+    directDelegateId: row.delegate_id,
     records,
   };
 }
@@ -70,14 +88,34 @@ function sharedFor(c: Ctx, links: number[]) {
 }
 
 async function loadPatient(c: Ctx, id: number) {
-  const row = await first<PatientRow>(c, `SELECT ${COLUMNS} FROM patients WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL`, id, fid(c));
-  if (!row) fail(404, 'ملف المريض غير موجود');
+  const row = await first<PatientRow>(c, `${SELECT_PATIENT} WHERE p.id = ? AND p.foundation_id = ? AND p.deleted_at IS NULL`, id, fid(c));
+  // A delegate sees only the patients they follow.
+  if (!row || (c.get('user').role === 'delegate' && row.eff_delegate_id !== c.get('user').id)) fail(404, 'ملف المريض غير موجود');
   return row;
 }
 
+// The families and delegates a patient can be linked to (for the manager and health officer,
+// who have no families page of their own).
+patients.get('/links', async (c) => {
+  if (c.get('user').role === 'delegate') fail(403, 'ليست لديك صلاحية لهذا الإجراء');
+  const [families, delegates] = await Promise.all([
+    all<{ id: number; name: string; delegate_name: string | null }>(c,
+      `SELECT f.id, f.name, u.full_name AS delegate_name FROM families f LEFT JOIN users u ON u.id = f.delegate_id AND u.foundation_id = f.foundation_id
+       WHERE f.foundation_id = ? AND f.deleted_at IS NULL ORDER BY f.name LIMIT 5000`, fid(c)),
+    all<{ id: number; full_name: string }>(c,
+      "SELECT id, full_name FROM users WHERE foundation_id = ? AND role = 'delegate' AND active = 1 ORDER BY full_name", fid(c)),
+  ]);
+  return c.json({
+    families: families.map((f) => ({ id: f.id, name: f.name, delegate: f.delegate_name })),
+    delegates: delegates.map((d) => ({ id: d.id, name: d.full_name })),
+  });
+});
+
 patients.get('/', async (c) => {
   const [rows, aids, foundation] = await Promise.all([
-    all<PatientRow>(c, `SELECT ${COLUMNS} FROM patients WHERE foundation_id = ? AND deleted_at IS NULL ORDER BY id DESC LIMIT 5000`, fid(c)),
+    c.get('user').role === 'delegate'
+      ? all<PatientRow>(c, `${SELECT_PATIENT} WHERE p.foundation_id = ? AND p.deleted_at IS NULL AND COALESCE(p.delegate_id, f.delegate_id) = ? ORDER BY p.id DESC LIMIT 5000`, fid(c), c.get('user').id)
+      : all<PatientRow>(c, `${SELECT_PATIENT} WHERE p.foundation_id = ? AND p.deleted_at IS NULL ORDER BY p.id DESC LIMIT 5000`, fid(c)),
     all<AidRow>(c, `SELECT a.id, a.patient_id, a.given_on, a.cash, a.medicine, a.exams, a.doctor, a.delegate, a.note
       FROM patient_aids a JOIN patients p ON p.id = a.patient_id
       WHERE a.foundation_id = ? AND a.deleted_at IS NULL AND p.deleted_at IS NULL ORDER BY a.given_on DESC, a.id DESC LIMIT 20000`, fid(c)),
@@ -104,6 +142,8 @@ patients.get('/:id', async (c) => {
 });
 
 const zPatient = {
+  familyId: z.number().int().positive().nullable().optional(),
+  delegateId: z.number().int().positive().nullable().optional(),
   name: z.string({ error: 'اسم المريض مطلوب' }).trim().min(3, 'اسم المريض قصير جداً').max(120),
   age: z.coerce.number().int().min(0).max(130).optional(),
   gender: z.enum(['male', 'female']).optional(),
@@ -141,15 +181,27 @@ async function linkTo(c: Ctx, targetId: number, expectedNorm: string) {
   };
 }
 
+/** The family must be this foundation's, and the delegate an active delegate of it. */
+async function checkLinks(c: Ctx, familyId: number | null, delegateId: number | null) {
+  if (familyId !== null && !(await first(c, 'SELECT id FROM families WHERE id = ? AND foundation_id = ? AND deleted_at IS NULL', familyId, fid(c)))) {
+    fail(422, 'العائلة غير موجودة');
+  }
+  if (delegateId !== null && !(await first(c, "SELECT id FROM users WHERE id = ? AND foundation_id = ? AND role = 'delegate' AND active = 1", delegateId, fid(c)))) {
+    fail(422, 'المندوب غير موجود أو موقوف');
+  }
+}
+
 patients.post('/', async (c) => {
   const body = await readJson(c, z.object({ ...zPatient, linkTo: z.number().int().positive().optional() }));
   const nameNorm = normalizeName(body.name);
   const link = body.linkTo ? await linkTo(c, body.linkTo, nameNorm) : null;
+  await checkLinks(c, body.familyId ?? null, body.delegateId ?? null);
   const [created] = await batch(c, [
-    stmt(c, `INSERT INTO patients (foundation_id, file_no, name, name_norm, age, gender, condition, address, phone, notes, link_id, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    stmt(c, `INSERT INTO patients (foundation_id, file_no, name, name_norm, age, gender, condition, address, phone, notes, link_id, family_id, delegate_id, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
       fid(c), `tmp-${crypto.randomUUID()}`, body.name, nameNorm, body.age ?? null, body.gender ?? null,
-      body.condition ?? null, body.address ?? null, body.phone ?? null, body.notes ?? null, link?.group ?? null, c.get('user').id),
+      body.condition ?? null, body.address ?? null, body.phone ?? null, body.notes ?? null, link?.group ?? null,
+      body.familyId ?? null, body.delegateId ?? null, c.get('user').id),
   ]);
   const id = (created.results[0] as { id: number }).id;
   await batch(c, [
@@ -167,10 +219,14 @@ patients.patch('/:id', async (c) => {
   const next: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(body)) {
     if (value === undefined) continue;
-    next[key] = typeof value === 'string' && key !== 'name' ? value || null : value;
+    const column = key === 'familyId' ? 'family_id' : key === 'delegateId' ? 'delegate_id' : key;
+    next[column] = typeof value === 'string' && key !== 'name' ? value || null : value;
+  }
+  if (body.familyId !== undefined || body.delegateId !== undefined) {
+    await checkLinks(c, body.familyId ?? null, body.delegateId ?? null);
   }
   if (!Object.keys(next).length) fail(422, 'لا توجد تعديلات');
-  const changes = diff(current as unknown as Record<string, unknown>, next);
+  const changes = diff(Object.fromEntries(DIFF_COLUMNS.map((k) => [k, (current as unknown as Record<string, unknown>)[k]])), next);
   if (body.name !== undefined) next.name_norm = normalizeName(body.name);
   const keys = Object.keys(next);
   await batch(c, [

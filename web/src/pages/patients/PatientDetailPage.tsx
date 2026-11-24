@@ -11,8 +11,9 @@ import { SortTh, compare, nextSort, type SortState } from '../../components/Sort
 import { printWhenReady } from '../../components/printWhenReady';
 import { AidReceipt } from './AidReceipt';
 import type { Patient } from './sample';
-import { addAid, getPatient, removeAid, updateAid, type AidInput } from '../../data/patients';
+import { addAid, getPatient, removeAid, updateAid, updatePatient, type AidInput } from '../../data/patients';
 import { AidDialog } from './PatientDialogs';
+import { FollowFields } from './PatientFollow';
 
 type Kind = 'cash' | 'medicine' | 'exams';
 
@@ -134,7 +135,7 @@ export function PatientDetailPage({ me }: { me: Me }) {
   const unit = <span className="ptd-unit">{me.currency}</span>;
 
   return (
-    <div className="pt ptd">
+    <div className={`pt ptd${me.role === 'delegate' ? ' pt-readonly' : ''}`}>
       {/* The patient, as the supplier header in the reference: photo, name and tag, three facts. */}
       <header className="pt-panel ptd-hero">
         <span className={`ptd-photo tone-${patient.tone}`} aria-hidden>{initials(patient.name)}</span>
@@ -147,6 +148,9 @@ export function PatientDetailPage({ me }: { me: Me }) {
             <div><dt>العمر</dt><dd>{patient.age > 0 ? <><bdi>{patient.age}</bdi> سنة</> : '—'}</dd></div>
             <div><dt>رقم الهاتف</dt><dd>{patient.phone ? <bdi dir="ltr">{patient.phone}</bdi> : '—'}</dd></div>
             <div><dt>العنوان</dt><dd>{patient.address || '—'}</dd></div>
+            <div><dt>المتابعة</dt><dd>{patient.delegate
+              ? <>{patient.delegate.name} <small className="ptd-via">{patient.delegate.via === 'family' ? `عن طريق ${patient.family?.name ?? 'العائلة'}` : 'مباشرة'}</small></>
+              : <small className="ptd-via">موظفو المؤسسة فقط</small>}</dd></div>
           </dl>
         </div>
         <button type="button" className="pt-add ptd-add" onClick={() => setEditing('new')}>
@@ -161,6 +165,8 @@ export function PatientDetailPage({ me }: { me: Me }) {
           <span className="ptd-file-go" aria-hidden><ArrowRight size={18} /></span>
         </a>
       </header>
+
+      {me.role !== 'delegate' && <FollowBox patient={patient} onSaved={load} />}
 
       <section className="pt-panel ptd-cards" aria-label="ملخص المساعدات">
         <Card title="عدد المساعدات" icon={HandHeart} tone="tone-violet" value={<bdi>{formatNumber(aids.length)}</bdi>}
@@ -378,5 +384,27 @@ function Card({ title, icon: Icon, tone, value, rows }: {
         {rows.map(([label, content]) => <div key={label}><dt>{label}</dt><dd>{content}</dd></div>)}
       </dl>
     </article>
+  );
+}
+
+/** The manager or health officer links the patient to a family and/or a delegate. */
+function FollowBox({ patient, onSaved }: { patient: Patient; onSaved: () => Promise<void> }) {
+  const [value, setValue] = useState({ familyId: patient.family?.id ?? null, delegateId: patient.directDelegateId ?? null });
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
+  const changed = value.familyId !== (patient.family?.id ?? null) || value.delegateId !== (patient.directDelegateId ?? null);
+  return (
+    <section className="pt-panel ptd-follow" aria-label="المتابعة">
+      <h2>المتابعة</h2>
+      <FollowFields familyId={value.familyId} delegateId={value.delegateId} onChange={setValue} />
+      <div className="ptd-follow-actions">
+        <button type="button" className="pt-add" disabled={!changed || busy} onClick={async () => {
+          setBusy(true); setNote('');
+          try { await updatePatient(patient.id, value); await onSaved(); setNote('تم الحفظ'); } catch (e) { setNote((e as Error).message); }
+          setBusy(false);
+        }}>حفظ المتابعة</button>
+        {note && <span role="status">{note}</span>}
+      </div>
+    </section>
   );
 }

@@ -33,7 +33,8 @@ const NAV: NavItem[] = [
   // The manager: every family; a delegate: their own families only (the server sends only those).
   { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin', 'delegate'], group: 'main', feature: 'families' },
   { id: 'expenses', label: 'الحركات المالية', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records', feature: 'expenses' },
-  { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health'], group: 'records', feature: 'patients' },
+  // A delegate sees the patients they follow (through their families, or given to them).
+  { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health', 'delegate'], group: 'records', feature: 'patients' },
   // A delegate's requests on the map, with the road route to each.
   { id: 'soon:requests', label: 'خريطة طلباتي', icon: MapPinned, href: '#/soon/requests', roles: ['delegate'], group: 'main', feature: 'requests' },
 ];

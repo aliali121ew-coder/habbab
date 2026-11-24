@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { HandCoins, Pill, Stethoscope, UserPlus, X } from 'lucide-react';
 import { formatNumber } from '../../format';
 import type { AidInput, PatientInput } from '../../data/patients';
+import { FollowFields } from './PatientFollow';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const digits = (text: string) => Number(text.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '')) || 0;
@@ -49,6 +50,7 @@ function Field({ label, wide, children, hint }: { label: string; wide?: boolean;
 /** A new patient. The four-part name is what other foundations' files are matched on. */
 export function AddPatientDialog({ onClose, onSave }: { onClose: () => void; onSave: (patient: PatientInput) => Promise<void> }) {
   const [form, setForm] = useState({ name: '', gender: '' as '' | 'male' | 'female', age: '', condition: '', phone: '', address: '', notes: '' });
+  const [follow, setFollow] = useState<{ familyId: number | null; delegateId: number | null }>({ familyId: null, delegateId: null });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = (key: keyof typeof form) => (event: { target: { value: string } }) => setForm((f) => ({ ...f, [key]: event.target.value }));
@@ -65,6 +67,8 @@ export function AddPatientDialog({ onClose, onSave }: { onClose: () => void; onS
         phone: form.phone.trim() || undefined,
         address: form.address.trim() || undefined,
         notes: form.notes.trim() || undefined,
+        familyId: follow.familyId,
+        delegateId: follow.delegateId,
       });
     } catch (failure) {
       setError((failure as Error).message);
@@ -95,6 +99,9 @@ export function AddPatientDialog({ onClose, onSave }: { onClose: () => void; onS
       </Field>
       <Field label="العنوان">
         <input value={form.address} onChange={set('address')} maxLength={200} placeholder="المنطقة / الحي" />
+      </Field>
+      <Field label="المتابعة" wide>
+        <FollowFields familyId={follow.familyId} delegateId={follow.delegateId} onChange={setFollow} />
       </Field>
       <Field label="ملاحظات" wide>
         <textarea value={form.notes} onChange={set('notes')} maxLength={1000} rows={2} placeholder="ما يحتاج المندوب معرفته عن الحالة" />

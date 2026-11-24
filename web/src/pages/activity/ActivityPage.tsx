@@ -62,7 +62,7 @@ const FIELD: Record<string, string> = {
   ent_salary: 'الراتب الشهري', ent_aid: 'المساعدات', ent_medicine: 'الدواء', ent_checkups: 'الكشفيات', relation: 'الصلة', age: 'العمر',
   gender: 'الجنس', chronic: 'مرض مزمن', condition: 'الحالة المرضية', given_on: 'التاريخ', cash: 'نقد', medicine: 'دواء',
   exams: 'كشفية', doctor: 'الطبيب', delegate: 'المندوب', note: 'التفاصيل',
-  kind: 'نوع الطلب', title: 'عنوان الطلب', province: 'المحافظة', area: 'المنطقة', landmark: 'نقطة دالة', members: 'عدد الأفراد', urgent: 'الأولوية', lat: 'خط العرض', lng: 'خط الطول', priority: 'الأولوية', open_from: 'يُفتح', open_until: 'يُغلق',
+  family_id: 'العائلة', kind: 'نوع الطلب', title: 'عنوان الطلب', province: 'المحافظة', area: 'المنطقة', landmark: 'نقطة دالة', members: 'عدد الأفراد', urgent: 'الأولوية', lat: 'خط العرض', lng: 'خط الطول', priority: 'الأولوية', open_from: 'يُفتح', open_until: 'يُغلق',
 };
 
 interface Detail { label?: string; changes?: Record<string, [unknown, unknown]>; note?: string; text?: string }

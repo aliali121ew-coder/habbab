@@ -214,7 +214,7 @@ export function PatientsPage({ me }: { me: Me }) {
   const money = (value: number) => (value > 0 ? <bdi>{formatNumber(value)}</bdi> : <span className="pt-nil">—</span>);
 
   return (
-    <div className="pt">
+    <div className={`pt${me.role === 'delegate' ? ' pt-readonly' : ''}`}>
       <header className="pt-top">
         <span className="pt-top-icon" aria-hidden><HeartPulse size={24} /></span>
         <div className="pt-top-text">

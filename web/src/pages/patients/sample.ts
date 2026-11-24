@@ -29,6 +29,11 @@ export interface Patient {
   createdAt: string;
   tone: number;
   records: AidRecord[];
+  /** The registered family the patient belongs to, if any. */
+  family?: { id: number; name: string } | null;
+  /** The delegate who follows the patient: given directly, or the family's. None = staff only. */
+  delegate?: { id: number; name: string; via: 'direct' | 'family' } | null;
+  directDelegateId?: number | null;
 }
 
 /** The foundations that gave these patients anything, this foundation first. */

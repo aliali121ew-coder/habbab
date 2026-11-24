@@ -157,6 +157,11 @@ export function App() {
           ? <FamiliesPage role={me.role === 'delegate' ? 'delegate' : 'admin'} />
           : route === 'soon:requests' && me.role === 'delegate'
           ? <RequestsPage role="delegate" />
+          // A delegate's patients: those of their families and those given to them (read only).
+          : route === 'patient-detail' && me.role === 'delegate'
+          ? <PatientDetailPage me={me} />
+          : route === 'patients' && me.role === 'delegate'
+          ? <PatientsPage me={me} />
           : me.role === 'delegate'
             // A delegate's own register; «عرض المشتركين» (#/delegates/<id>/list) opens the full list.
             ? (typeof route === 'string' && route.startsWith('list:')

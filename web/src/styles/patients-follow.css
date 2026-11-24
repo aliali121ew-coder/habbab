@@ -1,0 +1,29 @@
+/* المرضى and delegates: the «المتابعة» fields (family / direct delegate) in the add window and the
+   patient's file, and the read-only view a delegate gets (no add, edit, delete or aid buttons —
+   the server refuses those for a delegate anyway). Light first, dark right after. */
+.pfw { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .pfw { grid-template-columns: 1fr; } }
+.pfw-field { display: grid; gap: 6px; min-width: 0; }
+.pfw-field > span { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 600; color: var(--ink-2); }
+.pfw-field select {
+  height: 42px; min-width: 0; padding: 0 10px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); font: inherit; font-size: .86rem;
+}
+.pfw-who {
+  grid-column: 1 / -1; margin: 0; padding: 8px 12px; border-radius: 12px; font-size: .82rem;
+  background: color-mix(in srgb, var(--bar-active) 8%, var(--surface)); color: var(--ink-2);
+}
+:root[data-theme="dark"] .pfw-who { background: color-mix(in srgb, var(--bar-active) 16%, transparent); }
+
+.ptd-follow { display: grid; gap: 12px; padding: 16px 18px; }
+.ptd-follow h2 { margin: 0; font-size: 1rem; font-weight: 800; }
+.ptd-follow-actions { display: flex; align-items: center; gap: 12px; }
+.ptd-follow-actions span { color: var(--ink-3); font-size: .84rem; }
+.ptd-via { color: var(--ink-3); font-size: .78rem; font-weight: 500; }
+
+/* a delegate: read only */
+.pt-readonly .pt-add,
+.pt-readonly .pt-m-add,
+.pt-readonly .pt-aid-btn,
+.pt-readonly .pt-row-act.is-main,
+.pt-readonly .ptd-act:not(.print) { display: none !important; }

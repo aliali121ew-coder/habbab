@@ -71,7 +71,13 @@ export interface PatientInput {
   address?: string;
   phone?: string;
   notes?: string;
+  familyId?: number | null;
+  delegateId?: number | null;
 }
+
+/** The families and delegates a patient can be linked to (the manager and health officer). */
+export interface PatientLinks { families: { id: number; name: string; delegate: string | null }[]; delegates: { id: number; name: string }[] }
+export const patientLinks = () => api<PatientLinks>('/patients/links');
 
 export const matchPatient = (name: string) =>
   api<{ items: { id: number; foundation: string; region: null }[] }>('/patients/match', { method: 'POST', body: { name } }).then((d) => d.items);
