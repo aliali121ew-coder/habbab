@@ -14,6 +14,9 @@ import { Breadcrumbs, type Crumb } from './Breadcrumbs';
 import { useTheme, type Palette } from '../theme';
 import { queuedPayments } from '../paymentQueue';
 import { clearLocalRecords } from '../localRecords';
+import drawerBgUrl from '../assets/drawer-bg.jpg';
+import drawerFrameUrl from '../assets/drawer-frame.jpg';
+import drawerLogoUrl from '../assets/drawer-logo.jpg';
 
 interface NavItem {
   id: string;
@@ -162,31 +165,6 @@ const shortBrandName = (name?: string) => {
   return words.length > 3 ? words.slice(0, 3).join(' ') : clean;
 };
 
-function IslamicFrame() {
-  return (
-    <svg className="drawer-crest-frame" viewBox="0 0 100 100" fill="none" aria-hidden>
-      <defs>
-        <linearGradient id="drawer-gold" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#fff3c4" />
-          <stop offset="50%" stopColor="#eab952" />
-          <stop offset="100%" stopColor="#b88224" />
-        </linearGradient>
-      </defs>
-      <rect x="14" y="14" width="72" height="72" rx="10" stroke="url(#drawer-gold)" strokeWidth="1.4" opacity=".9" />
-      <rect x="14" y="14" width="72" height="72" rx="10" transform="rotate(45 50 50)" stroke="url(#drawer-gold)" strokeWidth="1.4" opacity=".9" />
-      <circle cx="50" cy="50" r="44" stroke="url(#drawer-gold)" strokeWidth="1" strokeDasharray="2.5 3.5" opacity=".75" />
-      <circle cx="50" cy="4" r="2.2" fill="#fff3c4" />
-      <circle cx="96" cy="50" r="2.2" fill="#fff3c4" />
-      <circle cx="50" cy="96" r="2.2" fill="#fff3c4" />
-      <circle cx="4" cy="50" r="2.2" fill="#fff3c4" />
-      <circle cx="17.5" cy="17.5" r="1.8" fill="#eab952" />
-      <circle cx="82.5" cy="17.5" r="1.8" fill="#eab952" />
-      <circle cx="82.5" cy="82.5" r="1.8" fill="#eab952" />
-      <circle cx="17.5" cy="82.5" r="1.8" fill="#eab952" />
-    </svg>
-  );
-}
-
 function PasswordModal({ name, onClose }: { name: string; onClose: () => void }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -286,15 +264,15 @@ export function Shell({ me, onSignedOut, children }: Props) {
       {/* Desktop: the side menu hides off-screen; this tab at the edge brings it out on hover. */}
       <div className="rail-handle" aria-hidden><ChevronLeft size={16} /></div>
       <aside className={`rail${open ? ' open' : ''}`}>
-        {/* Phone drawer header: ornate glowing foundation crest + short name (hidden on desktop) */}
-        <div className="drawer-head">
+        {/* Phone drawer header: Islamic arch backdrop, soft gold frame behind circular logo + short name */}
+        <div className="drawer-head" style={{ backgroundImage: `linear-gradient(180deg, rgb(7 22 48 / 12%) 0%, rgb(7 22 48 / 45%) 100%), url(${drawerBgUrl})` }}>
           <button type="button" className="drawer-close" aria-label="إغلاق القائمة" onClick={() => setOpen(false)}>
             <X size={19} aria-hidden />
           </button>
           <div className="drawer-crest" aria-hidden>
-            <IslamicFrame />
-            <span className={`drawer-mark${brand.logo ? ' has-logo' : ''}`}>
-              {brand.logo ? <img src={brand.logo} alt="" /> : <Khatam size={34} />}
+            <img className="drawer-crest-frame" src={drawerFrameUrl} alt="" />
+            <span className="drawer-mark">
+              <img src={drawerLogoUrl} alt="" />
             </span>
           </div>
           <strong className="drawer-title">{shortBrandName(brand.name)}</strong>
