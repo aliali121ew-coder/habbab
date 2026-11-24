@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  Building2, Check, ChevronLeft, Crown, HeartHandshake, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, ServerCog, Sun, Users, UsersRound, X, type LucideIcon,
+  Building2, Check, ChevronLeft, Crown, HeartHandshake, MapPinned, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, ServerCog, Sun, Users, UsersRound, X, type LucideIcon,
 } from 'lucide-react';
 import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
@@ -32,6 +32,8 @@ const NAV: NavItem[] = [
   { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin'], group: 'main', feature: 'families' },
   { id: 'expenses', label: 'الحركات المالية', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records', feature: 'expenses' },
   { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health'], group: 'records', feature: 'patients' },
+  // A delegate's requests on the map, with the road route to each.
+  { id: 'soon:requests', label: 'خريطة طلباتي', icon: MapPinned, href: '#/soon/requests', roles: ['delegate'], group: 'main', feature: 'requests' },
 ];
 
 // Sections still to be programmed sit in the same menu and open a «قيد التطوير» page.

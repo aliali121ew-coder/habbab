@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import {
   AlertTriangle, ArrowRight, BriefcaseMedical, CheckCircle2, ChevronLeft, Clock, FileText, Filter, HandHeart,
   Lock, MapPin, Paperclip, Pencil, Phone, Pill, Plus, Search, ShoppingBasket, Sofa, Trash2, Type, User, Users, Wallet,
-  Crosshair, type LucideIcon,
+  Crosshair, CalendarClock, Copy, Link2, List, Map as MapIcon, Navigation, RefreshCw, Share2, UserCheck, type LucideIcon,
 } from 'lucide-react';
 import { api } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
@@ -10,12 +10,13 @@ import { StateMessage } from '../../components/StateMessage';
 // The map (and its library) loads only when a step or a request needs it.
 const PickMap = lazy(() => import('./RequestMap').then((m) => ({ default: m.PickMap })));
 const ShowMap = lazy(() => import('./RequestMap').then((m) => ({ default: m.ShowMap })));
+const RequestsMap = lazy(() => import('./RequestMap').then((m) => ({ default: m.RequestsMap })));
 
 /* طلبات المساعدة, after the reference screens: a register with search, status chips and a type
    filter; a sheet that previews a request; a details page where the manager moves the status;
    and a three-step form (type, place, details). Requests are kept on the server, per foundation. */
 
-type Kind = 'general' | 'doctor' | 'medicine' | 'food' | 'money' | 'home';
+export type Kind = 'general' | 'doctor' | 'medicine' | 'food' | 'money' | 'home';
 type Status = 'pending' | 'review' | 'approved' | 'rejected';
 
 const KINDS: { id: Kind; title: string; hint: string; icon: LucideIcon }[] = [
@@ -33,11 +34,19 @@ const FILTERS: (Status | 'all')[] = ['all', 'pending', 'review', 'approved', 're
 
 const PROVINCES = ['بغداد', 'كربلاء', 'النجف', 'بابل', 'البصرة', 'واسط', 'ذي قار', 'ميسان', 'الديوانية', 'المثنى', 'ديالى', 'صلاح الدين', 'نينوى', 'كركوك', 'الأنبار', 'أربيل', 'السليمانية', 'دهوك'];
 
-interface Request {
+export interface Request {
   id: number; kind: Kind; title: string; details: string; name: string; phone: string;
   province: string; area: string; landmark: string; members: number; urgent: boolean;
   lat: number | null; lng: number | null; status: Status; createdAt: string;
+  delegateId: number | null; source: 'staff' | 'public';
 }
+type Role = 'admin' | 'delegate';
+interface Delegate { id: number; name: string }
+
+// The pin colour of each type on the map (the same hues as the cards).
+const KIND_COLOR: Record<Kind, string> = {
+  general: '#7c3aed', doctor: '#3aa3c9', medicine: '#4a7cf0', food: '#3f9e6b', money: '#e08e2b', home: '#6366f1',
+};
 
 const EDIT_WINDOW = 60 * 60 * 1000; // a request can be changed for one hour after it is sent (the server checks too)
 const canEdit = (r: Request) => Date.now() - Date.parse(r.createdAt) < EDIT_WINDOW;
@@ -50,10 +59,14 @@ function when(iso: string) {
 
 type View = { at: 'list' } | { at: 'detail'; id: number } | { at: 'new'; step: 1 | 2 | 3; editing?: number };
 
-export function RequestsPage() {
+export function RequestsPage({ role = 'admin' }: { role?: Role }) {
   const [requests, setRequests] = useState<Request[] | null>(null);
+  const [delegates, setDelegates] = useState<Delegate[]>([]);
   const [loadError, setLoadError] = useState('');
   const [view, setView] = useState<View>({ at: 'list' });
+  // A delegate works from the map; the manager starts on the list.
+  const [mode, setMode] = useState<'list' | 'map'>(role === 'delegate' ? 'map' : 'list');
+  const [focus, setFocus] = useState<number | null>(null);
   const [draft, setDraft] = useState<Partial<Request>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -63,7 +76,8 @@ export function RequestsPage() {
     api<{ items: Request[] }>('/requests')
       .then((data) => setRequests(data.items))
       .catch((e: Error) => setLoadError(e.message));
-  }, []);
+    if (role === 'admin') api<{ items: Delegate[] }>('/requests/delegates').then((d) => setDelegates(d.items)).catch(() => undefined);
+  }, [role]);
   useEffect(load, [load]);
 
   const replace = (r: Request) => setRequests((list) => (list ?? []).map((x) => (x.id === r.id ? r : x)));
@@ -82,8 +96,10 @@ export function RequestsPage() {
     if (r) {
       return (
         <RequestDetail
-          r={r} busy={busy} error={error}
+          r={r} busy={busy} error={error} role={role} delegates={delegates}
           onBack={() => { setError(''); setView({ at: 'list' }); }}
+          onMap={() => { setFocus(r.id); setMode('map'); setView({ at: 'list' }); }}
+          onAssign={(delegateId) => run(async () => replace(await api<Request>(`/requests/${r.id}/delegate`, { method: 'PATCH', body: { delegateId } })))}
           onEdit={() => { setError(''); setDraft({ ...r }); setView({ at: 'new', step: 1, editing: r.id }); }}
           onStatus={(status) => run(async () => replace(await api<Request>(`/requests/${r.id}/status`, { method: 'PATCH', body: { status } })))}
           onDelete={() => run(async () => {
@@ -122,16 +138,32 @@ export function RequestsPage() {
       />
     );
   }
-  return <RequestList requests={requests} onOpen={(id) => setView({ at: 'detail', id })} onNew={startNew} />;
+  return (
+    <RequestList
+      requests={requests} role={role} mode={mode} setMode={setMode} focus={focus}
+      onOpen={(id) => { setFocus(null); setView({ at: 'detail', id }); }} onNew={startNew}
+    />
+  );
 }
 
 /* ───────────── the register ───────────── */
 
-function RequestList({ requests, onOpen, onNew }: { requests: Request[]; onOpen: (id: number) => void; onNew: () => void }) {
+// Requests stay on the map until they are approved (or refused).
+const isOpen = (r: Request) => r.status === 'pending' || r.status === 'review';
+
+function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
+  requests: Request[]; role: Role; mode: 'list' | 'map'; setMode: (m: 'list' | 'map') => void; focus: number | null;
+  onOpen: (id: number) => void; onNew: () => void;
+}) {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<Status | 'all'>('all');
   const [kind, setKind] = useState<Kind | 'all'>('all');
   const [peek, setPeek] = useState<Request | null>(null);
+
+  const pins = useMemo(() => requests
+    .filter((r) => isOpen(r) && r.lat != null && r.lng != null)
+    .map((r) => ({ id: r.id, name: r.name, kindTitle: kindOf(r.kind).title, color: KIND_COLOR[r.kind], lat: r.lat!, lng: r.lng!, urgent: r.urgent })),
+  [requests]);
 
   const shown = useMemo(() => {
     const term = q.trim();
@@ -139,12 +171,37 @@ function RequestList({ requests, onOpen, onNew }: { requests: Request[]; onOpen:
       && (!term || [r.title, r.name, r.phone, r.province, r.area].some((v) => v.includes(term))));
   }, [requests, q, status, kind]);
 
+  const modeSwitch = (
+    <div className="rq-mode" role="tablist" aria-label="طريقة العرض">
+      <button type="button" role="tab" aria-selected={mode === 'list'} className={mode === 'list' ? 'on' : ''} onClick={() => setMode('list')}><List size={17} /> القائمة</button>
+      <button type="button" role="tab" aria-selected={mode === 'map'} className={mode === 'map' ? 'on' : ''} onClick={() => setMode('map')}><MapIcon size={17} /> الخريطة</button>
+    </div>
+  );
+
+  if (mode === 'map') {
+    return (
+      <div dir="rtl" className="rq rq-map-page">
+        <div className="rq-head">
+          <h1>{role === 'delegate' ? 'طلباتي على الخريطة' : 'خريطة الطلبات'}</h1>
+          {modeSwitch}
+        </div>
+        <p className="rq-map-count">{pins.length} طلب مفتوح على الخريطة{role === 'delegate' ? ' مسند إليك' : ''}</p>
+        <Suspense fallback={<div className="rq-map-big" />}>
+          <RequestsMap items={pins} onOpen={onOpen} focus={focus} />
+        </Suspense>
+      </div>
+    );
+  }
+
   return (
     <div dir="rtl" className="rq">
       <div className="rq-head">
-        <h1>طلبات المساعدة</h1>
-        <button type="button" className="rq-primary rq-new-wide" onClick={onNew}><Plus size={18} /> طلب جديد</button>
+        <h1>{role === 'delegate' ? 'طلباتي' : 'طلبات المساعدة'}</h1>
+        {modeSwitch}
+        {role === 'admin' && <button type="button" className="rq-primary rq-new-wide" onClick={onNew}><Plus size={18} /> طلب جديد</button>}
       </div>
+
+      {role === 'admin' && <WindowPanel />}
 
       <label className="rq-search">
         <Search size={18} aria-hidden />
@@ -210,7 +267,7 @@ function RequestList({ requests, onOpen, onNew }: { requests: Request[]; onOpen:
         </ul>
       )}
 
-      <button type="button" className="rq-fab" onClick={onNew}><Plus size={22} /> طلب جديد</button>
+      {role === 'admin' && <button type="button" className="rq-fab" onClick={onNew}><Plus size={22} /> طلب جديد</button>}
 
       {peek && <PeekSheet r={peek} onClose={() => setPeek(null)} onOpen={() => { setPeek(null); onOpen(peek.id); }} />}
     </div>
@@ -262,12 +319,13 @@ function EditLock({ r }: { r: Request }) {
 
 /* ───────────── details ───────────── */
 
-function RequestDetail({ r, busy, error, onBack, onEdit, onStatus, onDelete }: {
-  r: Request; busy: boolean; error: string; onBack: () => void; onEdit: () => void;
-  onStatus: (s: Status) => void; onDelete: () => void;
+function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssign, onEdit, onStatus, onDelete }: {
+  r: Request; busy: boolean; error: string; role: Role; delegates: Delegate[]; onBack: () => void; onMap: () => void;
+  onAssign: (delegateId: number | null) => void; onEdit: () => void; onStatus: (s: Status) => void; onDelete: () => void;
 }) {
   const k = kindOf(r.kind);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const admin = role === 'admin';
   return (
     <div dir="rtl" className="rq rq-detail">
       <div className={`rq-hero kind-${r.kind}`}>
@@ -283,7 +341,8 @@ function RequestDetail({ r, busy, error, onBack, onEdit, onStatus, onDelete }: {
       </div>
 
       <div className="rq-tags">
-        <EditLock r={r} />
+        {admin && <EditLock r={r} />}
+        {r.source === 'public' && <span className="rq-tag rq-tag-public"><Link2 size={14} /> من رابط العائلات</span>}
         <span className="rq-tag"><Clock size={14} /> {when(r.createdAt)}</span>
         <span className="rq-tag"><AlertTriangle size={14} /> {r.urgent ? 'عالية' : 'عادية'}</span>
         <span className="rq-tag"><Users size={14} /> {r.members} أفراد</span>
@@ -308,13 +367,33 @@ function RequestDetail({ r, busy, error, onBack, onEdit, onStatus, onDelete }: {
           <Suspense fallback={<div className="rq-map-still" />}><ShowMap lat={r.lat} lng={r.lng} /></Suspense>
         )}
         <PlaceCard r={r} />
+        {r.lat != null && r.lng != null && isOpen(r) && (
+          <button type="button" className="rq-primary rq-wide rq-route-btn" onClick={onMap}><Navigation size={18} /> المسار على الخريطة</button>
+        )}
         {r.lat != null && r.lng != null && (
           <a className="rq-open-map" href={`https://www.google.com/maps?q=${r.lat},${r.lng}`} target="_blank" rel="noopener noreferrer">
-            <MapPin size={16} /> فتح في الخرائط <small dir="ltr">{r.lat.toFixed(5)}, {r.lng.toFixed(5)}</small>
+            <MapPin size={16} /> فتح في Google Maps <small dir="ltr">{r.lat.toFixed(5)}, {r.lng.toFixed(5)}</small>
           </a>
         )}
       </section>
 
+      {admin && (
+        <section className="rq-box">
+          <h2>المندوب المسؤول</h2>
+          <label className="rq-input">
+            <UserCheck size={18} />
+            <select value={r.delegateId ?? ''} disabled={busy} aria-label="المندوب المسؤول"
+              onChange={(e) => onAssign(e.target.value ? Number(e.target.value) : null)}>
+              <option value="">— بلا مندوب —</option>
+              {delegates.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </select>
+          </label>
+          <small className="rq-help">المندوب يرى الطلب على خريطته ويحصل على المسار إليه.</small>
+        </section>
+      )}
+
+      {!admin && error && <p className="rq-error" role="alert">{error}</p>}
+      {admin && <>
       <section className="rq-box">
         <h2>حالة الطلب</h2>
         <div className="rq-status-pick" role="radiogroup" aria-label="حالة الطلب">
@@ -341,7 +420,115 @@ function RequestDetail({ r, busy, error, onBack, onEdit, onStatus, onDelete }: {
           <button type="button" className="rq-ghost rq-del" onClick={() => setConfirmDelete(true)} disabled={busy}><Trash2 size={16} /> حذف</button>
         )}
       </div>
+      </>}
     </div>
+  );
+}
+
+/* ───────────── the window for families' requests ───────────── */
+
+interface Window { code: string | null; from: string | null; until: string | null; state: 'open' | 'scheduled' | 'closed' }
+
+// datetime-local wants local time without a zone.
+const toLocal = (iso: string | null, fallbackMs: number) => {
+  const d = new Date(iso ?? fallbackMs);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+function WindowPanel() {
+  const [w, setW] = useState<Window | null>(null);
+  const [from, setFrom] = useState('');
+  const [until, setUntil] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    api<Window>('/requests/window').then((data) => {
+      setW(data);
+      const now = Date.now();
+      setFrom(toLocal(data.state === 'closed' ? null : data.from, now));
+      setUntil(toLocal(data.state === 'closed' ? null : data.until, now + 3 * 24 * 3600 * 1000));
+    }).catch((e: Error) => setError(e.message));
+  }, []);
+
+  // The state follows the clock without reloading: open → closed at the closing time.
+  const [, tick] = useState(0);
+  useEffect(() => { const t = window.setInterval(() => tick((n) => n + 1), 30_000); return () => window.clearInterval(t); }, []);
+  const state = !w || !w.from || !w.until ? 'closed'
+    : Date.now() < Date.parse(w.from) ? 'scheduled' : Date.now() >= Date.parse(w.until) ? 'closed' : 'open';
+
+  const link = w?.code ? `${location.origin}/#/apply/${w.code}` : '';
+
+  async function save(method: 'PUT' | 'DELETE') {
+    setBusy(true); setError('');
+    try {
+      const body = method === 'PUT' ? { from: new Date(from).toISOString(), until: new Date(until).toISOString() } : undefined;
+      setW(await api<Window>('/requests/window', { method, body }));
+      setOpen(false);
+    } catch (e) { setError((e as Error).message); }
+    setBusy(false);
+  }
+
+  async function renew() {
+    setBusy(true); setError('');
+    try { setW(await api<Window>('/requests/window/link', { method: 'POST' })); } catch (e) { setError((e as Error).message); }
+    setBusy(false);
+  }
+
+  if (!w) return error ? <p className="rq-error">{error}</p> : null;
+  const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }) : '');
+
+  return (
+    <section className={`rq-window st-${state}`}>
+      <div className="rq-window-head">
+        <span className="rq-window-ic"><CalendarClock size={20} /></span>
+        <div>
+          <strong>استقبال طلبات العوائل</strong>
+          <small>
+            {state === 'open' ? `مفتوح حتى ${fmt(w.until)}` : state === 'scheduled' ? `يُفتح ${fmt(w.from)}` : 'مغلق — العوائل لا تستطيع التقديم الآن'}
+          </small>
+        </div>
+        <span className={`rq-window-badge ${state}`}>{state === 'open' ? 'مفتوح' : state === 'scheduled' ? 'مجدول' : 'مغلق'}</span>
+      </div>
+
+      {link && state !== 'closed' && (
+        <div className="rq-window-link">
+          <input readOnly value={link} dir="ltr" aria-label="رابط التقديم" onFocus={(e) => e.target.select()} />
+          <button type="button" className="rq-ghost" onClick={() => { void navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }); }}>
+            <Copy size={16} /> {copied ? 'تم النسخ' : 'نسخ'}
+          </button>
+          <a className="rq-ghost rq-wa" href={`https://wa.me/?text=${encodeURIComponent(`قدّم طلب المساعدة من هنا:\n${link}`)}`} target="_blank" rel="noopener noreferrer">
+            <Share2 size={16} /> واتساب
+          </a>
+          <button type="button" className="rq-ghost" disabled={busy} title="الرابط القديم يتوقف عن العمل"
+            onClick={() => { if (window.confirm('إنشاء رابط جديد؟ الرابط القديم سيتوقف عن العمل.')) void renew(); }}>
+            <RefreshCw size={16} /> رابط جديد
+          </button>
+        </div>
+      )}
+
+      {open ? (
+        <div className="rq-window-form">
+          <label className="rq-field"><span>يُفتح في</span><span className="rq-input"><input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} /></span></label>
+          <label className="rq-field"><span>يُغلق تلقائياً في</span><span className="rq-input"><input type="datetime-local" value={until} onChange={(e) => setUntil(e.target.value)} /></span></label>
+          <div className="rq-window-actions">
+            <button type="button" className="rq-primary" disabled={busy || !from || !until} onClick={() => save('PUT')}>حفظ الفترة</button>
+            <button type="button" className="rq-ghost" onClick={() => setOpen(false)}>إلغاء</button>
+          </div>
+        </div>
+      ) : (
+        <div className="rq-window-actions">
+          <button type="button" className="rq-primary" onClick={() => setOpen(true)} disabled={busy}>
+            {state === 'closed' ? 'فتح التسجيل' : 'تعديل الفترة'}
+          </button>
+          {state !== 'closed' && <button type="button" className="rq-ghost rq-del" onClick={() => save('DELETE')} disabled={busy}>إغلاق الآن</button>}
+        </div>
+      )}
+      {error && <p className="rq-error" role="alert">{error}</p>}
+    </section>
   );
 }
 
@@ -359,9 +546,11 @@ function PlaceCard({ r }: { r: Partial<Request> }) {
 
 /* ───────────── new request: three steps ───────────── */
 
-function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing }: {
+export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing, mapToken, submitLabel }: {
   step: 1 | 2 | 3; draft: Partial<Request>; setDraft: (d: Partial<Request>) => void;
   go: (s: 0 | 1 | 2 | 3) => void; onSubmit: () => void; busy: boolean; error: string; editing: boolean;
+  /** The public page passes the token it got with the foundation (no session there). */
+  mapToken?: string | null; submitLabel?: string;
 }) {
   const set = (patch: Partial<Request>) => setDraft({ ...draft, ...patch });
   const [provinceByHand, setProvinceByHand] = useState(editing);
@@ -403,6 +592,7 @@ function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing 
         <>
           <Suspense fallback={<div className="rq-map-live" />}>
             <PickMap
+              token={mapToken}
               lat={draft.lat}
               lng={draft.lng}
               onMove={(lat, lng, province) => setDraft({
@@ -483,7 +673,7 @@ function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing 
           <div className="rq-submit">
             {error && <p className="rq-error" role="alert">{error}</p>}
             <button type="button" className="rq-primary rq-wide" disabled={!ready || busy} onClick={onSubmit}>
-              {busy ? 'جارٍ الحفظ…' : editing ? 'حفظ التعديل' : 'تقديم الطلب'}
+              {busy ? 'جارٍ الإرسال…' : editing ? 'حفظ التعديل' : submitLabel ?? 'تقديم الطلب'}
             </button>
           </div>
         </>

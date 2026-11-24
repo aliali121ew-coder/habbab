@@ -99,6 +99,8 @@ self.addEventListener('fetch', (event) => {
     || url.pathname.startsWith('/api/audit')
     || url.pathname.startsWith('/api/system/')
     || url.pathname.startsWith('/api/files/')
+    // A family's request link must always show the window's current state.
+    || url.pathname.startsWith('/api/apply/')
   ) {
     return;
   }

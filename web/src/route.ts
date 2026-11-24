@@ -13,6 +13,8 @@ export type Route =
   // مدير النظام: the foundations and their features.
   | 'system'
   | `soon:${string}`
+  // A family's public request page (no account): #/apply/<code>.
+  | `apply:${string}`
   // One delegate's full subscriber list on its own page (the phone shows only five on the register page).
   | `list:${number}`
   | number;
@@ -32,6 +34,8 @@ function parse(hash: string): Route {
   if (hash === '#/system') return 'system';
   if (hash === '#/families') return 'families';
   if (/^#\/families\/\d+$/.test(hash)) return 'family-detail';
+  const apply = /^#\/apply\/([A-Za-z0-9_-]{8,40})$/.exec(hash);
+  if (apply) return `apply:${apply[1]}`;
   const soon = /^#\/soon\/([a-z-]+)$/.exec(hash);
   if (soon) return `soon:${soon[1]}`;
   const list = /^#\/delegates\/(\d+)\/list(?:\/(?:paid|unpaid|overdue))?$/.exec(hash);

@@ -62,7 +62,7 @@ const FIELD: Record<string, string> = {
   ent_salary: 'الراتب الشهري', ent_aid: 'المساعدات', ent_medicine: 'الدواء', ent_checkups: 'الكشفيات', relation: 'الصلة', age: 'العمر',
   gender: 'الجنس', chronic: 'مرض مزمن', condition: 'الحالة المرضية', given_on: 'التاريخ', cash: 'نقد', medicine: 'دواء',
   exams: 'كشفية', doctor: 'الطبيب', delegate: 'المندوب', note: 'التفاصيل',
-  kind: 'نوع الطلب', title: 'عنوان الطلب', province: 'المحافظة', area: 'المنطقة', landmark: 'نقطة دالة', members: 'عدد الأفراد', urgent: 'الأولوية', lat: 'خط العرض', lng: 'خط الطول',
+  kind: 'نوع الطلب', title: 'عنوان الطلب', province: 'المحافظة', area: 'المنطقة', landmark: 'نقطة دالة', members: 'عدد الأفراد', urgent: 'الأولوية', lat: 'خط العرض', lng: 'خط الطول', open_from: 'يُفتح', open_until: 'يُغلق',
 };
 
 interface Detail { label?: string; changes?: Record<string, [unknown, unknown]>; note?: string; text?: string }
@@ -183,6 +183,11 @@ function describe(entry: Entry, currency: string): Said {
     case 'update:help_request': return base('update', Pencil, 'تعديل طلب مساعدة', 'البيانات');
     case 'status:help_request': return base('update', Pencil, 'تغيير حالة طلب مساعدة', 'البيانات');
     case 'delete:help_request': return base('delete', Trash2, 'حذف طلب مساعدة', 'البيانات', [detail.label]);
+    case 'create_public:help_request': return base('create', Plus, 'طلب من رابط العائلات', 'البيانات', [detail.label]);
+    case 'assign:help_request': return base('update', Pencil, 'إسناد طلب لمندوب', 'البيانات');
+    case 'window:help_request': return base('update', Pencil, 'فتح فترة استقبال الطلبات', 'البيانات');
+    case 'window_close:help_request': return base('update', Lock, 'إغلاق استقبال الطلبات', 'البيانات');
+    case 'window_link:help_request': return base('update', Pencil, 'رابط جديد لاستقبال الطلبات', 'البيانات');
     case 'create_foundation:foundation': return base('create', Plus, 'إنشاء مؤسسة', 'الحسابات', [detail.text]);
     case 'update_foundation:foundation': return base('update', Pencil, 'تعديل إعدادات المؤسسة', 'الحسابات');
     default:

@@ -36,10 +36,12 @@ const pages = {
   activity: () => import('./pages/activity/ActivityPage'),
   worship: () => import('./pages/worship/WorshipPage'),
   requests: () => import('./pages/requests/RequestsPage'),
+  apply: () => import('./pages/requests/ApplyPage'),
 };
 const ActivityPage = lazy(() => pages.activity().then((m) => ({ default: m.ActivityPage })));
 const WorshipPage = lazy(() => pages.worship().then((m) => ({ default: m.WorshipPage })));
 const RequestsPage = lazy(() => pages.requests().then((m) => ({ default: m.RequestsPage })));
+const ApplyPage = lazy(() => pages.apply().then((m) => ({ default: m.ApplyPage })));
 const SystemPage = lazy(() => pages.system().then((m) => ({ default: m.SystemPage })));
 const SettingsPage = lazy(() => pages.settings().then((m) => ({ default: m.SettingsPage })));
 const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.DelegatesPage })));
@@ -101,9 +103,15 @@ export function App() {
       setMe(null);
       setStatus('login');
     });
+    // A family on the public request link has no account: no sign-in check there.
+    if (location.hash.startsWith('#/apply/')) return;
     void load();
   }, [load]);
 
+  // A family's public request page needs no account.
+  if (typeof route === 'string' && route.startsWith('apply:')) {
+    return <Suspense fallback={<div className="boot" aria-busy="true"><span className="boot-star" /></div>}><ApplyPage code={route.slice(6)} /></Suspense>;
+  }
   if (status === 'loading') return <div className="boot" aria-busy="true"><span className="boot-star" /></div>;
   if (status === 'error') return <StateMessage kind="error" title="تعذّر تحميل التطبيق" onRetry={load} />;
   if (status === 'login' || !me) return <Login onDone={load} />;
@@ -147,6 +155,8 @@ export function App() {
         ? <FamilyDetailPage />
         : route === 'families' && me.role === 'admin'
           ? <FamiliesPage />
+          : route === 'soon:requests' && me.role === 'delegate'
+          ? <RequestsPage role="delegate" />
           : me.role === 'delegate'
             // A delegate's own register; «عرض المشتركين» (#/delegates/<id>/list) opens the full list.
             ? (typeof route === 'string' && route.startsWith('list:')

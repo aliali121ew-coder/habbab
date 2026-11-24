@@ -18,6 +18,10 @@ export interface Env {
   CURRENCY: string;
   LOGIN_LIMITER?: Limiter;
   API_LIMITER?: Limiter;
+  /** Requests sent from the public family link, per address. */
+  APPLY_LIMITER?: Limiter;
+  /** Public Mapbox token (pk.…) for the map and road routes; restricted to this site in Mapbox. */
+  MAPBOX_TOKEN?: string;
 }
 
 export interface SessionUser {

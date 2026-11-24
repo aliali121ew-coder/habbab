@@ -24,7 +24,8 @@
   "kv_namespaces": [{ "binding": "CACHE", "id": "a11e3f5fb2084e019a55bdb49899dae3" }],
   "ratelimits": [
     { "name": "LOGIN_LIMITER", "namespace_id": "1001", "simple": { "limit": 30, "period": 60 } },
-    { "name": "API_LIMITER", "namespace_id": "1002", "simple": { "limit": 300, "period": 60 } }
+    { "name": "API_LIMITER", "namespace_id": "1002", "simple": { "limit": 300, "period": 60 } },
+    { "name": "APPLY_LIMITER", "namespace_id": "1003", "simple": { "limit": 10, "period": 60 } }
   ],
   "triggers": { "crons": ["0 1 1 * *"] },
   "vars": { "ENVIRONMENT": "production", "CURRENCY": "د.ع" },

@@ -9,6 +9,7 @@ import { branding } from './routes/branding';
 import { families } from './routes/families';
 import { patients } from './routes/patients';
 import { requests } from './routes/requests';
+import { apply } from './routes/apply';
 import { fail } from './lib/http';
 import { audit, dashboard, delegates, meta, users } from './routes/admin';
 import { auth } from './routes/auth';
@@ -50,6 +51,8 @@ app.use('/api/*', async (c, next) => {
 });
 
 app.route('/api/auth', auth);
+// The public link families use to send a request (no account).
+app.route('/api/apply', apply);
 
 const api = new Hono<AppEnv>();
 api.use('*', requireAuth);
@@ -73,6 +76,8 @@ api.use('/patients/*', requireFeature('patients'));
 api.route('/patients', patients);
 api.use('/requests/*', requireFeature('requests'));
 api.route('/requests', requests);
+// The map key for the signed-in app (a public Mapbox token, limited to this site's address).
+api.get('/maps/config', (c) => c.json({ mapToken: c.env.MAPBOX_TOKEN ?? null }));
 api.route('/system', system);
 api.route('/branding', branding);
 api.route('/dashboard', dashboard);
