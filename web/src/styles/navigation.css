@@ -1,0 +1,76 @@
+/* Live navigation on the requests map (like Waze): the next turn on top, minutes / metres /
+   speed at the bottom, my position as a blue dot that becomes an arrow while driving, and the
+   «الأقرب إليك» list. Light first, dark right after. */
+
+/* my position */
+.rq-me {
+  position: relative; width: 22px; height: 22px; border-radius: 50%; border: 3px solid #fff; background: #2563eb;
+  box-shadow: 0 0 0 7px rgb(37 99 235 / 22%), 0 2px 6px rgb(0 0 0 / 40%);
+}
+.rq-me i { display: none; }
+.rq-me.heading { width: 30px; height: 30px; border-radius: 0; border: 0; background: none; box-shadow: none; }
+.rq-me.heading i {
+  display: block; position: absolute; inset: 0;
+  background: #2563eb; clip-path: polygon(50% 0, 92% 100%, 50% 74%, 8% 100%);
+  filter: drop-shadow(0 0 2px #fff) drop-shadow(0 2px 4px rgb(0 0 0 / 45%));
+}
+
+.rq-hint-btn { border: 0; cursor: pointer; font: inherit; }
+
+/* the map grows to the whole screen height while driving */
+.rq-map-big.driving {
+  position: fixed; inset: 0; z-index: 150; height: auto; min-height: 0; margin: 0; border-radius: 0;
+}
+.rq-map-big.driving .rq-nav-turn { top: calc(10px + env(safe-area-inset-top)); }
+
+.rq-nav-turn {
+  position: absolute; z-index: 600; top: 10px; left: 10px; right: 10px;
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 20px;
+  background: linear-gradient(110deg, #1e3a8a, #1d4ed8); color: #fff; box-shadow: 0 14px 30px -14px rgb(15 23 42 / 70%);
+}
+.rq-nav-arrow { width: 54px; height: 54px; flex: none; display: grid; place-items: center; border-radius: 16px; background: rgb(255 255 255 / 16%); }
+.rq-nav-turn > div { display: grid; gap: 2px; min-width: 0; }
+.rq-nav-turn b { font-size: 1.45rem; font-weight: 800; line-height: 1.2; }
+.rq-nav-turn span { font-size: .9rem; line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+.rq-nav-recenter {
+  position: absolute; z-index: 600; left: 50%; bottom: 150px; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 16px; border: 0; border-radius: 999px;
+  background: var(--surface); color: var(--rq); font: inherit; font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px -8px rgb(0 0 0 / 45%);
+}
+
+.rq-nav-bar {
+  position: absolute; z-index: 600; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom));
+  display: grid; gap: 10px; padding: 14px; border-radius: 22px; background: var(--surface); color: var(--ink);
+  box-shadow: 0 18px 40px -16px rgb(15 23 42 / 55%);
+}
+@media (min-width: 641px) { .rq-nav-bar { left: auto; width: 420px; } .rq-nav-turn { right: auto; width: 420px; } }
+.rq-nav-figs { display: grid; grid-template-columns: 1.4fr 1fr .8fr; gap: 8px; }
+.rq-nav-figs span { display: grid; gap: 2px; padding: 8px 10px; border-radius: 14px; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.rq-nav-figs b { font-size: 1.15rem; font-weight: 800; white-space: nowrap; }
+.rq-nav-figs small { display: flex; align-items: center; gap: 3px; color: var(--ink-3); font-size: .72rem; white-space: nowrap; }
+.rq-nav-min { background: color-mix(in srgb, #16a34a 12%, var(--surface)) !important; }
+.rq-nav-min b { color: #15803d; font-size: 1.35rem; }
+:root[data-theme="dark"] .rq-nav-min { background: color-mix(in srgb, #16a34a 20%, transparent) !important; }
+:root[data-theme="dark"] .rq-nav-min b { color: #86efac; }
+.rq-nav-actions { display: flex; gap: 8px; }
+.rq-nav-actions .rq-ghost { width: 48px; height: 46px; padding: 0; display: grid; place-items: center; text-decoration: none; }
+.rq-nav-actions .rq-danger { flex: 1; height: 46px; }
+
+/* the route card: start button, Waze / call */
+.rq-route-actions a.rq-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; font-weight: 700; }
+.rq-go { background: linear-gradient(110deg, #16a34a, #15803d) !important; box-shadow: 0 10px 22px -12px #16a34a !important; }
+.rq-route-card .rq-help { display: flex; align-items: center; gap: 4px; margin-top: 0; }
+
+/* «الأقرب إليك» */
+.rq-near-title { display: flex; align-items: center; gap: 6px; padding-left: 40px; font-weight: 800; }
+.rq-near ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rq-near li button {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px; border: 0; border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 4%, transparent); color: inherit; font: inherit; text-align: start; cursor: pointer;
+}
+.rq-near-dot { width: 12px; height: 12px; flex: none; border-radius: 50%; background: var(--pin); }
+.rq-near-name { flex: 1; min-width: 0; display: grid; }
+.rq-near-name b { font-size: .9rem; }
+.rq-near-name small { color: var(--ink-3); font-size: .76rem; }
+.rq-near-d { flex: none; font-weight: 800; color: var(--rq); font-size: .86rem; }

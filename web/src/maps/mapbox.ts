@@ -34,7 +34,11 @@ const dark = () => document.documentElement.dataset.theme === 'dark';
 // buildings kept clear at every zoom. The old dark-v11 style lost its streets when zoomed in.
 export const styleUrl = (style: MapStyle) =>
   style === 'satellite' ? 'mapbox://styles/mapbox/standard-satellite' : 'mapbox://styles/mapbox/standard';
-const basemapConfig = () => ({ lightPreset: dark() ? 'night' : 'day', showPointOfInterestLabels: true, showTransitLabels: false });
+const basemapConfig = () => ({
+  lightPreset: dark() ? 'night' : 'day',
+  show3dObjects: true, // buildings and landmarks in 3D, lit by the day/night preset
+  showPointOfInterestLabels: true, showTransitLabels: false, showPedestrianRoads: true,
+});
 
 /** Keeps the map's day/night in step with the app's theme while the map is open. */
 function followTheme(map: mapboxgl.Map) {
@@ -76,7 +80,13 @@ export interface Route {
   /** metres */ distance: number;
   /** seconds */ duration: number;
   geometry: LineString;
-  steps: { text: string; distance: number }[];
+  steps: Step[];
+}
+
+export interface Step {
+  text: string; distance: number;
+  /** where the turn is, [lng, lat] */ at: [number, number];
+  type: string; modifier?: string;
 }
 
 /** The road route by car between two points, from Mapbox Directions (in Arabic). */
@@ -95,7 +105,7 @@ export async function roadRoute(from: [number, number], to: [number, number], si
   }
   const data = await res.json().catch(() => null) as {
     code?: string; message?: string;
-    routes?: { distance: number; duration: number; geometry: LineString; legs: { steps: { distance: number; maneuver: { instruction: string } }[] }[] }[];
+    routes?: { distance: number; duration: number; geometry: LineString; legs: { steps: { distance: number; maneuver: { instruction: string; location: [number, number]; type: string; modifier?: string } }[] }[] }[];
   } | null;
   const route = data?.routes?.[0];
   if (!res.ok || !route) throw new Error(data?.code === 'NoRoute' ? 'لا يوجد طريق بالسيارة إلى هذا الموقع' : 'تعذّر حساب المسار');
@@ -103,7 +113,9 @@ export async function roadRoute(from: [number, number], to: [number, number], si
     distance: route.distance,
     duration: route.duration,
     geometry: route.geometry,
-    steps: route.legs.flatMap((l) => l.steps.map((s) => ({ text: s.maneuver.instruction, distance: s.distance }))),
+    steps: route.legs.flatMap((l) => l.steps.map((s) => ({
+      text: s.maneuver.instruction, distance: s.distance, at: s.maneuver.location, type: s.maneuver.type, modifier: s.maneuver.modifier,
+    }))),
   };
 }
 
@@ -123,16 +135,41 @@ export function straightDistance(a: [number, number], b: [number, number]) {
   return 2 * R * Math.asin(Math.sqrt(h));
 }
 
-/** The phone's position, as [lng, lat]. */
-export function myPosition(): Promise<[number, number]> {
+export interface Fix { at: [number, number]; accuracy: number }
+
+/**
+ * The phone's position, as precise as the GPS gives within `waitMs`: it listens to the GPS and
+ * keeps the best fix, stopping early once it is within `goodMetres` (a house, not a street).
+ */
+export function precisePosition(waitMs = 9000, goodMetres = 12): Promise<Fix> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject(new Error('هذا الجهاز لا يدعم تحديد الموقع')); return; }
-    navigator.geolocation.getCurrentPosition(
-      (p) => resolve([p.coords.longitude, p.coords.latitude]),
-      (e) => reject(new Error(e.code === e.PERMISSION_DENIED
+    let best: Fix | null = null;
+    let done = false;
+    const finish = (error?: GeolocationPositionError) => {
+      if (done) return;
+      done = true;
+      navigator.geolocation.clearWatch(id);
+      clearTimeout(timer);
+      if (best) resolve(best);
+      else reject(new Error(error?.code === 1
         ? 'اسمح للتطبيق بالوصول إلى الموقع من إعدادات الهاتف'
-        : 'تعذّر تحديد موقعك، حاول مرة أخرى')),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+        : 'تعذّر تحديد موقعك، تأكد من تشغيل الموقع (GPS) وحاول مرة أخرى'));
+    };
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        const fix: Fix = { at: [p.coords.longitude, p.coords.latitude], accuracy: p.coords.accuracy };
+        if (!best || fix.accuracy < best.accuracy) best = fix;
+        if (fix.accuracy <= goodMetres) finish();
+      },
+      (e) => { if (e.code === e.PERMISSION_DENIED || !best) finish(e); },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: waitMs },
     );
+    const timer = setTimeout(() => finish(), waitMs);
   });
+}
+
+/** The phone's position, as [lng, lat] (a quick fix, for starting a route). */
+export async function myPosition(): Promise<[number, number]> {
+  return (await precisePosition(4000, 30)).at;
 }

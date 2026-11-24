@@ -182,7 +182,7 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
 
   const pins = useMemo(() => requests
     .filter((r) => isOpen(r) && r.lat != null && r.lng != null)
-    .map((r) => ({ id: r.id, name: r.name, kindTitle: kindOf(r.kind).title, color: KIND_COLOR[r.kind], lat: r.lat!, lng: r.lng!, priority: r.priority, approved: r.status === 'approved' })),
+    .map((r) => ({ id: r.id, name: r.name, kindTitle: kindOf(r.kind).title, color: KIND_COLOR[r.kind], lat: r.lat!, lng: r.lng!, phone: r.phone, priority: r.priority, approved: r.status === 'approved' })),
   [requests]);
 
   const shown = useMemo(() => {
