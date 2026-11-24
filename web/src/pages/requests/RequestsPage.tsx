@@ -313,24 +313,29 @@ function PeekSheet({ r, onClose, onOpen }: { r: Request; onClose: () => void; on
     <div className="rq-sheet-wrap" onClick={onClose}>
       <div className="rq-sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <span className="rq-grip" aria-hidden />
-        <div className={`rq-peek kind-${r.kind}`}>
-          <span className={`rq-ic kind-${r.kind}`}><k.icon size={24} /></span>
-          <div className="rq-peek-main">
-            <small className={`rq-kind-label kind-${r.kind}`}>{k.title}</small>
+        {/* The same coloured head as the card in the list, the title on as many lines as it needs. */}
+        <div className={`rq-pk-head kind-${r.kind}`}>
+          <span className="rq-card-ic"><k.icon size={24} /></span>
+          <div className="rq-pk-main">
+            <small className="rq-card-kind">{k.title}</small>
             <strong>{r.title}</strong>
           </div>
           <StatusBadge s={r.status} />
         </div>
-        <ul className="rq-peek-lines">
-          <li><User size={16} /> {r.name}</li>
-          <li><MapPin size={16} /> {r.province}{r.area ? ` — ${r.area}` : ''}</li>
-          <li><Clock size={16} /> {when(r.createdAt)}</li>
-          <li className="rq-attach"><Paperclip size={16} /> 0 مرفقات</li>
-        </ul>
+
+        {r.details && <p className="rq-pk-text">{r.details}</p>}
+
+        <dl className={`rq-pk-grid kind-${r.kind}`}>
+          <div><dt><User size={15} /> مقدّم الطلب</dt><dd>{r.name}</dd></div>
+          <div><dt><MapPin size={15} /> الموقع</dt><dd>{r.province}{r.area ? ` — ${r.area}` : ''}</dd></div>
+          <div><dt><Clock size={15} /> التاريخ</dt><dd dir="ltr">{when(r.createdAt)}</dd></div>
+          <div><dt><Users size={15} /> الأفراد · الأولوية</dt><dd>{r.members} · {PRIORITY[r.priority]}</dd></div>
+        </dl>
+
         <EditLock r={r} />
         <div className="rq-sheet-actions">
+          <button type="button" className={`rq-primary tone-${r.kind}`} onClick={onOpen}><span>عرض التفاصيل</span> <ChevronLeft size={18} /></button>
           <button type="button" className="rq-ghost" onClick={onClose}>إغلاق</button>
-          <button type="button" className={`rq-primary tone-${r.kind}`} onClick={onOpen}>عرض التفاصيل <ChevronLeft size={18} /></button>
         </div>
       </div>
     </div>
