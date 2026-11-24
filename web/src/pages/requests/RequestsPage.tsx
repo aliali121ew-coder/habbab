@@ -42,7 +42,7 @@ export const PRIORITY: Record<Priority, string> = { normal: 'عادية', medium
 // «القائمة»: requests waiting for a decision. «الطلبات»: every request with the whole line of
 // stages, to see where each one has got to (and a step line on each card).
 type Mode = 'list' | 'map' | 'done';
-const OPEN_FILTERS: (Status | 'all')[] = ['all', 'pending', 'review'];
+const OPEN_FILTERS: Status[] = ['pending'];
 const DONE_FILTERS: (Status | 'all')[] = ['all', 'pending', 'review', 'approved', 'delivered', 'rejected'];
 const STEPS: { s: Status; label: string }[] = [
   { s: 'pending', label: 'استلام' }, { s: 'review', label: 'مراجعة' }, { s: 'approved', label: 'موافقة' }, { s: 'delivered', label: 'تسليم' },
@@ -268,15 +268,18 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
       </label>
 
       <div className="rq-chips" role="tablist">
-        {(mode === 'done' ? DONE_FILTERS : OPEN_FILTERS).map((f) => (
-          <button key={f} type="button" role="tab" aria-selected={status === f} className={status === f ? 'on' : ''} onClick={() => setStatus(f)}>
-            {f === 'all' ? 'الكل' : STATUS[f]}
-          </button>
-        ))}
+        {(mode === 'done' ? DONE_FILTERS : OPEN_FILTERS).map((f) => {
+          const active = mode === 'list' ? true : status === f;
+          return (
+            <button key={f} type="button" role="tab" aria-selected={active} className={active ? 'on' : ''} onClick={() => setStatus(mode === 'list' ? 'all' : f)}>
+              {f === 'all' ? 'الكل' : STATUS[f]}
+            </button>
+          );
+        })}
       </div>
 
       <div className="rq-bar">
-        <span>{shown.length} طلب</span>
+        {mode === 'done' && <span>{shown.length} طلب</span>}
         <label className="rq-kind-filter">
           <Filter size={15} aria-hidden />
           <select value={kind} onChange={(e) => setKind(e.target.value as Kind | 'all')} aria-label="النوع">

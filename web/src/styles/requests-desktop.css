@@ -46,8 +46,8 @@
   .rq-window-form .rq-window-actions { grid-column: auto; }
   .rq-window .rq-error { flex-basis: 100%; }
 
-  /* the cards in a grid, more compact */
-  .rq-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  /* the cards in a grid, more compact and equal height per row */
+  .rq-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
   .rq-card { border-radius: 22px; }
   .rq-card-top { padding: 14px 16px; gap: 12px; }
   .rq-card-ic { width: 48px; height: 48px; border-radius: 14px; }

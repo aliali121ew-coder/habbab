@@ -79,8 +79,9 @@
 /* card, after the reference: a header in the type's colour (icon, type tag, title, status),
    then a pale tinted body with the description, tags, the edit window and an arrow. */
 .rq-list { gap: 16px; }
+.rq-list > li { display: flex; min-width: 0; }
 .rq-card {
-  width: 100%; display: grid; padding: 0; overflow: hidden; text-align: start; cursor: pointer;
+  width: 100%; height: 100%; display: grid; grid-template-rows: auto 1fr; padding: 0; overflow: hidden; text-align: start; cursor: pointer;
   border-radius: 26px; border: 1px solid color-mix(in srgb, var(--k1) 22%, var(--line)); background: var(--surface);
   color: var(--ink); font: inherit; box-shadow: 0 10px 26px -18px color-mix(in srgb, var(--k1) 70%, transparent);
 }
@@ -98,7 +99,7 @@
 .rq-card-main strong { font-size: 1.12rem; font-weight: 800; line-height: 1.5; color: #fff; }
 .rq-card-top .rq-status { background: rgb(255 255 255 / 88%); }
 .rq-card-body {
-  display: grid; gap: 12px; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px; padding: 16px;
   background: linear-gradient(180deg, color-mix(in srgb, var(--k1) 4%, var(--surface)), color-mix(in srgb, var(--k1) 14%, var(--surface)));
 }
 :root[data-theme="dark"] .rq-card-body { background: linear-gradient(180deg, color-mix(in srgb, var(--k1) 6%, transparent), color-mix(in srgb, var(--k1) 16%, transparent)); }
@@ -106,7 +107,7 @@
 .rq-card-text { color: var(--ink-2); line-height: 1.9; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .rq-card-tags { display: flex; flex-wrap: wrap; gap: 8px; }
 .rq-card-tags .rq-tag { height: 32px; border: 0; background: color-mix(in srgb, var(--ink) 6%, transparent); }
-.rq-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rq-card-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .rq-card-foot .rq-lock { justify-self: auto; }
 .rq-card-go {
   width: 38px; height: 38px; flex: none; display: grid; place-items: center; border-radius: 12px;
