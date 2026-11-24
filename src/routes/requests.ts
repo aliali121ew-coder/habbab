@@ -17,14 +17,14 @@ const EDIT_WINDOW_MS = 60 * 60 * 1000;
 
 interface Row {
   id: number; kind: string; title: string; details: string | null; name: string; phone: string;
-  province: string; area: string | null; landmark: string | null; members: number; urgent: number;
+  province: string; area: string | null; landmark: string | null; members: number; urgent: number; lat: number | null; lng: number | null;
   status: string; created_at: string;
 }
-const COLUMNS = 'id, kind, title, details, name, phone, province, area, landmark, members, urgent, status, created_at';
+const COLUMNS = 'id, kind, title, details, name, phone, province, area, landmark, members, urgent, lat, lng, status, created_at';
 
 const shape = (r: Row) => ({
   id: r.id, kind: r.kind, title: r.title, details: r.details ?? '', name: r.name, phone: r.phone,
-  province: r.province, area: r.area ?? '', landmark: r.landmark ?? '', members: r.members, urgent: r.urgent === 1,
+  province: r.province, area: r.area ?? '', landmark: r.landmark ?? '', members: r.members, urgent: r.urgent === 1, lat: r.lat, lng: r.lng,
   status: r.status, createdAt: r.created_at,
 });
 
@@ -45,11 +45,14 @@ const zRequest = z.object({
   landmark: z.string().trim().max(200).optional(),
   members: z.coerce.number().int().min(1).max(30).default(1),
   urgent: z.boolean().default(false),
-});
+  lat: z.number().min(-90).max(90).nullable().optional(),
+  lng: z.number().min(-180).max(180).nullable().optional(),
+}).refine((b) => (b.lat == null) === (b.lng == null), { message: 'الموقع على الخريطة غير مكتمل' });
 
 const toColumns = (b: z.infer<typeof zRequest>) => ({
   kind: b.kind, title: b.title, details: b.details || null, name: b.name, phone: b.phone, province: b.province,
   area: b.area || null, landmark: b.landmark || null, members: b.members, urgent: b.urgent ? 1 : 0,
+  lat: b.lat == null ? null : Math.round(b.lat * 1e6) / 1e6, lng: b.lng == null ? null : Math.round(b.lng * 1e6) / 1e6,
 });
 
 requests.get('/', async (c) => {
@@ -61,9 +64,9 @@ requests.post('/', async (c) => {
   const body = await readJson(c, zRequest);
   const v = toColumns(body);
   const [created] = await batch(c, [
-    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, urgent, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING ${COLUMNS}`,
-      fid(c), v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.urgent, c.get('user').id),
+    stmt(c, `INSERT INTO help_requests (foundation_id, kind, title, details, name, phone, province, area, landmark, members, urgent, lat, lng, created_by)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING ${COLUMNS}`,
+      fid(c), v.kind, v.title, v.details, v.name, v.phone, v.province, v.area, v.landmark, v.members, v.urgent, v.lat, v.lng, c.get('user').id),
     auditInsertedStmt(c, 'create', 'help_request', auditDetail(`${v.title} — ${v.name}`)),
   ]);
   return c.json(shape(created.results[0] as Row), 201);

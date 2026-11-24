@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle, ArrowRight, BriefcaseMedical, CheckCircle2, ChevronLeft, Clock, FileText, Filter, HandHeart,
   Lock, MapPin, Paperclip, Pencil, Phone, Pill, Plus, Search, ShoppingBasket, Sofa, Trash2, Type, User, Users, Wallet,
@@ -6,6 +6,10 @@ import {
 } from 'lucide-react';
 import { api } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
+
+// The map (and its library) loads only when a step or a request needs it.
+const PickMap = lazy(() => import('./RequestMap').then((m) => ({ default: m.PickMap })));
+const ShowMap = lazy(() => import('./RequestMap').then((m) => ({ default: m.ShowMap })));
 
 /* طلبات المساعدة, after the reference screens: a register with search, status chips and a type
    filter; a sheet that previews a request; a details page where the manager moves the status;
@@ -32,7 +36,7 @@ const PROVINCES = ['بغداد', 'كربلاء', 'النجف', 'بابل', 'ال
 interface Request {
   id: number; kind: Kind; title: string; details: string; name: string; phone: string;
   province: string; area: string; landmark: string; members: number; urgent: boolean;
-  status: Status; createdAt: string;
+  lat: number | null; lng: number | null; status: Status; createdAt: string;
 }
 
 const EDIT_WINDOW = 60 * 60 * 1000; // a request can be changed for one hour after it is sent (the server checks too)
@@ -107,6 +111,7 @@ export function RequestsPage() {
             kind: draft.kind, title: draft.title?.trim(), details: draft.details?.trim() || undefined,
             name: draft.name?.trim(), phone: draft.phone?.trim(), province: draft.province, area: draft.area?.trim() || undefined,
             landmark: draft.landmark?.trim() || undefined, members: draft.members ?? 1, urgent: !!draft.urgent,
+            lat: draft.lat ?? null, lng: draft.lng ?? null,
           };
           const saved = editing
             ? await api<Request>(`/requests/${editing}`, { method: 'PATCH', body })
@@ -299,7 +304,15 @@ function RequestDetail({ r, busy, error, onBack, onEdit, onStatus, onDelete }: {
 
       <section className="rq-box">
         <h2>الموقع</h2>
+        {r.lat != null && r.lng != null && (
+          <Suspense fallback={<div className="rq-map-still" />}><ShowMap lat={r.lat} lng={r.lng} /></Suspense>
+        )}
         <PlaceCard r={r} />
+        {r.lat != null && r.lng != null && (
+          <a className="rq-open-map" href={`https://www.google.com/maps?q=${r.lat},${r.lng}`} target="_blank" rel="noopener noreferrer">
+            <MapPin size={16} /> فتح في الخرائط <small dir="ltr">{r.lat.toFixed(5)}, {r.lng.toFixed(5)}</small>
+          </a>
+        )}
       </section>
 
       <section className="rq-box">
@@ -351,6 +364,7 @@ function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing 
   go: (s: 0 | 1 | 2 | 3) => void; onSubmit: () => void; busy: boolean; error: string; editing: boolean;
 }) {
   const set = (patch: Partial<Request>) => setDraft({ ...draft, ...patch });
+  const [provinceByHand, setProvinceByHand] = useState(editing);
   const title = step === 1 ? 'نوع الطلب' : step === 2 ? 'حدد موقعك' : kindOf(draft.kind ?? 'general').title.replace(/^طلب /, '');
   const ready = (draft.name?.trim().length ?? 0) >= 3 && /^07\d{9}$/.test(draft.phone ?? '') && (draft.title?.trim().length ?? 0) >= 3;
 
@@ -387,9 +401,17 @@ function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing 
 
       {step === 2 && (
         <>
-          <div className="rq-map" aria-hidden>
-            <span className="rq-pin"><MapPin size={26} /></span>
-          </div>
+          <Suspense fallback={<div className="rq-map-live" />}>
+            <PickMap
+              lat={draft.lat}
+              lng={draft.lng}
+              onMove={(lat, lng, province) => setDraft({
+                ...draft, lat, lng,
+                // Suggest the province from the point until the person picks one by hand.
+                ...(provinceByHand ? {} : { province }),
+              })}
+            />
+          </Suspense>
           <div className="rq-place-sheet">
             <span className="rq-grip" aria-hidden />
             <PlaceCard r={draft} />
@@ -397,7 +419,7 @@ function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing 
               <label className="rq-field">
                 <span>المحافظة</span>
                 <span className="rq-input"><MapPin size={18} />
-                  <select value={draft.province ?? ''} onChange={(e) => set({ province: e.target.value })}>
+                  <select value={draft.province ?? ''} onChange={(e) => { setProvinceByHand(true); set({ province: e.target.value }); }}>
                     <option value="" disabled>اختر المحافظة</option>
                     {PROVINCES.map((p) => <option key={p}>{p}</option>)}
                   </select>
