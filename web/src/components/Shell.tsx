@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
-  Building2, Check, ChevronLeft, Crown, HeartHandshake, MapPinned, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, ServerCog, Sun, Users, UsersRound, X, type LucideIcon,
+  Building2, Check, ChevronLeft, ChevronUp, HeartHandshake, KeyRound, MapPinned, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, Sun, User, Users, UsersRound, X, type LucideIcon,
 } from 'lucide-react';
 import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
@@ -155,12 +155,119 @@ function pageTitle(route: ReturnType<typeof useRoute>, me: Me): string {
 
 const greeting = () => (new Date().getHours() < 12 ? 'صباح الخير' : 'مساء الخير');
 const todayLabel = () => new Intl.DateTimeFormat('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+const shortBrandName = (name?: string) => {
+  const clean = (name ?? '').trim();
+  if (!clean) return 'مؤسسة أحباب الحسين';
+  const words = clean.split(/\s+/);
+  return words.length > 3 ? words.slice(0, 3).join(' ') : clean;
+};
+
+function IslamicFrame() {
+  return (
+    <svg className="drawer-crest-frame" viewBox="0 0 100 100" fill="none" aria-hidden>
+      <defs>
+        <linearGradient id="drawer-gold" x1="0" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#fff3c4" />
+          <stop offset="50%" stopColor="#eab952" />
+          <stop offset="100%" stopColor="#b88224" />
+        </linearGradient>
+      </defs>
+      <rect x="14" y="14" width="72" height="72" rx="10" stroke="url(#drawer-gold)" strokeWidth="1.4" opacity=".9" />
+      <rect x="14" y="14" width="72" height="72" rx="10" transform="rotate(45 50 50)" stroke="url(#drawer-gold)" strokeWidth="1.4" opacity=".9" />
+      <circle cx="50" cy="50" r="44" stroke="url(#drawer-gold)" strokeWidth="1" strokeDasharray="2.5 3.5" opacity=".75" />
+      <circle cx="50" cy="4" r="2.2" fill="#fff3c4" />
+      <circle cx="96" cy="50" r="2.2" fill="#fff3c4" />
+      <circle cx="50" cy="96" r="2.2" fill="#fff3c4" />
+      <circle cx="4" cy="50" r="2.2" fill="#fff3c4" />
+      <circle cx="17.5" cy="17.5" r="1.8" fill="#eab952" />
+      <circle cx="82.5" cy="17.5" r="1.8" fill="#eab952" />
+      <circle cx="82.5" cy="82.5" r="1.8" fill="#eab952" />
+      <circle cx="17.5" cy="82.5" r="1.8" fill="#eab952" />
+    </svg>
+  );
+}
+
+function PasswordModal({ name, onClose }: { name: string; onClose: () => void }) {
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [busy, onClose]);
+
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (busy) return;
+    if (next.length < 10) return setError('كلمة المرور الجديدة يجب ألا تقل عن 10 أحرف');
+    if (next !== confirm) return setError('كلمتا المرور الجديدتان غير متطابقتين');
+    setBusy(true);
+    setError('');
+    try {
+      await api('/auth/change-password', { method: 'POST', body: { current, next } });
+      setSaved(true);
+      setTimeout(onClose, 900);
+    } catch (failure) {
+      setError((failure as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="pw-backdrop" onClick={() => { if (!busy) onClose(); }}>
+      <form className="pw-modal" role="dialog" aria-modal="true" aria-label="تغيير كلمة المرور" onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <div className="pw-head">
+          <h2><KeyRound size={18} aria-hidden /> تغيير كلمة المرور</h2>
+          <button type="button" className="icon-btn" aria-label="إغلاق" disabled={busy} onClick={onClose}><X size={18} /></button>
+        </div>
+        <input type="text" name="username" autoComplete="username" value={name} readOnly hidden />
+        <label className="field">
+          <span>كلمة المرور الحالية</span>
+          <input type="password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" dir="ltr" required />
+        </label>
+        <label className="field">
+          <span>كلمة المرور الجديدة (10 أحرف على الأقل)</span>
+          <input type="password" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" minLength={10} dir="ltr" required />
+        </label>
+        <label className="field">
+          <span>تأكيد كلمة المرور الجديدة</span>
+          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" minLength={10} dir="ltr" required />
+        </label>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        {saved && <p className="pw-ok" role="status">تم تغيير كلمة المرور بنجاح</p>}
+        <div className="pw-actions">
+          <button type="button" className="btn" disabled={busy} onClick={onClose}>إلغاء</button>
+          <button type="submit" className="btn primary" disabled={busy || saved}>{busy ? 'جارٍ الحفظ…' : 'حفظ'}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 export function Shell({ me, onSignedOut, children }: Props) {
   const [open, setOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [pwOpen, setPwOpen] = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
   const { theme, toggle, palette, setPalette } = useTheme();
   const route = useRoute();
   const brand = useBranding();
+
+  useEffect(() => {
+    if (!accountOpen) return undefined;
+    const outside = (e: PointerEvent) => { if (!accountRef.current?.contains(e.target as Node)) setAccountOpen(false); };
+    const escape = (e: KeyboardEvent) => { if (e.key === 'Escape') setAccountOpen(false); };
+    document.addEventListener('pointerdown', outside);
+    document.addEventListener('keydown', escape);
+    return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', escape); };
+  }, [accountOpen]);
+
+  useEffect(() => { if (!open) setAccountOpen(false); }, [open]);
 
   const signOut = async () => {
     // Payments recorded offline are kept on this device through sign-out (they are money already
@@ -179,22 +286,18 @@ export function Shell({ me, onSignedOut, children }: Props) {
       {/* Desktop: the side menu hides off-screen; this tab at the edge brings it out on hover. */}
       <div className="rail-handle" aria-hidden><ChevronLeft size={16} /></div>
       <aside className={`rail${open ? ' open' : ''}`}>
-        {/* Phone drawer header: brand and the signed-in user (hidden on desktop) */}
+        {/* Phone drawer header: ornate glowing foundation crest + short name (hidden on desktop) */}
         <div className="drawer-head">
           <button type="button" className="drawer-close" aria-label="إغلاق القائمة" onClick={() => setOpen(false)}>
-            <X size={20} aria-hidden />
+            <X size={19} aria-hidden />
           </button>
-          <span className="drawer-mark" aria-hidden><Khatam size={30} /></span>
-          <strong className="drawer-title">سجلات الخير</strong>
-          <small className="drawer-sub">إدارة المشتركين والمساعدات الخيرية</small>
-          <div className="drawer-user">
-            <span className="drawer-user-avatar" aria-hidden>{initialOf(me.full_name)}</span>
-            <span className="drawer-user-info">
-              <strong>{me.full_name}</strong>
-              <small>{ROLE_LABELS[me.role]}</small>
+          <div className="drawer-crest" aria-hidden>
+            <IslamicFrame />
+            <span className={`drawer-mark${brand.logo ? ' has-logo' : ''}`}>
+              {brand.logo ? <img src={brand.logo} alt="" /> : <Khatam size={34} />}
             </span>
-            {me.role === 'admin' && <span className="drawer-user-badge" aria-hidden><Crown size={16} /></span>}
           </div>
+          <strong className="drawer-title">{shortBrandName(brand.name)}</strong>
         </div>
         <div className="rail-brand">
           <span className="rail-mark rail-logo">{brand.logo ? <img src={brand.logo} alt="" /> : <Khatam size={26} />}</span>
@@ -217,21 +320,6 @@ export function Shell({ me, onSignedOut, children }: Props) {
           <span />
         </div>
         <nav className="rail-nav" aria-label="القائمة الرئيسية">
-          {me.is_system && (
-            <div className="rail-group">
-              <div className="rail-section">مدير النظام</div>
-              <a
-                href="#/system"
-                title="إدارة النظام"
-                className={route === 'system' ? 'active' : undefined}
-                aria-current={route === 'system' ? 'page' : undefined}
-                onClick={() => setOpen(false)}
-              >
-                <span className="rail-nav-icon" aria-hidden><ServerCog size={18} /></span>
-                <span>إدارة النظام</span>
-              </a>
-            </div>
-          )}
           {GROUPS.map((group) => {
             const items = NAV.filter((item) => item.group === group.id && item.roles.includes(me.role) && hasFeature(me, item.feature));
             if (items.length === 0) return null;
@@ -273,28 +361,54 @@ export function Shell({ me, onSignedOut, children }: Props) {
             );
           })}
         </nav>
-        <div className="rail-foot">
-          <div className="rail-user">
-            <span className="rail-user-avatar" aria-hidden>{initialOf(me.full_name)}</span>
-            <div className="rail-user-info">
+        <div className="rail-foot" ref={accountRef}>
+          {accountOpen && (
+            <div className="rail-account-pop" role="menu" aria-label="خيارات الحساب">
+              <div className="rail-pop-swatches" role="group" aria-label="ألوان الثيم">
+                {PALETTES.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-label={item.label}
+                    title={item.label}
+                    aria-pressed={palette === item.id}
+                    className={`rail-pop-swatch swatch-${item.id}${palette === item.id ? ' active' : ''}`}
+                    onClick={() => setPalette(item.id)}
+                  >
+                    {palette === item.id && <Check size={14} aria-hidden />}
+                  </button>
+                ))}
+              </div>
+              <button type="button" role="menuitem" className="rail-pop-item" onClick={() => { setAccountOpen(false); setOpen(false); setPwOpen(true); }}>
+                <KeyRound size={17} aria-hidden />
+                <span>تغيير كلمة المرور</span>
+              </button>
+              <button type="button" role="menuitem" className="rail-pop-item rail-pop-out" onClick={() => { setAccountOpen(false); void signOut(); }}>
+                <LogOut size={17} aria-hidden />
+                <span>تسجيل الخروج</span>
+              </button>
+            </div>
+          )}
+          <button
+            type="button"
+            className={`rail-account-btn${accountOpen ? ' open' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={accountOpen}
+            onClick={() => setAccountOpen((v) => !v)}
+          >
+            <span className="rail-user-avatar" aria-hidden>{initialOf(me.full_name) || <User size={18} />}</span>
+            <span className="rail-user-info">
               <strong>{me.full_name}</strong>
               <small>{ROLE_LABELS[me.role]}</small>
-            </div>
-          </div>
-          <div className="rail-actions">
-            <div className="rail-palette"><span>ألوان التطبيق</span><ThemeMenu palette={palette} onPick={setPalette} /></div>
-            <button type="button" className="rail-theme" onClick={toggle}>
-              {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
-              <span>{theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}</span>
-            </button>
-            <button type="button" className="rail-signout" onClick={signOut}>
-              <LogOut size={18} aria-hidden />
-              <span>تسجيل الخروج</span>
-            </button>
-          </div>
+            </span>
+            <span className="rail-account-ic" aria-hidden>
+              <ChevronUp size={17} />
+            </span>
+          </button>
         </div>
       </aside>
       {open && <div className="scrim" onClick={() => setOpen(false)} />}
+      {pwOpen && <PasswordModal name={me.full_name} onClose={() => setPwOpen(false)} />}
 
       <div className="stage">
         <header className="topbar">

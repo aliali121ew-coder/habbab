@@ -5,7 +5,6 @@
    Phones only (layout changes are phone-only); the theme colours follow --bar-active. */
 
 .topbar-title { display: none; }
-.rail-palette { display: none; }
 .bottom-nav { display: none; }
 
 @media (max-width: 767px) {
@@ -41,12 +40,6 @@
   }
   :root[data-theme="dark"] .topbar { box-shadow: none !important; }
   :root[data-theme="dark"] .topbar-card .topbar-avatar { box-shadow: none; }
-
-  /* the colour palette, in the side menu */
-  .rail-palette {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 6px 12px; border-radius: 14px; border: 1px solid var(--line); color: var(--ink-2); font-size: .88rem;
-  }
 
   /* room for the bottom bar */
   .page { padding-bottom: calc(104px + env(safe-area-inset-bottom)) !important; }
