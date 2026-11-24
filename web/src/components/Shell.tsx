@@ -5,6 +5,7 @@ import {
 import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
 import { NotificationBell } from './NotificationBell';
+import { BottomNav } from './BottomNav';
 import { useBranding } from '../branding';
 import { initialOf } from '../format';
 import { useRoute } from '../route';
@@ -140,6 +141,18 @@ export async function enterFoundation(foundationId: number) {
   location.reload();
 }
 
+/** The page's name for the phone's top bar. */
+function pageTitle(route: ReturnType<typeof useRoute>, me: Me): string {
+  const crumbs = crumbsFor(route);
+  if (crumbs) return crumbs[crumbs.length - 1].label;
+  if (typeof route === 'number' || (typeof route === 'string' && route.startsWith('list:'))) return 'سجل المشتركين';
+  if (route === 'expenses' || route === 'expenses-ledger') return 'الحركات المالية';
+  if (me.role === 'delegate') return 'سجل المشتركين';
+  if (me.role === 'accountant') return 'الحركات المالية';
+  if (me.role === 'health') return 'المرضى';
+  return 'الرئيسية';
+}
+
 const greeting = () => (new Date().getHours() < 12 ? 'صباح الخير' : 'مساء الخير');
 const todayLabel = () => new Intl.DateTimeFormat('ar-IQ-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
@@ -269,6 +282,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
             </div>
           </div>
           <div className="rail-actions">
+            <div className="rail-palette"><span>ألوان التطبيق</span><ThemeMenu palette={palette} onPick={setPalette} /></div>
             <button type="button" className="rail-theme" onClick={toggle}>
               {theme === 'dark' ? <Sun size={18} aria-hidden /> : <Moon size={18} aria-hidden />}
               <span>{theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'}</span>
@@ -295,6 +309,8 @@ export function Shell({ me, onSignedOut, children }: Props) {
             <strong>{greeting()}</strong>
             <small>{todayLabel()}</small>
           </div>
+          {/* Phones: the page's name in the top bar (as in the reference). */}
+          <h1 className="topbar-title">{pageTitle(route, me)}</h1>
           {/* On phones: one small card with the account icon, the palette and light/dark.
               On desktop the wrapper is display: contents, so the bar is laid out as before. */}
           <div className="topbar-card">
@@ -330,6 +346,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
           {me.role === 'admin' && crumbsFor(route) && <div className="shell-crumbs" data-route={route}><Breadcrumbs items={crumbsFor(route)!} /></div>}
           {children}
         </main>
+        <BottomNav me={me} route={route} />
       </div>
     </div>
   );

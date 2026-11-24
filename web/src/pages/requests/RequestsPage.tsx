@@ -119,6 +119,21 @@ export function RequestsPage({ role = 'admin' }: { role?: Role }) {
   const replace = (r: Request) => setRequests((list) => (list ?? []).map((x) => (x.id === r.id ? r : x)));
   const startNew = () => { setError(''); setDraft({ members: 1, priority: 'normal' }); setView({ at: 'new', step: 1 }); };
 
+  // The «طلب» button in the bottom bar opens this page on a new request.
+  useEffect(() => {
+    const open = () => {
+      try {
+        if (sessionStorage.getItem('ahbab:new-request')) {
+          sessionStorage.removeItem('ahbab:new-request');
+          setError(''); setDraft({ members: 1, priority: 'normal' }); setView({ at: 'new', step: 1 });
+        }
+      } catch { /* storage blocked */ }
+    };
+    open();
+    window.addEventListener('ahbab:new-request', open);
+    return () => window.removeEventListener('ahbab:new-request', open);
+  }, []);
+
   async function run<T>(work: () => Promise<T>) {
     setBusy(true); setError('');
     try { return await work(); } catch (e) { setError((e as Error).message); return null; } finally { setBusy(false); }
