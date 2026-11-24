@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import {
   AlertTriangle, ArrowRight, BriefcaseMedical, CheckCircle2, ChevronLeft, Clock, FileText, Filter, HandHeart,
   Lock, MapPin, Paperclip, Pencil, Phone, Pill, Plus, Search, ShoppingBasket, Sofa, Trash2, Type, User, Users, Wallet,
@@ -6,6 +6,11 @@ import {
 } from 'lucide-react';
 import { api, forgetRecent } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
+import {
+  BABIL_DISTRICTS, BABIL_PROVINCE, babilDistrictCoords, distanceKm, formatBabilArea,
+  HASHIMIYAH_DISTRICT, HASHIMIYAH_NEIGHBORHOODS, nearestBabilDistrict, parseBabilArea, PROVINCES, provinceCoords,
+} from './locations';
+import type { FlyTarget } from './RequestMap';
 
 // The map (and its library) loads only when a step or a request needs it.
 const PickMap = lazy(() => import('./RequestMap').then((m) => ({ default: m.PickMap })));
@@ -35,8 +40,6 @@ const PICKABLE: Status[] = ['pending', 'review', 'approved', 'rejected'];
 export type Priority = 'normal' | 'medium' | 'high';
 export const PRIORITY: Record<Priority, string> = { normal: 'عادية', medium: 'متوسطة', high: 'قصوى' };
 const FILTERS: (Status | 'all')[] = ['all', 'pending', 'review', 'approved', 'delivered', 'rejected'];
-
-const PROVINCES = ['بغداد', 'كربلاء', 'النجف', 'بابل', 'البصرة', 'واسط', 'ذي قار', 'ميسان', 'الديوانية', 'المثنى', 'ديالى', 'صلاح الدين', 'نينوى', 'كركوك', 'الأنبار', 'أربيل', 'السليمانية', 'دهوك'];
 
 export interface Request {
   id: number; kind: Kind; title: string; details: string; name: string; phone: string;
@@ -592,13 +595,93 @@ function PlaceCard({ r }: { r: Partial<Request> }) {
 /* ───────────── new request: three steps ───────────── */
 
 export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, editing, mapToken, submitLabel }: {
-  step: 1 | 2 | 3; draft: Partial<Request>; setDraft: (d: Partial<Request>) => void;
+  step: 1 | 2 | 3; draft: Partial<Request>; setDraft: Dispatch<SetStateAction<Partial<Request>>>;
   go: (s: 0 | 1 | 2 | 3) => void; onSubmit: () => void; busy: boolean; error: string; editing: boolean;
   /** The public page passes the token it got with the foundation (no session there). */
   mapToken?: string | null; submitLabel?: string;
 }) {
-  const set = (patch: Partial<Request>) => setDraft({ ...draft, ...patch });
-  const [provinceByHand, setProvinceByHand] = useState(editing);
+  const set = (patch: Partial<Request>) => setDraft((prev) => ({ ...prev, ...patch }));
+  const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
+  const flySeqRef = useRef(0);
+  const mapZoomRef = useRef(editing && draft.lat != null ? 16 : 5.5);
+
+  const babilArea = useMemo(() => (draft.province === BABIL_PROVINCE ? parseBabilArea(draft.area) : { district: '', neighborhood: '' }), [draft.province, draft.area]);
+  const canConfirmPlace = Boolean(draft.province) && (draft.province !== BABIL_PROVINCE || Boolean(babilArea.district));
+
+  const handleMapMove = useCallback((lat: number, lng: number, province: string, zoom: number) => {
+    setFlyTarget(null);
+    mapZoomRef.current = zoom;
+    setDraft((prev) => {
+      const provinceChanged = prev.province !== province;
+      let nextArea = prev.area ?? '';
+
+      if (province !== BABIL_PROVINCE) {
+        if (parseBabilArea(nextArea).district) nextArea = '';
+      } else {
+        const current = parseBabilArea(nextArea);
+        if (provinceChanged) nextArea = '';
+        if (zoom >= 11.5) {
+          const near = nearestBabilDistrict(lat, lng);
+          if (!current.district || provinceChanged) {
+            nextArea = formatBabilArea(near.name, '');
+          } else if (near.name !== current.district && near.distanceKm <= 4.5) {
+            nextArea = formatBabilArea(near.name, '');
+          }
+        }
+      }
+
+      return { ...prev, lat, lng, province, area: nextArea };
+    });
+  }, [setDraft]);
+
+  function handleProvinceChange(province: string) {
+    const coords = provinceCoords(province);
+    if (coords) {
+      flySeqRef.current += 1;
+      mapZoomRef.current = coords.zoom;
+      setFlyTarget({ lat: coords.lat, lng: coords.lng, zoom: coords.zoom, seq: flySeqRef.current });
+    }
+    setDraft((prev) => {
+      const prevWasBabil = prev.province === BABIL_PROVINCE;
+      const nextIsBabil = province === BABIL_PROVINCE;
+      const nextArea = prev.province === province ? prev.area : (prevWasBabil || nextIsBabil ? '' : prev.area);
+      return {
+        ...prev,
+        province,
+        area: nextArea,
+        ...(coords ? { lat: coords.lat, lng: coords.lng } : {}),
+      };
+    });
+  }
+
+  function handleDistrictChange(district: string) {
+    const coords = babilDistrictCoords(district);
+    setDraft((prev) => {
+      const keepPin = coords && prev.lat != null && prev.lng != null
+        && mapZoomRef.current >= 15
+        && distanceKm(prev.lat, prev.lng, coords.lat, coords.lng) <= 10;
+      if (coords && !keepPin) {
+        flySeqRef.current += 1;
+        mapZoomRef.current = coords.zoom;
+        setFlyTarget({ lat: coords.lat, lng: coords.lng, zoom: coords.zoom, seq: flySeqRef.current });
+      }
+      return {
+        ...prev,
+        province: BABIL_PROVINCE,
+        area: formatBabilArea(district, ''),
+        ...(coords && !keepPin ? { lat: coords.lat, lng: coords.lng } : {}),
+      };
+    });
+  }
+
+  function handleNeighborhoodChange(neighborhood: string) {
+    setDraft((prev) => ({
+      ...prev,
+      province: BABIL_PROVINCE,
+      area: formatBabilArea(HASHIMIYAH_DISTRICT, neighborhood),
+    }));
+  }
+
   const title = step === 1 ? 'نوع الطلب' : step === 2 ? 'حدد موقعك' : kindOf(draft.kind ?? 'general').title.replace(/^طلب /, '');
   const ready = (draft.name?.trim().length ?? 0) >= 3 && /^07\d{9}$/.test(draft.phone ?? '') && (draft.title?.trim().length ?? 0) >= 3;
 
@@ -623,7 +706,7 @@ export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, e
           <div className="rq-kinds">
             {KINDS.map((k) => (
               <button key={k.id} type="button" className={`rq-kind${draft.kind === k.id ? ' on' : ''}`}
-                onClick={() => { setDraft({ ...draft, kind: k.id }); go(2); }}>
+                onClick={() => { setDraft((prev) => ({ ...prev, kind: k.id })); go(2); }}>
                 <span className={`rq-ic kind-${k.id}`}><k.icon size={24} /></span>
                 <strong>{k.title}</strong>
                 <small>{k.hint}</small>
@@ -640,11 +723,8 @@ export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, e
               token={mapToken}
               lat={draft.lat}
               lng={draft.lng}
-              onMove={(lat, lng, province) => setDraft({
-                ...draft, lat, lng,
-                // Suggest the province from the point until the person picks one by hand.
-                ...(provinceByHand ? {} : { province }),
-              })}
+              flyTo={flyTarget}
+              onMove={handleMapMove}
             />
           </Suspense>
           <div className="rq-place-sheet">
@@ -654,22 +734,47 @@ export function NewRequest({ step, draft, setDraft, go, onSubmit, busy, error, e
               <label className="rq-field">
                 <span>المحافظة</span>
                 <span className="rq-input"><MapPin size={18} />
-                  <select value={draft.province ?? ''} onChange={(e) => { setProvinceByHand(true); set({ province: e.target.value }); }}>
+                  <select name="province" value={draft.province ?? ''} onChange={(e) => handleProvinceChange(e.target.value)}>
                     <option value="" disabled>اختر المحافظة</option>
-                    {PROVINCES.map((p) => <option key={p}>{p}</option>)}
+                    {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </span>
               </label>
-              <label className="rq-field">
-                <span>المنطقة / الحي</span>
-                <span className="rq-input"><Crosshair size={18} /><input value={draft.area ?? ''} onChange={(e) => set({ area: e.target.value })} placeholder="مثال: الكرخ" /></span>
-              </label>
+              {draft.province === BABIL_PROVINCE ? (
+                <>
+                  <label className="rq-field">
+                    <span>القضاء</span>
+                    <span className="rq-input"><Crosshair size={18} />
+                      <select name="district" value={babilArea.district} onChange={(e) => handleDistrictChange(e.target.value)}>
+                        <option value="" disabled>اختر القضاء</option>
+                        {BABIL_DISTRICTS.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+                      </select>
+                    </span>
+                  </label>
+                  {babilArea.district === HASHIMIYAH_DISTRICT && (
+                    <label className="rq-field">
+                      <span>الحي</span>
+                      <span className="rq-input"><Navigation size={18} />
+                        <select name="neighborhood" value={babilArea.neighborhood} onChange={(e) => handleNeighborhoodChange(e.target.value)}>
+                          <option value="" disabled>اختر الحي</option>
+                          {HASHIMIYAH_NEIGHBORHOODS.map((n) => <option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </span>
+                    </label>
+                  )}
+                </>
+              ) : (
+                <label className="rq-field">
+                  <span>المنطقة / الحي</span>
+                  <span className="rq-input"><Crosshair size={18} /><input name="area" value={draft.area ?? ''} onChange={(e) => set({ area: e.target.value })} placeholder="مثال: الكرخ" /></span>
+                </label>
+              )}
               <label className="rq-field">
                 <span>أقرب نقطة دالة</span>
-                <span className="rq-input"><FileText size={18} /><input value={draft.landmark ?? ''} onChange={(e) => set({ landmark: e.target.value })} placeholder="شارع، محلة، قرب..." /></span>
+                <span className="rq-input"><FileText size={18} /><input name="landmark" value={draft.landmark ?? ''} onChange={(e) => set({ landmark: e.target.value })} placeholder="شارع، محلة، قرب..." /></span>
               </label>
             </div>
-            <button type="button" className="rq-primary rq-wide" disabled={!draft.province} onClick={() => go(3)}>
+            <button type="button" className="rq-primary rq-wide" disabled={!canConfirmPlace} onClick={() => go(3)}>
               تأكيد الموقع <ChevronLeft size={18} />
             </button>
           </div>

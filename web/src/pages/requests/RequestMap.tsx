@@ -11,6 +11,7 @@ import {
   availableMaps, downloadMap, formatSize, nearestSaved, offlineSupported, PROVINCES, removeMap, savedMaps,
   type Available, type Saved,
 } from '../../maps/offline';
+import { nearestProvince } from './locations';
 
 // The offline map (MapLibre + the saved province) loads only when the internet is gone.
 const OfflineRequestsMap = lazy(() => import('./OfflineMap').then((m) => ({ default: m.OfflineRequestsMap })));
@@ -22,24 +23,6 @@ const OfflineRequestsMap = lazy(() => import('./OfflineMap').then((m) => ({ defa
      «المسار» draws the road route, and «ابدأ الملاحة» drives it like Waze: the map follows and
      turns with the car, minutes and metres count down, the next turn is shown and spoken, a
      wrong turn re-routes, and arrival is announced. */
-
-// Each province's main city, to suggest the province for a point picked on the map.
-const CITIES: [string, number, number][] = [
-  ['بغداد', 33.315, 44.366], ['كربلاء', 32.616, 44.024], ['النجف', 32.0, 44.336], ['بابل', 32.468, 44.421],
-  ['البصرة', 30.508, 47.783], ['واسط', 32.5, 45.82], ['ذي قار', 31.044, 46.257], ['ميسان', 31.836, 47.145],
-  ['الديوانية', 31.99, 44.925], ['المثنى', 31.31, 45.28], ['ديالى', 33.75, 44.64], ['صلاح الدين', 34.6, 43.68],
-  ['نينوى', 36.34, 43.13], ['كركوك', 35.468, 44.392], ['الأنبار', 33.42, 43.3], ['أربيل', 36.19, 44.01],
-  ['السليمانية', 35.557, 45.435], ['دهوك', 36.867, 42.988],
-];
-function nearestProvince(lat: number, lng: number) {
-  let best = CITIES[0];
-  let bestD = Infinity;
-  for (const city of CITIES) {
-    const d = (city[1] - lat) ** 2 + ((city[2] - lng) * Math.cos((lat * Math.PI) / 180)) ** 2;
-    if (d < bestD) { bestD = d; best = city; }
-  }
-  return best[0];
-}
 
 /** Waits for the Mapbox token; `false` while loading, `null` when the site has none yet. */
 function useToken(token?: string | null) {
@@ -124,9 +107,12 @@ async function locateOn(map: mapboxgl.Map, puck: MePuck, onHint: (t: string) => 
 
 /* ───────────── choosing a place ───────────── */
 
-export function PickMap({ lat, lng, onMove, token }: {
+export interface FlyTarget { lat: number; lng: number; zoom: number; seq: number }
+
+export function PickMap({ lat, lng, flyTo, onMove, token }: {
   lat?: number | null; lng?: number | null; token?: string | null;
-  onMove: (lat: number, lng: number, province: string) => void;
+  flyTo?: FlyTarget | null;
+  onMove: (lat: number, lng: number, province: string, zoom: number) => void;
 }) {
   const ready = useToken(token);
   const box = useRef<HTMLDivElement>(null);
@@ -134,26 +120,55 @@ export function PickMap({ lat, lng, onMove, token }: {
   const puck = useRef<MePuck | null>(null);
   const moved = useRef(onMove);
   moved.current = onMove;
+  const userGesture = useRef(false);
+  const appliedSeq = useRef(0);
   const [locating, setLocating] = useState(false);
   const [hint, setHint] = useState('');
 
   useEffect(() => {
     if (!ready || !box.current) return;
     const has = lat != null && lng != null;
-    const m = createMap(box.current, { center: has ? [lng, lat] : undefined, zoom: has ? 17.5 : 5.5, style: 'streets' });
-    m.on('moveend', () => { const c = m.getCenter(); moved.current(c.lat, c.lng, nearestProvince(c.lat, c.lng)); });
+    const initialZoom = flyTo ? flyTo.zoom : has ? 16 : 5.5;
+    const initialCenter: [number, number] | undefined = flyTo ? [flyTo.lng, flyTo.lat] : has ? [lng!, lat!] : undefined;
+    if (flyTo) appliedSeq.current = flyTo.seq;
+    const m = createMap(box.current, { center: initialCenter, zoom: initialZoom, style: 'streets' });
+    const markGesture = () => { userGesture.current = true; };
+    m.on('dragstart', markGesture);
+    m.on('touchstart', markGesture);
+    m.on('wheel', markGesture);
+    m.on('dblclick', markGesture);
+    m.on('moveend', () => {
+      if (!userGesture.current) return;
+      userGesture.current = false;
+      const c = m.getCenter();
+      moved.current(c.lat, c.lng, nearestProvince(c.lat, c.lng), m.getZoom());
+    });
     map.current = m;
     puck.current = new MePuck(m);
     return () => { puck.current?.remove(); m.remove(); map.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the starting point only
   }, [ready]);
 
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !flyTo || flyTo.seq === appliedSeq.current) return;
+    appliedSeq.current = flyTo.seq;
+    userGesture.current = false;
+    m.flyTo({ center: [flyTo.lng, flyTo.lat], zoom: flyTo.zoom, speed: 1.5, essential: true });
+  }, [flyTo]);
+
   if (ready === null) return <NoMap className="rq-map-live" />;
 
   async function locate() {
     if (!map.current || !puck.current) return;
     setLocating(true);
-    try { await locateOn(map.current, puck.current, setHint); } catch (e) { setHint((e as Error).message); }
+    try {
+      const fix = await locateOn(map.current, puck.current, setHint);
+      const [fixLng, fixLat] = fix.at;
+      const zoom = fix.accuracy <= 20 ? 19 : fix.accuracy <= 60 ? 17.5 : 16;
+      userGesture.current = false;
+      moved.current(fixLat, fixLng, nearestProvince(fixLat, fixLng), zoom);
+    } catch (e) { setHint((e as Error).message); }
     setLocating(false);
   }
 
