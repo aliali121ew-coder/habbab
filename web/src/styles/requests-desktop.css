@@ -1,0 +1,78 @@
+/* طلبات المساعدة on a computer (1024px and wider). The phone layout is untouched; here the
+   register uses the width: a wider page, one toolbar row (search, status chips, type filter),
+   a slim bar for families' requests, and the cards in a grid of two or three. */
+
+/* the register page only (not the details, the form or the map) */
+@media (min-width: 1024px) {
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) {
+    max-width: 1400px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head   head"
+      "window window"
+      "search bar"
+      "chips  chips"
+      "list   list";
+    column-gap: 14px;
+    row-gap: 14px;
+  }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-head { grid-area: head; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-window { grid-area: window; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-search { grid-area: search; height: 48px; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-chips { grid-area: chips; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-bar { grid-area: bar; gap: 14px; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-list,
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-empty { grid-area: list; }
+
+  /* the title row: title, then the list/map switch, the new-request button at the far end */
+  .rq-head { gap: 16px; }
+  .rq-head h1 { margin-inline-end: auto; }
+  .rq-head .rq-mode { order: 2; }
+  .rq-head .rq-new-wide { order: 3; }
+
+  .rq-chips button { height: 38px; padding: 0 16px; font-size: .84rem; }
+
+  /* the window for families' requests: one slim bar */
+  .rq-window { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 10px 14px; border-radius: 16px; }
+  .rq-window-head { flex: 1 1 300px; min-width: 0; }
+  .rq-window-head .rq-window-badge { order: -1; }
+  .rq-window-ic { width: 36px; height: 36px; border-radius: 11px; }
+  .rq-window-link { flex: 2 1 460px; flex-wrap: nowrap; }
+  .rq-window-link input { height: 40px; }
+  .rq-window-link .rq-ghost { height: 40px; padding: 0 12px; }
+  .rq-window > .rq-window-actions { flex: none; }
+  .rq-window-actions .rq-primary, .rq-window-actions .rq-ghost { height: 40px; padding: 0 16px; }
+  .rq-window-form { flex: 1 1 100%; grid-template-columns: repeat(2, minmax(0, 260px)) auto; align-items: end; }
+  .rq-window-form .rq-window-actions { grid-column: auto; }
+  .rq-window .rq-error { flex-basis: 100%; }
+
+  /* the cards in a grid, more compact */
+  .rq-list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .rq-card { border-radius: 22px; }
+  .rq-card-top { padding: 14px 16px; gap: 12px; }
+  .rq-card-ic { width: 48px; height: 48px; border-radius: 14px; }
+  .rq-card-main strong { font-size: 1.02rem; line-height: 1.45; }
+  .rq-card-body { gap: 10px; padding: 12px 16px 14px; }
+  .rq-card-text { font-size: .9rem; line-height: 1.75; -webkit-line-clamp: 1; }
+  .rq-card-tags .rq-tag { height: 30px; font-size: .78rem; }
+  .rq-card-foot .rq-lock { height: 30px; font-size: .76rem; }
+  .rq-card-go { width: 34px; height: 34px; }
+  @media (hover: hover) {
+    .rq-card { transition: transform .15s ease, box-shadow .15s ease; }
+    .rq-card:hover { transform: translateY(-2px); box-shadow: 0 16px 30px -18px color-mix(in srgb, var(--k1) 80%, transparent); }
+  }
+  .rq-card:focus-visible { outline: 2px solid var(--rq); outline-offset: 3px; }
+}
+
+/* wide screens: the toolbar is one row and the cards are three across */
+@media (min-width: 1360px) {
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) {
+    grid-template-columns: minmax(260px, 1fr) auto auto;
+    grid-template-areas:
+      "head   head  head"
+      "window window window"
+      "search chips bar"
+      "list   list  list";
+  }
+  .rq-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

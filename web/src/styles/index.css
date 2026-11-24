@@ -36,6 +36,7 @@
 @import './requests-map.css' layer(base);
 @import './notifications.css' layer(base);
 @import './navigation.css' layer(base);
+@import './requests-desktop.css' layer(base);
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
