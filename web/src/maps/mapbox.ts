@@ -48,6 +48,10 @@ export const IRAQ: [number, number] = [44.2, 33.2]; // lng, lat
 export function createMap(container: HTMLElement, options: {
   center?: [number, number]; zoom?: number; style?: MapStyle; interactive?: boolean;
 }) {
+  // Mapbox's stylesheet gives the container `position: relative` and, being outside the app's
+  // CSS layers, it wins over any class rule; the box then collapses to 0px high and the map is
+  // blank. Inline styles win over both.
+  Object.assign(container.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' });
   const map = new mapboxgl.Map({
     container,
     style: styleUrl(options.style ?? 'streets'),
