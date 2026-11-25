@@ -5,6 +5,7 @@ import {
 import { MONTH_NAMES, formatNumber, formatPercent } from '../../format';
 import { donorHref } from '../../route';
 import type { Donation } from '../aid/DonationDialog';
+import { DonationIconTile, donationIcon } from '../aid/donationIcons';
 
 const now = new Date();
 const THIS_YEAR = now.getUTCFullYear();
@@ -262,7 +263,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                 <th scope="col">المتبرع</th>
                 <th scope="col">المبلغ</th>
                 <th scope="col">الحالة</th>
-                <th scope="col"><span className="sr-only">إجراءات</span></th>
+                <th scope="col" className="dd-pic-col">الصورة</th>
               </tr>
             </thead>
             <tbody>
@@ -270,7 +271,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                 <tr key={item.id} onClick={() => onOpen(item)}>
                   <td>
                     <span className="dd-what">
-                      <span className={`dd-what-icon ${item.kind}`} aria-hidden>{item.kind === 'cash' ? <Banknote size={15} /> : <Gift size={15} />}</span>
+                      <DonationIconTile donation={item} size={30} />
                       <span>{item.kind === 'cash' ? `تبرع مالي${item.purpose ? ` · ${item.purpose}` : ''}` : `${item.item ?? 'مواد'}${item.quantity ? ` · ${formatNumber(item.quantity)} ${item.unit ?? ''}` : ''}`}</span>
                     </span>
                   </td>
@@ -281,7 +282,12 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                   </td>
                   <td className="dd-money">{item.amount ? <><bdi>{formatNumber(item.amount)}</bdi> <small>{currency}</small></> : '—'}</td>
                   <td><span className={`dd-state${item.receipt_no ? ' ok' : ''}`}>{item.receipt_no ? '+ موثّق' : '• بلا وصل'}</span></td>
-                  <td><button type="button" className="dd-row-more" aria-label={`تعديل تبرع ${item.donor_name}`} onClick={(event) => { event.stopPropagation(); onOpen(item); }}><MoreHorizontal size={18} aria-hidden /></button></td>
+                  <td className="dd-pic">
+                    <span className="dd-pic-wrap">
+                      <DonationIconTile donation={item} size={44} />
+                      <small>{donationIcon(item).label}</small>
+                    </span>
+                  </td>
                 </tr>
               ))}
             </tbody>

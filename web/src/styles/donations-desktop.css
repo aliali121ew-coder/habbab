@@ -366,3 +366,19 @@
 .dd-bars.is-goods li.is-future i { background: var(--dd-soft); }
 .dd-bars.is-goods .dd-dot { border-color: var(--dd-gold); }
 .dd-toggle.is-goods button[aria-pressed="true"] { background: var(--dd-gold); color: #3b2500; }
+
+/* Donation pictures (pages/aid/donationIcons.tsx): a rounded tile tinted with the item's colour. */
+.dn-icon-tile {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 30%;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--tone) 16%, var(--surface)), color-mix(in srgb, var(--tone) 26%, var(--surface)));
+  color: var(--tone);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 22%, transparent), 0 6px 14px -10px var(--tone);
+}
+:root[data-theme="dark"] .dn-icon-tile { background: color-mix(in srgb, var(--tone) 22%, var(--surface)); color: color-mix(in srgb, var(--tone) 70%, #fff); }
+.dd-pic-col { text-align: center !important; }
+.dd-pic { width: 1%; text-align: center; }
+.dd-pic-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+.dd-pic-wrap small { color: var(--dd-ink-3); font-size: .64rem; font-weight: 600; white-space: nowrap; }
