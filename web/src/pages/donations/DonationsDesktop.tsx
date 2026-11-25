@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowLeft, Banknote, ChevronLeft, ChevronRight, Filter, Gift, MoreHorizontal, Package, Plus, RotateCcw, Search, Users, Wallet,
+  ArrowLeft, Banknote, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Filter, Gift, MoreHorizontal, Package, Plus, Search, Users, Wallet,
 } from 'lucide-react';
 import { MONTH_NAMES, formatNumber, formatPercent } from '../../format';
 import { donorHref } from '../../route';
@@ -15,7 +15,9 @@ const showDate = (iso: string) => iso.slice(0, 10).replace(/-/g, '/');
 const SHORT_MONTHS = ['ك٢', 'شباط', 'آذار', 'نيسان', 'أيار', 'حزيران', 'تموز', 'آب', 'أيلول', 'ت١', 'ت٢', 'ك١'];
 const PURPOSE_TONES =['#16a34a', '#2563eb', '#f59e0b', '#db2777', '#7c3aed', '#0891b2'];
 
-type Period = 'month' | 'year';
+type Period = 'day' | 'month' | 'year';
+const DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'];
+const TODAY = now.toISOString().slice(0, 10);
 type Kind = 'all' | 'cash' | 'in_kind';
 type Flow = 'cash' | 'in_kind';
 
@@ -40,6 +42,8 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
   const [kind, setKind] = useState<Kind>('all');
   const [limit, setLimit] = useState(10);
   const [hover, setHover] = useState<number | null>(null);
+  // The chosen day (YYYY-MM-DD) when the period is a single day.
+  const [day, setDay] = useState<string | null>(null);
 
   const data = useMemo(() => {
     const cash = Array<number>(12).fill(0);
@@ -48,12 +52,13 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
       if (item.kind === 'cash') cash[monthOf(item)] += item.amount ?? 0;
       else goods[monthOf(item)] += 1;
     });
-    const inPeriod = items.filter((item) => period === 'year' || monthOf(item) === month);
-    const before = period === 'year' ? [] : items.filter((item) => monthOf(item) === month - 1);
+    const inPeriod = items.filter((item) => (period === 'year' ? true : period === 'day' ? item.received_on === day : monthOf(item) === month));
+    // Only a whole month has a fair neighbour to compare with.
+    const before = period === 'month' ? items.filter((item) => monthOf(item) === month - 1) : [];
     const sumCash = (list: Donation[]) => list.filter((item) => item.kind === 'cash').reduce((s, item) => s + (item.amount ?? 0), 0);
     const donors = (list: Donation[]) => new Set(list.map((item) => item.donor_name)).size;
     const goodsCount = (list: Donation[]) => list.filter((item) => item.kind === 'in_kind').length;
-    const prevCash = period === 'year' ? null : month > 0 ? sumCash(before) : previousDecemberCash;
+    const prevCash = period !== 'month' ? null : month > 0 ? sumCash(before) : previousDecemberCash;
     const purposes = new Map<string, { cash: number; count: number }>();
     inPeriod.forEach((item) => {
       const key = item.purpose ?? 'عامة';
@@ -78,7 +83,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
       top,
       inPeriod,
     };
-  }, [items, period, month, previousDecemberCash]);
+  }, [items, period, month, day, previousDecemberCash]);
 
   const rows = useMemo(() => {
     const needle = query.trim();
@@ -87,11 +92,12 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
       .filter((item) => !needle || [item.donor_name, item.item, item.purpose, item.receipt_no, item.note].some((value) => value?.includes(needle)));
   }, [data.inPeriod, kind, query]);
 
-  const periodLabel = period === 'year' ? `سنة ${year}` : `${MONTH_NAMES[month]} ${year}`;
+  const periodLabel = period === 'year' ? `سنة ${year}`
+    : period === 'day' && day ? `${Number(day.slice(8, 10))} ${MONTH_NAMES[month]} ${year}`
+      : `${MONTH_NAMES[month]} ${year}`;
   const values = flow === 'cash' ? data.cash : data.goods;
   const max = Math.max(...values, 1);
   const shownBar = hover ?? month;
-  const reset = () => { setPeriod('month'); setMonth(focus); setKind('all'); setQuery(''); setFlow('cash'); };
 
   return (
     <div className="dd">
@@ -101,20 +107,22 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
           <p>ملخص تبرعات المؤسسة — {periodLabel}</p>
         </div>
         <div className="dd-head-tools">
-          <div className="dd-year" role="group" aria-label="السنة">
-            <button type="button" aria-label="السنة السابقة" onClick={() => onYear(year - 1)}><ChevronRight size={16} aria-hidden /></button>
-            <strong><bdi>{year}</bdi></strong>
-            <button type="button" aria-label="السنة التالية" disabled={year >= THIS_YEAR} onClick={() => onYear(year + 1)}><ChevronLeft size={16} aria-hidden /></button>
-          </div>
-          <label className="dd-select">
-            <span className="sr-only">الفترة</span>
-            <select value={period} onChange={(event) => setPeriod(event.target.value as Period)}>
-              <option value="month">هذا الشهر</option>
-              <option value="year">السنة كلها</option>
-            </select>
-          </label>
-          <button type="button" className="dd-ghost" onClick={reset}><RotateCcw size={15} aria-hidden /> إعادة الضبط</button>
-          <button type="button" className="dd-primary" onClick={onAdd}><Plus size={16} aria-hidden /> سجّل تبرعاً</button>
+          <DatePicker
+            items={items}
+            year={year}
+            month={month}
+            period={period}
+            day={day}
+            label={periodLabel}
+            currency={currency}
+            onYear={onYear}
+            onPick={(next) => {
+              setPeriod(next.period);
+              if (next.month !== undefined) setMonth(next.month);
+              setDay(next.day ?? null);
+            }}
+          />
+          <button type="button" className="dd-primary" onClick={onAdd}><Plus size={16} aria-hidden /> تبرع جديد</button>
         </div>
       </header>
 
@@ -181,14 +189,15 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
               <h2 id="dd-flow-title">تدفق التبرعات</h2>
               <p className="dd-flow-total"><bdi>{formatNumber(flow === 'cash' ? data.cash.reduce((s, v) => s + v, 0) : data.goods.reduce((s, v) => s + v, 0))}</bdi> <small>{flow === 'cash' ? currency : 'مساعدة عينية'}</small></p>
             </div>
-            <div className="dd-toggle" role="group" aria-label="نوع التدفق">
+            <div className={`dd-toggle${flow === 'in_kind' ? ' is-goods' : ''}`} role="group" aria-label="نوع التدفق">
               <button type="button" aria-pressed={flow === 'cash'} onClick={() => setFlow('cash')}>مالية</button>
               <button type="button" aria-pressed={flow === 'in_kind'} onClick={() => setFlow('in_kind')}>عينية</button>
             </div>
           </header>
-          <div className="dd-bars" onPointerLeave={() => setHover(null)}>
+          <div className={`dd-bars${flow === 'in_kind' ? ' is-goods' : ''}`} onPointerLeave={() => setHover(null)}>
             <div className="dd-grid" aria-hidden>
-              {[1, 0.75, 0.5, 0.25, 0].map((part) => <span key={part}><bdi>{flow === 'cash' ? formatNumber(Math.round(max * part)) : Math.round(max * part)}</bdi></span>)}
+              {/* Counts of goods are whole numbers: a line between two counts stays unlabelled. */}
+              {[1, 0.75, 0.5, 0.25, 0].map((part) => <span key={part}><bdi>{flow === 'cash' ? formatNumber(Math.round(max * part)) : Number.isInteger(max * part) ? max * part : ''}</bdi></span>)}
             </div>
             <ol>
               {values.map((value, at) => {
@@ -202,7 +211,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                       aria-pressed={period === 'month' && at === month}
                       onPointerEnter={() => setHover(at)}
                       onFocus={() => setHover(at)}
-                      onClick={() => { setMonth(at); setPeriod('month'); }}
+                      onClick={() => { setMonth(at); setPeriod('month'); setDay(null); }}
                     >
                       <i style={{ blockSize: `${value > 0 ? Math.max((value / max) * 100, 3) : 2}%` }}>
                         {at === shownBar && value > 0 && <span className="dd-dot" aria-hidden />}
@@ -211,8 +220,8 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                     {at === shownBar && !future && (
                       <span className="dd-tip" role="tooltip">
                         <small>{MONTH_NAMES[at]} <bdi>{year}</bdi></small>
-                        <span><i className="g" />مالية <b><bdi>{formatNumber(data.cash[at])}</bdi></b></span>
-                        <span><i className="w" />عينية <b><bdi>{formatNumber(data.goods[at])}</bdi></b></span>
+                        <span className="dd-tip-row cash"><em aria-hidden />تبرعات مالية <b><bdi>{formatNumber(data.cash[at])}</bdi> <small>{currency}</small></b></span>
+                        <span className="dd-tip-row goods"><em aria-hidden />مساعدات عينية <b><bdi>{formatNumber(data.goods[at])}</bdi></b></span>
                       </span>
                     )}
                     <small className="dd-month" title={MONTH_NAMES[at]}>{SHORT_MONTHS[at]}</small>
@@ -287,4 +296,119 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
 function Delta({ value }: { value: number | null }) {
   if (value === null || Math.abs(value) < 0.5) return null;
   return <span className={`dd-delta${value < 0 ? ' down' : ''}`}><bdi>{value > 0 ? '+' : '−'}{formatPercent(Math.abs(value))}</bdi> {value > 0 ? '↑' : '↓'}</span>;
+}
+
+// The date control: a button with the chosen period that opens a month calendar. Every day with a
+// donation is marked (green for money, amber for goods, with the day's cash); a day can be picked,
+// or the whole month or year. Moving past January or December changes the year.
+function DatePicker({ items, year, month, period, day, label, currency, onYear, onPick }: {
+  items: Donation[];
+  year: number;
+  month: number;
+  period: Period;
+  day: string | null;
+  label: string;
+  currency: string;
+  onYear: (year: number) => void;
+  onPick: (next: { period: Period; month?: number; day?: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [view, setView] = useState(month);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (open) setView(month); }, [open, month]);
+  useEffect(() => {
+    if (!open) return undefined;
+    const away = (event: PointerEvent) => { if (!box.current?.contains(event.target as Node)) setOpen(false); };
+    const esc = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('pointerdown', away); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  const key = `${year}-${String(view + 1).padStart(2, '0')}`;
+  const byDay = new Map<number, { cash: number; goods: number; count: number }>();
+  items.filter((item) => item.received_on.startsWith(key)).forEach((item) => {
+    const d = Number(item.received_on.slice(8, 10));
+    const row = byDay.get(d) ?? { cash: 0, goods: 0, count: 0 };
+    if (item.kind === 'cash') row.cash += item.amount ?? 0;
+    else row.goods += 1;
+    row.count += 1;
+    byDay.set(d, row);
+  });
+  const days = new Date(Date.UTC(year, view + 1, 0)).getUTCDate();
+  const offset = (new Date(Date.UTC(year, view, 1)).getUTCDay() + 1) % 7;
+  const cells = Array.from({ length: Math.ceil((offset + days) / 7) * 7 }, (_, cell) => cell - offset + 1);
+  const monthTotal = [...byDay.values()].reduce((s, row) => s + row.cash, 0);
+  const step = (delta: number) => {
+    const next = view + delta;
+    if (next < 0) { onYear(year - 1); setView(11); return; }
+    if (next > 11) { if (year < THIS_YEAR) { onYear(year + 1); setView(0); } return; }
+    setView(next);
+  };
+  const atEnd = year === THIS_YEAR && view >= THIS_MONTH;
+
+  return (
+    <div className="dd-date" ref={box}>
+      <button type="button" className={`dd-date-btn${open ? ' on' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <CalendarDays size={17} aria-hidden />
+        <span>{label}</span>
+        <ChevronDown size={16} aria-hidden className="dd-date-caret" />
+      </button>
+      {open && (
+        <div className="dd-cal" role="dialog" aria-label="اختيار التاريخ">
+          <header className="dd-cal-head">
+            <button type="button" aria-label="الشهر السابق" onClick={() => step(-1)}><ChevronRight size={16} aria-hidden /></button>
+            <div>
+              <b>{MONTH_NAMES[view]} <bdi>{year}</bdi></b>
+              <small>{byDay.size ? <><bdi>{formatNumber(byDay.size)}</bdi> يوم فيه تبرع · <bdi>{formatNumber(monthTotal)}</bdi> {currency}</> : 'لا تبرعات في هذا الشهر'}</small>
+            </div>
+            <button type="button" aria-label="الشهر التالي" disabled={atEnd} onClick={() => step(1)}><ChevronLeft size={16} aria-hidden /></button>
+          </header>
+          <div className="dd-cal-grid">
+            {DAYS.map((name) => <span key={name} className="dd-cal-dow" title={name}>{name.replace(/^ال/, '')}</span>)}
+            {cells.map((d, cell) => {
+              if (d < 1 || d > days) return <span key={cell} className="dd-cal-blank" />;
+              const iso = `${key}-${String(d).padStart(2, '0')}`;
+              const row = byDay.get(d);
+              const future = iso > TODAY;
+              const chosen = period === 'day' && day === iso;
+              return (
+                <button
+                  key={cell}
+                  type="button"
+                  className={`dd-cal-day${row ? ' has' : ''}${chosen ? ' chosen' : ''}${iso === TODAY ? ' today' : ''}`}
+                  disabled={future}
+                  title={row ? `${formatNumber(row.count)} تبرع · ${formatNumber(row.cash)} ${currency}${row.goods ? ` · ${row.goods} عيني` : ''}` : undefined}
+                  onClick={() => { onPick({ period: 'day', month: view, day: iso }); setOpen(false); }}
+                >
+                  <span className="dd-cal-num"><bdi>{d}</bdi></span>
+                  {row && (
+                    <span className="dd-cal-marks" aria-hidden>
+                      {row.cash > 0 && <i className="cash" />}
+                      {row.goods > 0 && <i className="goods" />}
+                    </span>
+                  )}
+                  {row && row.cash > 0 && <small className="dd-cal-amount">{formatCompactAr(row.cash)}</small>}
+                </button>
+              );
+            })}
+          </div>
+          <footer className="dd-cal-foot">
+            <span className="dd-cal-legend"><i className="cash" /> مالي <i className="goods" /> عيني</span>
+            <div>
+              <button type="button" className={period === 'month' && month === view ? 'on' : undefined} onClick={() => { onPick({ period: 'month', month: view }); setOpen(false); }}>الشهر كله</button>
+              <button type="button" className={period === 'year' ? 'on' : undefined} onClick={() => { onPick({ period: 'year' }); setOpen(false); }}>السنة كلها</button>
+            </div>
+          </footer>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 1,250,000 → 1.25M; 85,000 → 85K: short enough for a day cell.
+function formatCompactAr(value: number) {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value % 1_000_000 ? 1 : 0)}M`;
+  if (value >= 1_000) return `${Math.round(value / 1_000)}K`;
+  return String(value);
 }

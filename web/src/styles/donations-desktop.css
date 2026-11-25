@@ -283,3 +283,86 @@
 @media (max-width: 1279.98px) {
   .dd-purposes { flex: none; max-height: 340px; }
 }
+
+/* ── Date control: a button that opens a month calendar of donation days ─────────────── */
+.dd { --dd-gold: #f59e0b; --dd-gold-soft: #fdf1d8; --dd-gold-2: #fcd98f; }
+:root[data-theme="dark"] .dd { --dd-gold: #fbbf24; --dd-gold-soft: #3a2f16; --dd-gold-2: #5b4720; }
+.dd-date { position: relative; }
+.dd-date-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding-inline: 14px 12px; border: 1px solid var(--dd-line); border-radius: 12px; background: var(--dd-card); color: var(--dd-ink); font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.dd-date-btn svg:first-child { color: var(--dd-green); }
+.dd-date-btn:hover, .dd-date-btn.on { border-color: color-mix(in srgb, var(--dd-green) 45%, var(--dd-line)); box-shadow: 0 0 0 4px var(--dd-mint); }
+.dd-date-caret { color: var(--dd-ink-3); transition: transform .2s; }
+.dd-date-btn.on .dd-date-caret { transform: rotate(180deg); }
+.dd-cal {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 360px;
+  padding: 14px;
+  border: 1px solid var(--dd-line);
+  border-radius: 18px;
+  background: var(--dd-card);
+  box-shadow: 0 24px 50px -20px rgb(15 23 42 / 35%);
+  animation: dd-pop .18s cubic-bezier(.2, .9, .3, 1);
+}
+@keyframes dd-pop { from { transform: translateY(-6px); } }
+.dd-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dd-cal-head div { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.dd-cal-head b { font-size: .98rem; font-weight: 800; }
+.dd-cal-head small { color: var(--dd-ink-3); font-size: .7rem; }
+.dd-cal-head button { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--dd-line); border-radius: 10px; background: var(--dd-card); color: var(--dd-ink-2); cursor: pointer; }
+.dd-cal-head button:hover:not(:disabled) { background: var(--dd-soft); }
+.dd-cal-head button:disabled { opacity: .3; cursor: default; }
+.dd-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.dd-cal-dow { padding-bottom: 2px; color: var(--dd-ink-3); font-size: .66rem; font-weight: 700; text-align: center; }
+.dd-cal-day { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 46px; border: 0; border-radius: 10px; background: transparent; color: var(--dd-ink-2); font: inherit; cursor: pointer; }
+.dd-cal-day:hover:not(:disabled) { background: var(--dd-soft); }
+.dd-cal-day:disabled { color: var(--dd-ink-3); opacity: .45; cursor: default; }
+.dd-cal-num { font-size: .82rem; font-weight: 700; line-height: 1; }
+.dd-cal-day.has { background: var(--dd-mint); color: var(--dd-ink); }
+.dd-cal-day.has:hover { background: var(--dd-mint-2); }
+.dd-cal-day.today .dd-cal-num { color: var(--dd-green); text-decoration: underline 2px; text-underline-offset: 3px; }
+.dd-cal-day.chosen { background: var(--dd-green); color: #fff; }
+.dd-cal-day.chosen .dd-cal-amount { color: rgb(255 255 255 / 85%); }
+.dd-cal-marks { display: flex; gap: 3px; }
+.dd-cal-marks i, .dd-cal-legend i { display: inline-block; width: 6px; height: 6px; border-radius: 99px; }
+.dd-cal-marks i.cash, .dd-cal-legend i.cash { background: var(--dd-green-2); }
+.dd-cal-marks i.goods, .dd-cal-legend i.goods { background: var(--dd-gold); }
+.dd-cal-day.chosen .dd-cal-marks i { box-shadow: 0 0 0 1.5px #fff; }
+.dd-cal-amount { color: var(--dd-green); font-size: .58rem; font-weight: 800; line-height: 1; }
+.dd-cal-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 10px; border-top: 1px solid var(--dd-line); }
+.dd-cal-legend { display: inline-flex; align-items: center; gap: 5px; color: var(--dd-ink-3); font-size: .7rem; }
+.dd-cal-legend i.goods { margin-inline-start: 6px; }
+.dd-cal-foot div { display: flex; gap: 6px; }
+.dd-cal-foot button { min-height: 32px; padding-inline: 12px; border: 1px solid var(--dd-line); border-radius: 99px; background: var(--dd-card); color: var(--dd-ink-2); font: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.dd-cal-foot button.on, .dd-cal-foot button:hover { border-color: var(--dd-green); color: var(--dd-green); }
+
+/* ── Bars tooltip: a clear white card with coloured dots ───────────────────────────── */
+.dd-tip {
+  min-width: 190px;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--dd-line);
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font-size: .78rem;
+  box-shadow: 0 16px 34px -12px rgb(15 23 42 / 30%);
+}
+.dd-tip > small { padding-bottom: 4px; border-bottom: 1px solid var(--dd-line); color: var(--dd-ink-2); font-size: .74rem; font-weight: 700; }
+.dd-tip-row { display: flex; align-items: center; gap: 7px; color: var(--dd-ink-2); }
+.dd-tip-row em { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+.dd-tip-row.cash em { background: var(--dd-green-2); }
+.dd-tip-row.goods em { background: var(--dd-gold); }
+.dd-tip-row b { margin-inline-start: auto; padding-inline-start: 12px; color: var(--dd-ink); font-weight: 800; }
+.dd-tip-row b small { color: var(--dd-ink-3); font-size: .66rem; font-weight: 600; }
+
+/* In-kind flow in amber, so it never reads as money. */
+.dd-bars.is-goods li i { background: linear-gradient(180deg, var(--dd-gold-2), var(--dd-gold-soft)); }
+.dd-bars.is-goods li.is-on i { background: linear-gradient(180deg, color-mix(in srgb, var(--dd-gold) 85%, #fff), var(--dd-gold)); }
+.dd-bars.is-goods li.is-future i { background: var(--dd-soft); }
+.dd-bars.is-goods .dd-dot { border-color: var(--dd-gold); }
+.dd-toggle.is-goods button[aria-pressed="true"] { background: var(--dd-gold); color: #3b2500; }
