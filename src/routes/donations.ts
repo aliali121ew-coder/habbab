@@ -19,6 +19,7 @@ const body = {
   donor_name: zText(120).min(2, 'اسم المتبرع مطلوب'),
   donor_type: z.enum(['internal', 'external']),
   donor_phone: optionalText(30),
+  donor_address: optionalText(160),
   kind: z.enum(['cash', 'in_kind']),
   amount: zMoney,
   item: optionalText(120),
@@ -35,6 +36,7 @@ type Row = {
   donor_name: string;
   donor_type: 'internal' | 'external';
   donor_phone: string | null;
+  donor_address: string | null;
   kind: 'cash' | 'in_kind';
   amount: number | null;
   item: string | null;
@@ -46,7 +48,7 @@ type Row = {
   note: string | null;
 };
 
-const COLUMNS = 'd.id, d.donor_name, d.donor_type, d.donor_phone, d.kind, d.amount, d.item, d.quantity, d.unit, d.purpose, d.received_on, d.receipt_no, d.note';
+const COLUMNS = 'd.id, d.donor_name, d.donor_type, d.donor_phone, d.donor_address, d.kind, d.amount, d.item, d.quantity, d.unit, d.purpose, d.received_on, d.receipt_no, d.note';
 
 function check(entry: { kind: 'cash' | 'in_kind'; amount?: number | null; item?: string | null }) {
   if (entry.kind === 'cash' && !entry.amount) fail(422, 'اكتب مبلغ التبرع');
@@ -124,12 +126,15 @@ donations.get('/donor', async (c) => {
 donations.post('/', async (c) => {
   const entry = await readJson(c, z.object(body));
   check(entry);
+  // A new donation always says how to reach the donor.
+  if (!entry.donor_phone || entry.donor_phone.replace(/\D/g, '').length < 7) fail(422, 'رقم هاتف المتبرع مطلوب');
+  if (!entry.donor_address || entry.donor_address.trim().length < 3) fail(422, 'عنوان المتبرع مطلوب');
   if (entry.received_on > new Date().toISOString().slice(0, 10)) fail(422, 'التاريخ في المستقبل');
   const [inserted] = await batch(c, [
     stmt(c,
-      `INSERT INTO donations (foundation_id, donor_name, donor_type, donor_phone, kind, amount, item, quantity, unit, purpose, received_on, month, receipt_no, note, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      fid(c), entry.donor_name, entry.donor_type, entry.donor_phone ?? null, entry.kind, entry.amount ?? null,
+      `INSERT INTO donations (foundation_id, donor_name, donor_type, donor_phone, donor_address, kind, amount, item, quantity, unit, purpose, received_on, month, receipt_no, note, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      fid(c), entry.donor_name, entry.donor_type, entry.donor_phone ?? null, entry.donor_address ?? null, entry.kind, entry.amount ?? null,
       entry.kind === 'in_kind' ? entry.item ?? null : null, entry.kind === 'in_kind' ? entry.quantity ?? null : null,
       entry.kind === 'in_kind' ? entry.unit ?? null : null, entry.purpose ?? null, entry.received_on, entry.received_on.slice(0, 7),
       entry.receipt_no ?? null, entry.note ?? null, c.get('user').id),

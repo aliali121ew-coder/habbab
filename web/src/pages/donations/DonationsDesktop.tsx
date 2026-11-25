@@ -86,6 +86,13 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
     };
   }, [items, period, month, day, previousDecemberCash]);
 
+  // How many donations each donor gave in the chosen period (day, month or year).
+  const giftsBy = useMemo(() => {
+    const map = new Map<string, number>();
+    data.inPeriod.forEach((item) => map.set(item.donor_name, (map.get(item.donor_name) ?? 0) + 1));
+    return map;
+  }, [data.inPeriod]);
+
   const rows = useMemo(() => {
     const needle = query.trim();
     return data.inPeriod
@@ -262,7 +269,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                 <th scope="col">التاريخ</th>
                 <th scope="col">المتبرع</th>
                 <th scope="col">المبلغ</th>
-                <th scope="col">الحالة</th>
+                <th scope="col">عدد التبرعات</th>
                 <th scope="col" className="dd-pic-col">الصورة</th>
               </tr>
             </thead>
@@ -271,7 +278,6 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                 <tr key={item.id} onClick={() => onOpen(item)}>
                   <td>
                     <span className="dd-what">
-                      <DonationIconTile donation={item} size={30} />
                       <span>{item.kind === 'cash' ? `تبرع مالي${item.purpose ? ` · ${item.purpose}` : ''}` : `${item.item ?? 'مواد'}${item.quantity ? ` · ${formatNumber(item.quantity)} ${item.unit ?? ''}` : ''}`}</span>
                     </span>
                   </td>
@@ -281,7 +287,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                     <a className="dd-donor" href={donorHref(item.donor_name)} onClick={(event) => event.stopPropagation()}>{item.donor_name}</a>
                   </td>
                   <td className="dd-money">{item.amount ? <><bdi>{formatNumber(item.amount)}</bdi> <small>{currency}</small></> : '—'}</td>
-                  <td><span className={`dd-state${item.receipt_no ? ' ok' : ''}`}>{item.receipt_no ? '+ موثّق' : '• بلا وصل'}</span></td>
+                  <td><span className="dd-count" title={`تبرعات ${item.donor_name} في ${periodLabel}`}><bdi>{formatNumber(giftsBy.get(item.donor_name) ?? 1)}</bdi> {(giftsBy.get(item.donor_name) ?? 1) === 1 ? 'تبرع' : 'تبرعات'}</span></td>
                   <td className="dd-pic">
                     <span className="dd-pic-wrap">
                       <DonationIconTile donation={item} size={44} />

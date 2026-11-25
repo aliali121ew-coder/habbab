@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  ArrowRight, ArrowUpLeft, Banknote, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Gift, Hash, MessageCircle, Package, Phone, Plus, Receipt, Trophy, TrendingDown, TrendingUp, UserRound,
+  ArrowRight, ArrowUpLeft, Banknote, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Gift, Hash, MapPin, MessageCircle, Package, Phone, Plus, Receipt, Trophy, TrendingDown, TrendingUp, UserRound,
 } from 'lucide-react';
 import { api, type Me } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
@@ -93,6 +93,7 @@ export function DonorPage({ me, name }: { me: Me; name: string }) {
       regularity: (activeThisYear / elapsed) * 100,
       type: latest.donor_type,
       phone: items.find((item) => item.donor_phone)?.donor_phone ?? null,
+      address: items.find((item) => item.donor_address)?.donor_address ?? null,
       notes: items.filter((item) => item.note).slice(0, 6),
       recorders: [...new Set(items.map((item) => item.created_by_name).filter(Boolean))] as string[],
       receipts: items.filter((item) => item.receipt_no).length,
@@ -228,6 +229,7 @@ export function DonorPage({ me, name }: { me: Me; name: string }) {
               <ul className="dp-facts">
                 <li><UserRound size={15} aria-hidden />{data.type === 'internal' ? 'من داخل المؤسسة' : 'من خارج المؤسسة'}</li>
                 {data.phone && <li><Phone size={15} aria-hidden /><bdi dir="ltr">{data.phone}</bdi></li>}
+                {data.address && <li><MapPin size={15} aria-hidden />{data.address}</li>}
                 <li><CalendarDays size={15} aria-hidden />أول تبرع <bdi>{showDate(data.first.received_on)}</bdi></li>
                 <li><Hash size={15} aria-hidden />آخر تبرع <bdi>{showDate(data.latest.received_on)}</bdi></li>
               </ul>

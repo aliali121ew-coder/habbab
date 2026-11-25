@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
-  Banknote, Building2, CalendarDays, Check, Gift, Globe2, Hash, Minus, Package, Phone, Plus, StickyNote, Trash2, UserRound, UsersRound, X,
+  Banknote, Building2, CalendarDays, MapPin, Check, Gift, Globe2, Hash, Minus, Package, Phone, Plus, StickyNote, Trash2, UserRound, UsersRound, X,
 } from 'lucide-react';
 import { api } from '../../api';
 import { formatNumber, today } from '../../format';
@@ -11,6 +11,7 @@ export interface Donation {
   donor_name: string;
   donor_type: 'internal' | 'external';
   donor_phone: string | null;
+  donor_address?: string | null;
   kind: 'cash' | 'in_kind';
   amount: number | null;
   item: string | null;
@@ -43,6 +44,7 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
   const [name, setName] = useState(donation?.donor_name ?? '');
   const [type, setType] = useState<Donation['donor_type']>(donation?.donor_type ?? 'external');
   const [phone, setPhone] = useState(donation?.donor_phone ?? '');
+  const [address, setAddress] = useState(donation?.donor_address ?? '');
   const [kind, setKind] = useState<Donation['kind']>(donation?.kind ?? 'cash');
   const [amount, setAmount] = useState(donation?.amount ? String(donation.amount) : '');
   const [item, setItem] = useState(donation?.item ?? '');
@@ -54,6 +56,10 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
   const [note, setNote] = useState(donation?.note ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // Errors shown under their own field; cleared as soon as that field changes.
+  type FieldKey = 'amount' | 'item' | 'name' | 'phone' | 'address';
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
+  const clear = (key: FieldKey) => setErrors((now) => (now[key] ? { ...now, [key]: undefined } : now));
   const [confirmDelete, setConfirmDelete] = useState(false);
   // The foundation's delegates, loaded the first time «من داخل المؤسسة» is chosen.
   const [delegates, setDelegates] = useState<{ id: number; full_name: string; phone: string | null }[] | null>(null);
@@ -81,14 +87,24 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
   const save = async (event: FormEvent) => {
     event.preventDefault();
     setError('');
-    if (kind === 'cash' && !value) { setError('اكتب مبلغ التبرع'); return; }
-    if (kind === 'in_kind' && item.trim().length < 2) { setError('اكتب ما تم التبرع به'); return; }
-    if (name.trim().length < 2) { setError('اكتب اسم المتبرع'); return; }
+    const found: Partial<Record<FieldKey, string>> = {};
+    if (kind === 'cash' && !value) found.amount = 'اكتب مبلغ التبرع';
+    if (kind === 'in_kind' && item.trim().length < 2) found.item = 'اكتب ما تم التبرع به';
+    if (name.trim().length < 2) found.name = 'اكتب اسم المتبرع';
+    if (phone.replace(/\D/g, '').length < 7) found.phone = phone.trim() ? 'رقم الهاتف غير مكتمل' : 'اكتب رقم هاتف المتبرع';
+    if (address.trim().length < 3) found.address = 'اكتب عنوان المتبرع';
+    setErrors(found);
+    const first = (['amount', 'item', 'name', 'phone', 'address'] as FieldKey[]).find((key) => found[key]);
+    if (first) {
+      ref.current?.querySelector<HTMLInputElement>(`[data-field="${first}"]`)?.focus();
+      return;
+    }
     setBusy(true);
     const body = {
       donor_name: name.trim(),
       donor_type: type,
       donor_phone: phone.trim() || null,
+      donor_address: address.trim() || null,
       kind,
       amount: value || null,
       item: kind === 'in_kind' ? item.trim() : null,
@@ -158,23 +174,25 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
             {kind === 'cash' ? (
               <>
                 <label className="dg-amount">
-                  <span className="dg-label">المبلغ</span>
-                  <span className="dg-amount-box">
-                    <input value={value ? formatNumber(value) : ''} onChange={(event) => setAmount(toDigits(event.target.value))} inputMode="numeric" dir="ltr" placeholder="0" aria-label="المبلغ" autoFocus={!donation} />
+                  <span className="dg-label">المبلغ <b className="dg-req">إجباري</b></span>
+                  <span className={`dg-amount-box${errors.amount ? ' invalid' : ''}`}>
+                    <input data-field="amount" aria-invalid={!!errors.amount} value={value ? formatNumber(value) : ''} onChange={(event) => { setAmount(toDigits(event.target.value)); clear('amount'); }} inputMode="numeric" dir="ltr" placeholder="0" aria-label="المبلغ" autoFocus={!donation} />
                     <em>{currency}</em>
                   </span>
+                  {errors.amount && <span className="dg-field-error" role="alert">{errors.amount}</span>}
                 </label>
                 <div className="dg-quick" aria-label="مبالغ سريعة">
                   {QUICK.map((step) => (
-                    <button key={step} type="button" aria-pressed={value === step} onClick={() => setAmount(String(step))}><bdi>{formatNumber(step)}</bdi></button>
+                    <button key={step} type="button" aria-pressed={value === step} onClick={() => { setAmount(String(step)); clear('amount'); }}><bdi>{formatNumber(step)}</bdi></button>
                   ))}
                 </div>
               </>
             ) : (
               <>
                 <label className="dg-field">
-                  <span className="dg-label">المادة</span>
-                  <span className="dg-input"><Package size={17} aria-hidden /><input value={item} onChange={(event) => setItem(event.target.value)} maxLength={120} placeholder="سلة غذائية، طحين، ملابس…" /></span>
+                  <span className="dg-label">المادة <b className="dg-req">إجباري</b></span>
+                  <span className={`dg-input${errors.item ? ' invalid' : ''}`}><Package size={17} aria-hidden /><input data-field="item" aria-invalid={!!errors.item} value={item} onChange={(event) => { setItem(event.target.value); clear('item'); }} maxLength={120} placeholder="سلة غذائية، طحين، ملابس…" /></span>
+                  {errors.item && <span className="dg-field-error" role="alert">{errors.item}</span>}
                 </label>
                 <div className="dg-grid">
                   <div className="dg-field">
@@ -218,6 +236,7 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
                       const person = delegates?.find((row) => row.id === Number(event.target.value));
                       if (!person) return;
                       setName(person.full_name);
+                      clear('name');
                       if (person.phone && !phone) setPhone(person.phone);
                     }}
                     disabled={!delegates}
@@ -230,13 +249,20 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
             )}
             <div className="dg-grid">
               <label className="dg-field">
-                <span className="dg-label">اسم المتبرع</span>
-                <span className="dg-input"><UserRound size={17} aria-hidden /><input value={name} onChange={(event) => setName(event.target.value)} list="dg-donors" maxLength={120} placeholder="الاسم الكامل أو اسم المحل" /></span>
+                <span className="dg-label">اسم المتبرع <b className="dg-req">إجباري</b></span>
+                <span className={`dg-input${errors.name ? ' invalid' : ''}`}><UserRound size={17} aria-hidden /><input data-field="name" aria-invalid={!!errors.name} value={name} onChange={(event) => { setName(event.target.value); clear('name'); }} list="dg-donors" maxLength={120} placeholder="الاسم الكامل أو اسم المحل" /></span>
                 <datalist id="dg-donors">{donors.map((donor) => <option key={donor} value={donor} />)}</datalist>
+                {errors.name && <span className="dg-field-error" role="alert">{errors.name}</span>}
               </label>
               <label className="dg-field">
-                <span className="dg-label">الهاتف <small>اختياري</small></span>
-                <span className="dg-input"><Phone size={17} aria-hidden /><input value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" maxLength={30} dir="ltr" placeholder="07xx xxx xxxx" /></span>
+                <span className="dg-label">رقم الهاتف <b className="dg-req">إجباري</b></span>
+                <span className={`dg-input${errors.phone ? ' invalid' : ''}`}><Phone size={17} aria-hidden /><input data-field="phone" aria-invalid={!!errors.phone} value={phone} onChange={(event) => { setPhone(event.target.value); clear('phone'); }} inputMode="tel" maxLength={30} dir="ltr" placeholder="07xx xxx xxxx" /></span>
+                {errors.phone && <span className="dg-field-error" role="alert">{errors.phone}</span>}
+              </label>
+              <label className="dg-field">
+                <span className="dg-label">العنوان <b className="dg-req">إجباري</b></span>
+                <span className={`dg-input${errors.address ? ' invalid' : ''}`}><MapPin size={17} aria-hidden /><input data-field="address" aria-invalid={!!errors.address} value={address} onChange={(event) => { setAddress(event.target.value); clear('address'); }} maxLength={160} placeholder="المحافظة، المنطقة، أقرب نقطة دالة" /></span>
+                {errors.address && <span className="dg-field-error" role="alert">{errors.address}</span>}
               </label>
             </div>
           </section>

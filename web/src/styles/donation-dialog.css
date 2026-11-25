@@ -185,3 +185,9 @@
   box-shadow: 0 14px 30px -24px var(--dg-a);
 }
 .dg-save { background: linear-gradient(160deg, var(--dg-a2), var(--dg-a) 70%); }
+
+/* Required fields and errors under their own field. */
+.dg-req { margin-inline-start: 6px; padding: 1px 7px; border-radius: 99px; background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); font-size: .64rem; font-weight: 800; }
+.dg-input.invalid, .dg-amount-box.invalid { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 4%, var(--surface)); box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
+.dg-field-error { display: flex; align-items: center; gap: 5px; color: var(--danger); font-size: .74rem; font-weight: 700; }
+.dg-field-error::before { content: '!'; display: grid; place-items: center; flex: none; width: 15px; height: 15px; border-radius: 99px; background: var(--danger); color: #fff; font-size: .62rem; font-weight: 900; }
