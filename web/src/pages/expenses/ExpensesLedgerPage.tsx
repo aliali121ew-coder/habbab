@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   Archive, ArrowDown, ArrowRight, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, Download,
@@ -90,10 +91,12 @@ interface KpiProps {
   unit?: string;
   foot?: ReactNode;
   spark?: number[];
+  sparkCounts?: number[];
+  currency?: string;
   note?: string;
 }
 
-function Kpi({ label, icon: Icon, tone = 'theme', value, unit, foot, spark, note }: KpiProps) {
+function Kpi({ label, icon: Icon, tone = 'theme', value, unit, foot, spark, sparkCounts, currency, note }: KpiProps) {
   return (
     <article className={`yl-kpi tone-${tone}`}>
       <header>
@@ -104,37 +107,95 @@ function Kpi({ label, icon: Icon, tone = 'theme', value, unit, foot, spark, note
       <p className="yl-kpi-value">{value}{unit && <small>{unit}</small>}</p>
       <footer>
         <div className="yl-foot">{foot}</div>
-        {spark && <Sparkline values={spark} className="yl-kpi-spark" />}
+        {spark && <Sparkline values={spark} counts={sparkCounts} currency={currency ?? unit} goodUp={tone === 'in'} className="yl-kpi-spark" />}
       </footer>
     </article>
   );
 }
 
 // Twelve months as one thin line, January on the right as the page reads; a dot marks the
-// latest month with a figure. Each month carries its figure on hover.
-function Sparkline({ values, className, upTo = 11, label }: { values: number[]; className?: string; upTo?: number; label?: string }) {
+// latest month with a figure. Pointing at (or touching) the line picks the nearest month: a guide,
+// a ringed dot and a small card with the month, the amount and the number of aids.
+interface SparkProps {
+  values: number[];
+  counts?: number[];
+  currency?: string;
+  className?: string;
+  upTo?: number;
+  label?: string;
+  // Income going up is good; spending going up is not.
+  goodUp?: boolean;
+}
+
+function Sparkline({ values, counts, currency, className, upTo = 11, label, goodUp = false }: SparkProps) {
   const W = 120;
   const H = 34;
+  const [hover, setHover] = useState<{ month: number; left: number; top: number; color: string } | null>(null);
   const shown = values.slice(0, upTo + 1);
   const max = Math.max(...shown, 1);
   const x = (month: number) => W - 4 - (month / 11) * (W - 8);
   const y = (value: number) => H - 4 - (value / max) * (H - 9);
   const points = shown.map((value, month) => `${x(month).toFixed(1)},${y(value).toFixed(1)}`).join(' ');
   const last = shown.length - 1;
+
+  const pick = (event: React.PointerEvent<SVGSVGElement>) => {
+    if (last < 0) return;
+    const box = event.currentTarget.getBoundingClientRect();
+    const at = ((event.clientX - box.left) / box.width) * W;
+    let month = 0;
+    shown.forEach((_, index) => { if (Math.abs(x(index) - at) < Math.abs(x(month) - at)) month = index; });
+    setHover({
+      month,
+      // Kept clear of the screen edges so the card never runs off a phone.
+      left: Math.min(Math.max(box.left + (x(month) / W) * box.width, 72), window.innerWidth - 72),
+      top: box.top + (y(shown[month]) / H) * box.height,
+      color: getComputedStyle(event.currentTarget).color,
+    });
+  };
+  const previous = hover && hover.month > 0 ? shown[hover.month - 1] : null;
+  const delta = hover && previous ? ((shown[hover.month] - previous) / previous) * 100 : null;
+
   return (
-    <svg className={`yl-spark ${className ?? ''}`} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label ?? 'الحركة خلال السنة'}>
-      <line x1="2" x2={W - 2} y1={H - 4} y2={H - 4} className="yl-spark-base" />
-      {shown.length > 1 && (
-        <polygon className="yl-spark-area" points={`${x(0)},${H - 4} ${points} ${x(last)},${H - 4}`} />
+    <>
+      <svg
+        className={`yl-spark ${className ?? ''}${hover ? ' is-on' : ''}`}
+        viewBox={`0 0 ${W} ${H}`}
+        role="img"
+        aria-label={label ?? 'الحركة خلال السنة'}
+        onPointerMove={pick}
+        onPointerDown={pick}
+        onPointerLeave={() => setHover(null)}
+      >
+        <line x1="2" x2={W - 2} y1={H - 4} y2={H - 4} className="yl-spark-base" />
+        {shown.length > 1 && (
+          <polygon className="yl-spark-area" points={`${x(0)},${H - 4} ${points} ${x(last)},${H - 4}`} />
+        )}
+        {hover && <line className="yl-spark-guide" x1={x(hover.month)} x2={x(hover.month)} y1="1" y2={H - 4} />}
+        <polyline className="yl-spark-line" points={points} />
+        {last >= 0 && !hover && <circle className="yl-spark-dot" cx={x(last)} cy={y(shown[last])} r="2.6" />}
+        {hover && <circle className="yl-spark-focus" cx={x(hover.month)} cy={y(shown[hover.month])} r="3.4" />}
+        <rect x="0" y="0" width={W} height={H} className="yl-spark-hit" />
+      </svg>
+      {hover && createPortal(
+        <div
+          className="yl-spark-tip"
+          role="tooltip"
+          style={{ left: hover.left, top: hover.top, '--tip': hover.color } as React.CSSProperties}
+        >
+          <span className="yl-spark-tip-month"><i aria-hidden />{MONTH_NAMES[hover.month]}</span>
+          <strong><bdi>{formatNumber(shown[hover.month])}</bdi>{currency && <small>{currency}</small>}</strong>
+          <span className="yl-spark-tip-meta">
+            {counts && <span><bdi>{formatNumber(counts[hover.month] ?? 0)}</bdi> مساعدة</span>}
+            {delta !== null && Math.abs(delta) >= 0.5 && (
+              <span className={(delta > 0) === goodUp ? 'good' : 'bad'}>
+                {delta > 0 ? '▲' : '▼'} <bdi>{formatPercent(Math.abs(delta))}</bdi>
+              </span>
+            )}
+          </span>
+        </div>,
+        document.body,
       )}
-      <polyline className="yl-spark-line" points={points} />
-      {last >= 0 && <circle className="yl-spark-dot" cx={x(last)} cy={y(shown[last])} r="2.6" />}
-      {shown.map((value, month) => (
-        <rect key={month} x={x(month) - 5} y="0" width="10" height={H} className="yl-spark-hit">
-          <title>{`${MONTH_NAMES[month]}: ${formatNumber(value)}`}</title>
-        </rect>
-      ))}
-    </svg>
+    </>
   );
 }
 
@@ -216,7 +277,7 @@ function YearView({ me, year }: { me: Me; year: number }) {
       <div className="page-head exp-head yl-head">
         <span className="page-icon" aria-hidden><Sheet size={24} /></span>
         <div>
-          <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'الحركات المالية', href: '#/expenses' }]} />
+          <Breadcrumbs items={[{ label: 'الحركات المالية', href: '#/expenses' }]} />
           <h1>السجل المالي السنوي</h1>
         </div>
         <div className="page-actions">
@@ -242,7 +303,7 @@ function YearView({ me, year }: { me: Me; year: number }) {
               label="الاستهلاك الشهري" icon={TrendingDown}
               value={<bdi>{formatNumber(data.monthTotals[focus])}</bdi>} unit={me.currency}
               foot={<><span className="yl-foot-label">{MONTH_NAMES[focus]}</span><Pill value={focus > 0 ? change(data.monthTotals[focus - 1], data.monthTotals[focus]) : null} goodUp={false} /></>}
-              spark={data.monthTotals.slice(0, focus + 1)}
+              spark={data.monthTotals.slice(0, focus + 1)} sparkCounts={data.monthCounts}
             />
             <Kpi
               label="الوارد الشهري" icon={TrendingUp} tone="in"
@@ -250,7 +311,7 @@ function YearView({ me, year }: { me: Me; year: number }) {
               foot={income
                 ? <><span className="yl-foot-label">{MONTH_NAMES[focus]}</span><Pill value={focus > 0 ? change(income[focus - 1], income[focus]) : null} goodUp /></>
                 : <span className="yl-foot-label">غير متاح لحسابك</span>}
-              spark={income?.slice(0, focus + 1)}
+              spark={income?.slice(0, focus + 1)} currency={me.currency}
             />
             <Kpi
               label="وارد الصناديق" icon={Archive} tone="box"
@@ -321,7 +382,7 @@ function YearView({ me, year }: { me: Me; year: number }) {
                 rows={categories.map((item) => ({
                   id: item.id, label: item.label, icon: item.icon, count: item.count, total: item.total,
                   share: (item.total / data.total) * 100,
-                  trail: <Sparkline values={item.values} upTo={year === THIS_YEAR ? THIS_MONTH : 11} label={`${item.label} خلال السنة`} />,
+                  trail: <Sparkline values={item.values} counts={item.counts} currency={me.currency} upTo={year === THIS_YEAR ? THIS_MONTH : 11} label={`${item.label} خلال السنة`} />,
                 }))}
                 total={data.total} count={data.count} trailHead="خلال السنة"
               />
@@ -452,7 +513,6 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
         <span className="page-icon" aria-hidden><CalendarDays size={24} /></span>
         <div>
           <Breadcrumbs items={[
-            { label: 'الرئيسية', href: '#/' },
             { label: 'الحركات المالية', href: '#/expenses' },
             { label: `السجل السنوي ${year}`, href: ledgerHref(year) },
           ]} />

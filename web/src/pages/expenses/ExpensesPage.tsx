@@ -8,7 +8,6 @@ import { BackToClose } from '../../components/useBackToClose';
 import { useIsPhone } from '../../useIsPhone';
 import { SAMPLE_DONATIONS } from '../../data/donations';
 import { api, type Me, type Overview } from '../../api';
-import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
 import { DatePicker, monthRange, periodLabel, wholeMonth, type DateRange } from '../../components/DatePicker';
 import { MONTH_NAMES, formatNumber, formatPercent, monthIndex, today } from '../../format';
@@ -506,7 +505,6 @@ export function ExpensesPage({ me }: { me: Me }) {
       <div className="page-head exp-head">
         <span className="page-icon" aria-hidden><Receipt size={24} /></span>
         <div>
-          <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }]} />
           <h1>الحركات المالية</h1>
         </div>
         <div className="page-actions">

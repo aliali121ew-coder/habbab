@@ -69,7 +69,7 @@ export function SubscribersPage({ me, delegateId, fullList = false }: { me: Me; 
           {/* The path stops at the parent: the heading below names this page. A delegate has only this page. */}
           {fullList && delegateId !== null
             ? <Breadcrumbs items={[...(me.role !== 'delegate' ? [{ label: 'المندوبون', href: '#/delegates' }] : []), { label: overview?.delegate?.full_name ?? 'السجل', href: registerHref(delegateId) }]} />
-            : me.role !== 'delegate' && <Breadcrumbs items={[{ label: 'الرئيسية', href: '#/' }, { label: 'المندوبون', href: '#/delegates' }]} />}
+            : me.role !== 'delegate' && <Breadcrumbs items={[{ label: 'المندوبون', href: '#/delegates' }]} />}
           <h1>
             {fullList
               ? 'سجل المشتركين'

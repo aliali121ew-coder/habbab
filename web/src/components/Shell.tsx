@@ -110,17 +110,17 @@ function ThemeMenu({ palette, onPick }: { palette: Palette; onPick: (palette: Pa
 // Phone top bar: a greeting for the time of day and today's date, filling the space between
 // the menu button and the account card.
 // Path for the pages that don't draw their own (the registers and expenses pages do).
-const HOME: Crumb = { label: 'الرئيسية', href: '#/' };
+// A main page (reached from the menu) shows no path; an inner page shows the section it sits in.
 function crumbsFor(route: ReturnType<typeof useRoute>): Crumb[] | null {
-  if (route === 'delegates') return [HOME, { label: 'المندوبون' }];
-  if (route === 'families') return [HOME, { label: 'العوائل المتعففة' }];
-  if (route === 'family-detail') return [HOME, { label: 'العوائل المتعففة', href: '#/families' }, { label: 'ملف العائلة' }];
-  if (route === 'patients') return [HOME, { label: 'المرضى' }];
-  if (route === 'patient-detail') return [HOME, { label: 'المرضى', href: '#/patients' }, { label: 'ملف المريض' }];
-  if (route === 'system') return [HOME, { label: 'إدارة النظام' }];
+  if (route === 'delegates') return [{ label: 'المندوبون' }];
+  if (route === 'families') return [{ label: 'العوائل المتعففة' }];
+  if (route === 'family-detail') return [{ label: 'العوائل المتعففة', href: '#/families' }, { label: 'ملف العائلة' }];
+  if (route === 'patients') return [{ label: 'المرضى' }];
+  if (route === 'patient-detail') return [{ label: 'المرضى', href: '#/patients' }, { label: 'ملف المريض' }];
+  if (route === 'system') return [{ label: 'إدارة النظام' }];
   if (typeof route === 'string' && route.startsWith('soon:')) {
     const page = SOON_PAGES.find((p) => p.slug === route.slice(5));
-    return [HOME, { label: page?.label ?? 'قسم جديد' }];
+    return [{ label: page?.label ?? 'قسم جديد' }];
   }
   return null;
 }
@@ -473,7 +473,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
               <button type="button" onClick={() => void enterFoundation(me.home_foundation_id)}>العودة إلى مؤسستي</button>
             </div>
           )}
-          {me.role === 'admin' && crumbsFor(route) && <div className="shell-crumbs" data-route={route}><Breadcrumbs items={crumbsFor(route)!} /></div>}
+          {me.role === 'admin' && (crumbsFor(route)?.length ?? 0) > 1 && <div className="shell-crumbs" data-route={route}><Breadcrumbs items={crumbsFor(route)!.slice(0, -1)} /></div>}
           {children}
         </main>
         <BottomNav me={me} route={route} />

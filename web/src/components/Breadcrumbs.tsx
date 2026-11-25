@@ -17,12 +17,12 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
               {/* The path stops at the parent page, so every item with a link stays clickable — the last one too. */}
               {item.href ? (
                 <a href={item.href} className="crumb-link">
-                  {index === 0 && <Home size={14} aria-hidden />}
+                  {item.href === '#/' && <Home size={14} aria-hidden />}
                   <span>{item.label}</span>
                 </a>
               ) : (
                 <span className="crumb-current" aria-current={isLast ? 'page' : undefined}>
-                  {index === 0 && <Home size={14} aria-hidden />}
+                  {item.href === '#/' && <Home size={14} aria-hidden />}
                   <span>{item.label}</span>
                 </span>
               )}
