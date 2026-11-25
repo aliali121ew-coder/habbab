@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowUpDown, BarChart3, CalendarDays, HeartPulse, Printer, UserCheck, Users } from 'lucide-react';
+import { ArrowUpDown, BarChart3, CalendarDays, HeartPulse, Layers, Printer, Receipt, UserCheck, Users } from 'lucide-react';
 import { api, type Me, type Overview } from '../../api';
 import { printWhenReady } from '../../components/printWhenReady';
 import { StateMessage } from '../../components/StateMessage';
@@ -9,6 +9,9 @@ import { PatientsReportSheet } from '../patients/PatientsReportSheet';
 import type { Patient } from '../patients/sample';
 import { usePatients } from '../../data/patients';
 import { RegisterPrintModal } from '../subscribers/RegisterPrintModal';
+import { ExpensesPrintModal } from '../expenses/ExpensesPrintModal';
+import { CATEGORIES, type ExpenseCategory } from '../expenses/categories';
+import type { ExpenseItem } from '../expenses/ExpensesPage';
 
 type PatientSortKey = 'date' | 'cash' | 'name';
 const PATIENT_SORT_LABELS: Record<PatientSortKey, string> = {
@@ -39,6 +42,29 @@ export function ReportsPage({ me }: { me: Me }) {
   const [status, setStatus] = useState<'alive' | 'deceased'>('alive');
   const [month, setMonth] = useState(now.getUTCMonth());
   const [printing, setPrinting] = useState(false);
+
+  // Expenses register print (moved here from the expenses page).
+  const canExpenses = me.features.includes('expenses') && (me.role === 'admin' || me.role === 'accountant');
+  const [expYear, setExpYear] = useState(thisYear);
+  const [expMonth, setExpMonth] = useState(now.getUTCMonth());
+  const [expCategory, setExpCategory] = useState<ExpenseCategory | ''>('');
+  const [expItems, setExpItems] = useState<ExpenseItem[] | null>(null);
+  const [expBusy, setExpBusy] = useState(false);
+  const [expError, setExpError] = useState('');
+  const openExpenses = async (event: FormEvent) => {
+    event.preventDefault();
+    setExpError('');
+    setExpBusy(true);
+    try {
+      const period = `${expYear}-${String(expMonth + 1).padStart(2, '0')}`;
+      const sheet = await api<{ items: ExpenseItem[] }>(`/expenses?month=${period}`);
+      setExpItems(expCategory ? sheet.items.filter((item) => item.category === expCategory) : sheet.items);
+    } catch (failure) {
+      setExpError((failure as Error).message);
+    } finally {
+      setExpBusy(false);
+    }
+  };
 
   // Patients report state
   const [patientSort, setPatientSort] = useState<PatientSortKey>('date');
@@ -138,6 +164,48 @@ export function ReportsPage({ me }: { me: Me }) {
           </form>
         )}
 
+        {canExpenses && (
+          <form className="report-card" onSubmit={openExpenses}>
+            <header>
+              <span className="report-card-icon" aria-hidden><Receipt size={20} /></span>
+              <div>
+                <h2>طباعة سجل الصرفيات</h2>
+                <p>صرفيات شهر واحد على ورقة المؤسسة، كل نوع صرف مع قيوده ومجموعه</p>
+              </div>
+            </header>
+
+            <label className="report-field">
+              <span><CalendarDays size={15} aria-hidden /> الشهر</span>
+              <select value={expMonth} onChange={(event) => setExpMonth(Number(event.target.value))}>
+                {MONTH_NAMES.map((name, index) => (
+                  <option key={name} value={index} disabled={expYear === thisYear && index > now.getUTCMonth()}>{name}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="report-field">
+              <span><CalendarDays size={15} aria-hidden /> السنة</span>
+              <select value={expYear} onChange={(event) => { const y = Number(event.target.value); setExpYear(y); if (y === thisYear) setExpMonth((m) => Math.min(m, now.getUTCMonth())); }}>
+                {[thisYear, thisYear - 1, thisYear - 2].map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </label>
+
+            <label className="report-field">
+              <span><Layers size={15} aria-hidden /> نوع الصرف</span>
+              <select value={expCategory} onChange={(event) => setExpCategory(event.target.value as ExpenseCategory | '')}>
+                <option value="">كل الأنواع</option>
+                {CATEGORIES.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+              </select>
+            </label>
+
+            {expError && <p className="report-error" role="alert">{expError}</p>}
+
+            <button type="submit" className="btn primary report-go" disabled={expBusy}>
+              <Printer size={18} aria-hidden /> {expBusy ? 'جارٍ التحميل…' : 'معاينة وطباعة'}
+            </button>
+          </form>
+        )}
+
         {/* Patients Shared Register Report (moved from PatientsPage) */}
         <form className="report-card" onSubmit={openPatientsReport}>
           <header>
@@ -173,6 +241,17 @@ export function ReportsPage({ me }: { me: Me }) {
           currency={me.currency}
           canSend={me.role === 'admin'}
           onClose={() => setPrinting(false)}
+        />
+      )}
+
+      {expItems && (
+        <ExpensesPrintModal
+          title={`${MONTH_NAMES[expMonth]} ${expYear}`}
+          isMonth
+          items={expItems}
+          filterNote={expCategory ? `نوع الصرف: ${CATEGORIES.find((item) => item.id === expCategory)?.label ?? ''}` : ''}
+          currency={me.currency}
+          onClose={() => setExpItems(null)}
         />
       )}
 

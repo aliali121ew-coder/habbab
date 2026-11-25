@@ -683,3 +683,4 @@ a.whatsapp-row-btn { text-decoration: none; }
      stays as the button's label for screen readers). */
   .register .reg-col-action .whatsapp-row-btn .btn-label { display: none; }
 }
+.report-error { margin: 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); font-size: .8rem; }

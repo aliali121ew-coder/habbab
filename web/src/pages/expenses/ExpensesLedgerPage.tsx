@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   Archive, ArrowDown, ArrowRight, ArrowUp, CalendarDays, ChevronLeft, ChevronRight,
   Gift, HandHeart, Layers, Pencil, Plus, Scale, Sheet, TrendingDown, TrendingUp, Trophy, Users, Wallet,
@@ -126,18 +126,49 @@ interface SparkProps {
   label?: string;
   // Income going up is good; spending going up is not.
   goodUp?: boolean;
+  // A month to ring (the month page marks its own month).
+  mark?: number;
+  // Taller line with the peak marked, for the table.
+  rich?: boolean;
 }
 
-function Sparkline({ values, counts, currency, className, upTo = 11, label, goodUp = false }: SparkProps) {
-  const W = 120;
-  const H = 34;
+// A smooth line through the points that never swings past a neighbour (monotone cubic), so a
+// month with nothing stays on the baseline instead of dipping under it.
+function smoothPath(points: [number, number][]) {
+  if (points.length === 0) return '';
+  if (points.length === 1) return `M${points[0][0]},${points[0][1]}`;
+  const slopes = points.slice(0, -1).map(([x0, y0], i) => (points[i + 1][1] - y0) / (points[i + 1][0] - x0));
+  const tangents = points.map((_, i) => {
+    if (i === 0) return slopes[0];
+    if (i === points.length - 1) return slopes[i - 1];
+    return slopes[i - 1] * slopes[i] <= 0 ? 0 : (slopes[i - 1] + slopes[i]) / 2;
+  });
+  let d = `M${points[0][0].toFixed(1)},${points[0][1].toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i += 1) {
+    const [x0, y0] = points[i];
+    const [x1, y1] = points[i + 1];
+    const h = (x1 - x0) / 3;
+    d += ` C${(x0 + h).toFixed(1)},${(y0 + tangents[i] * h).toFixed(1)} ${(x1 - h).toFixed(1)},${(y1 - tangents[i + 1] * h).toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  return d;
+}
+
+function Sparkline({ values, counts, currency, className, upTo = 11, label, goodUp = false, mark, rich = false }: SparkProps) {
+  const W = rich ? 150 : 120;
+  const H = rich ? 44 : 34;
+  const TOP = rich ? 8 : 5;
+  const BASE = H - 4;
+  const gradient = useId();
   const [hover, setHover] = useState<{ month: number; left: number; top: number; color: string } | null>(null);
   const shown = values.slice(0, upTo + 1);
   const max = Math.max(...shown, 1);
-  const x = (month: number) => W - 4 - (month / 11) * (W - 8);
-  const y = (value: number) => H - 4 - (value / max) * (H - 9);
-  const points = shown.map((value, month) => `${x(month).toFixed(1)},${y(value).toFixed(1)}`).join(' ');
+  const x = (month: number) => W - 5 - (month / 11) * (W - 10);
+  const y = (value: number) => BASE - (value / max) * (BASE - TOP);
+  const points = shown.map((value, month) => [x(month), y(value)] as [number, number]);
+  const line = smoothPath(points);
   const last = shown.length - 1;
+  const peak = shown.indexOf(Math.max(...shown));
+  const hasData = shown.some((value) => value > 0);
 
   const pick = (event: React.PointerEvent<SVGSVGElement>) => {
     if (last < 0) return;
@@ -159,7 +190,7 @@ function Sparkline({ values, counts, currency, className, upTo = 11, label, good
   return (
     <>
       <svg
-        className={`yl-spark ${className ?? ''}${hover ? ' is-on' : ''}`}
+        className={`yl-spark${rich ? ' is-rich' : ''} ${className ?? ''}${hover ? ' is-on' : ''}`}
         viewBox={`0 0 ${W} ${H}`}
         role="img"
         aria-label={label ?? 'الحركة خلال السنة'}
@@ -167,14 +198,27 @@ function Sparkline({ values, counts, currency, className, upTo = 11, label, good
         onPointerDown={pick}
         onPointerLeave={() => setHover(null)}
       >
-        <line x1="2" x2={W - 2} y1={H - 4} y2={H - 4} className="yl-spark-base" />
+        <defs>
+          <linearGradient id={gradient} x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {rich && [TOP, (TOP + BASE) / 2].map((at) => <line key={at} x1="2" x2={W - 2} y1={at} y2={at} className="yl-spark-grid" />)}
+        <line x1="2" x2={W - 2} y1={BASE} y2={BASE} className="yl-spark-base" />
         {shown.length > 1 && (
-          <polygon className="yl-spark-area" points={`${x(0)},${H - 4} ${points} ${x(last)},${H - 4}`} />
+          <path className="yl-spark-fill" d={`${line} L${x(last).toFixed(1)},${BASE} L${x(0).toFixed(1)},${BASE} Z`} fill={`url(#${gradient})`} />
         )}
-        {hover && <line className="yl-spark-guide" x1={x(hover.month)} x2={x(hover.month)} y1="1" y2={H - 4} />}
-        <polyline className="yl-spark-line" points={points} />
-        {last >= 0 && !hover && <circle className="yl-spark-dot" cx={x(last)} cy={y(shown[last])} r="2.6" />}
-        {hover && <circle className="yl-spark-focus" cx={x(hover.month)} cy={y(shown[hover.month])} r="3.4" />}
+        {hover && <line className="yl-spark-guide" x1={x(hover.month)} x2={x(hover.month)} y1="1" y2={BASE} />}
+        <path className="yl-spark-line" d={line} />
+        {rich && hasData && !hover && peak !== last && (
+          <circle className="yl-spark-peak" cx={x(peak)} cy={y(shown[peak])} r="2.4" />
+        )}
+        {mark !== undefined && mark <= last && !hover && (
+          <circle className="yl-spark-mark" cx={x(mark)} cy={y(shown[mark])} r="4.2" />
+        )}
+        {last >= 0 && !hover && mark === undefined && <circle className="yl-spark-dot" cx={x(last)} cy={y(shown[last])} r={rich ? 3.2 : 2.6} />}
+        {hover && <circle className="yl-spark-focus" cx={x(hover.month)} cy={y(shown[hover.month])} r="3.6" />}
         <rect x="0" y="0" width={W} height={H} className="yl-spark-hit" />
       </svg>
       {hover && createPortal(
@@ -236,14 +280,20 @@ function Skeleton() {
 
 function YearView({ me, year }: { me: Me; year: number }) {
   const [ledger, setLedger] = useState<Ledger | null>(null);
+  const [lastLedger, setLastLedger] = useState<Ledger | null>(null);
   const [income, setIncome] = useState<number[] | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [sheet, money] = await Promise.all([api<Ledger>(`/expenses/ledger?year=${year}`), incomeOf(year)]);
+      const [sheet, money, last] = await Promise.all([
+        api<Ledger>(`/expenses/ledger?year=${year}`),
+        incomeOf(year),
+        api<Ledger>(`/expenses/ledger?year=${year - 1}`).catch(() => null),
+      ]);
       setLedger(sheet);
+      setLastLedger(last);
       setIncome(money);
     } catch (failure) {
       setError((failure as Error).message);
@@ -253,6 +303,7 @@ function YearView({ me, year }: { me: Me; year: number }) {
   useEffect(() => { setLedger(null); setIncome(null); void load(); }, [load]);
 
   const data = useMemo(() => (ledger ? shape(ledger) : null), [ledger]);
+  const lastTotals = useMemo(() => (lastLedger ? new Map(shape(lastLedger).categories.map((item) => [item.id, item.total])) : null), [lastLedger]);
   // The month the cards speak of: this month in this year, December in a past one.
   const focus = year === THIS_YEAR ? THIS_MONTH : 11;
   const activeMonths = data ? data.monthTotals.filter((value) => value > 0).length : 0;
@@ -365,9 +416,13 @@ function YearView({ me, year }: { me: Me; year: number }) {
                 rows={categories.map((item) => ({
                   id: item.id, label: item.label, icon: item.icon, count: item.count, total: item.total,
                   share: (item.total / data.total) * 100,
-                  trail: <Sparkline values={item.values} counts={item.counts} currency={me.currency} upTo={year === THIS_YEAR ? THIS_MONTH : 11} label={`${item.label} خلال السنة`} />,
+                  previous: lastTotals ? lastTotals.get(item.id) ?? 0 : null,
+                  trail: <Sparkline rich values={item.values} counts={item.counts} currency={me.currency} upTo={year === THIS_YEAR ? THIS_MONTH : 11} label={`${item.label} خلال السنة`} />,
                 }))}
-                total={data.total} count={data.count} trailHead="خلال السنة"
+                total={data.total} count={data.count}
+                previousHead={`سنة ${year - 1}`}
+                previousTotal={lastTotals ? [...lastTotals.values()].reduce((a, b) => a + b, 0) : null}
+                trailHead="الحركة خلال السنة"
               />
             )}
           </section>
@@ -384,34 +439,78 @@ interface CatRow {
   count: number;
   total: number;
   share: number;
+  // The same heading's amount in the period before (last year / last month); null when unknown.
+  previous: number | null;
   trail: ReactNode;
 }
 
-function CategoryTable({ rows, total, count, trailHead }: { rows: CatRow[]; total: number; count: number; trailHead: string }) {
+// The amount before and how far this period moved from it: red when spending rose, green when it fell.
+function Previous({ before, now }: { before: number | null; now: number }) {
+  if (before === null) return <span className="yl-prev-none">—</span>;
+  const delta = before > 0 ? ((now - before) / before) * 100 : null;
+  return (
+    <span className="yl-prev">
+      <bdi className="yl-prev-amount">{before > 0 ? formatNumber(before) : '—'}</bdi>
+      {delta === null
+        ? now > 0 && <span className="yl-delta new">جديد</span>
+        : Math.abs(delta) < 0.5
+          ? <span className="yl-delta flat">بلا تغيير</span>
+          : (
+            <span className={`yl-delta ${delta > 0 ? 'bad' : 'good'}`}>
+              {delta > 0 ? <ArrowUp size={11} strokeWidth={2.8} aria-label="ارتفاع" /> : <ArrowDown size={11} strokeWidth={2.8} aria-label="انخفاض" />}
+              <bdi>{formatPercent(Math.abs(delta))}</bdi>
+            </span>
+          )}
+    </span>
+  );
+}
+
+function CategoryTable({ rows, total, count, previousHead, previousTotal, trailHead }: {
+  rows: CatRow[];
+  total: number;
+  count: number;
+  previousHead: string;
+  previousTotal: number | null;
+  trailHead: string;
+}) {
   const maxShare = Math.max(...rows.map((row) => row.share), 0);
   return (
     <div className="yl-table-wrap">
       <table className="yl-table">
+        <colgroup>
+          <col className="yl-col-name" />
+          <col className="yl-col-count" />
+          <col className="yl-col-amount" />
+          <col className="yl-col-share" />
+          <col className="yl-col-prev" />
+          <col className="yl-col-trail" />
+        </colgroup>
         <thead>
           <tr>
             <th scope="col" className="yl-c-name">الصنف</th>
-            <th scope="col" className="yl-c-num">عدد المساعدات</th>
+            <th scope="col" className="yl-c-num yl-c-count">عدد المساعدات</th>
             <th scope="col" className="yl-c-num">المبلغ</th>
             <th scope="col" className="yl-c-share">النسبة</th>
+            <th scope="col" className="yl-c-prev">{previousHead}</th>
             <th scope="col" className="yl-c-trail">{trailHead}</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const Icon = row.icon;
             return (
-              <tr key={row.id}>
+              <tr key={row.id} className={index === 0 ? 'is-top' : undefined}>
                 <th scope="row" className="yl-c-name">
-                  <span className="yl-cat"><span className="yl-cat-icon" aria-hidden><Icon size={16} /></span>{row.label}</span>
+                  <span className="yl-cat">
+                    <span className="yl-rank" aria-hidden><bdi>{index + 1}</bdi></span>
+                    <span className="yl-cat-icon" aria-hidden><Icon size={16} /></span>
+                    <span className="yl-cat-label">{row.label}</span>
+                  </span>
                 </th>
-                <td className="yl-c-num" data-label="عدد المساعدات"><bdi>{formatNumber(row.count)}</bdi></td>
+                <td className="yl-c-num yl-c-count" data-label="عدد المساعدات"><span className="yl-count"><bdi>{formatNumber(row.count)}</bdi></span></td>
                 <td className="yl-c-num yl-c-amount" data-label="المبلغ"><bdi>{formatNumber(row.total)}</bdi></td>
                 <td className="yl-c-share" data-label="النسبة"><Share value={row.share} max={maxShare} /></td>
+                <td className="yl-c-prev" data-label={previousHead}><Previous before={row.previous} now={row.total} /></td>
                 <td className="yl-c-trail" data-label={trailHead}>{row.trail}</td>
               </tr>
             );
@@ -420,9 +519,10 @@ function CategoryTable({ rows, total, count, trailHead }: { rows: CatRow[]; tota
         <tfoot>
           <tr>
             <th scope="row" className="yl-c-name">المجموع</th>
-            <td className="yl-c-num" data-label="عدد المساعدات"><bdi>{formatNumber(count)}</bdi></td>
+            <td className="yl-c-num yl-c-count" data-label="عدد المساعدات"><bdi>{formatNumber(count)}</bdi></td>
             <td className="yl-c-num yl-c-amount" data-label="المبلغ"><bdi>{formatNumber(total)}</bdi></td>
             <td className="yl-c-share" data-label="النسبة"><bdi>100%</bdi></td>
+            <td className="yl-c-prev" data-label={previousHead}><Previous before={previousTotal} now={total} /></td>
             <td className="yl-c-trail" />
           </tr>
         </tfoot>
@@ -677,9 +777,23 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
                 rows={data.categories.map((item) => ({
                   id: item.id, label: item.label, icon: item.icon, count: item.count, total: item.total,
                   share: (item.total / data.total) * 100,
-                  trail: <Pill value={item.before === null ? null : item.before === 0 ? null : change(item.before, item.total)} goodUp={false} label="عن السابق" />,
+                  previous: item.before,
+                  trail: (
+                    <Sparkline
+                      rich
+                      values={data.year12.categories.find((row) => row.id === item.id)?.values ?? []}
+                      counts={data.year12.categories.find((row) => row.id === item.id)?.counts}
+                      currency={me.currency}
+                      upTo={year === THIS_YEAR ? THIS_MONTH : 11}
+                      mark={month}
+                      label={`${item.label} خلال ${year}`}
+                    />
+                  ),
                 }))}
-                total={data.total} count={data.count} trailHead="عن الشهر السابق"
+                total={data.total} count={data.count}
+                previousHead={month > 0 ? MONTH_NAMES[month - 1] : 'الشهر السابق'}
+                previousTotal={data.previous}
+                trailHead={`الحركة خلال ${year}`}
               />
             )}
           </section>

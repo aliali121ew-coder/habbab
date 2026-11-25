@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowDown, ArrowUp, ArrowUpDown, CalendarRange, ChevronDown, ChevronLeft, ChevronRight, Download, HeartPulse, Layers, Minus, Paperclip, Pencil,
-  Plus, Printer, Receipt, Search, Sheet, Trash2, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X, Archive, Gift,
+  Plus, Receipt, Search, Sheet, Trash2, TrendingDown, TrendingUp, Trophy, CalendarDays, User, FileText, BarChart3, X, Archive, Gift,
 } from 'lucide-react';
 import { BackToClose } from '../../components/useBackToClose';
 import { useIsPhone } from '../../useIsPhone';
@@ -17,7 +17,6 @@ import {
   type BeneficiaryStatus,
 } from './beneficiaryStatus';
 import { ExpenseDialog } from './ExpenseDialog';
-import { ExpensesPrintModal } from './ExpensesPrintModal';
 
 export interface ExpenseItem {
   id: number;
@@ -283,7 +282,6 @@ export function ExpensesPage({ me }: { me: Me }) {
   // Phones: a tapped entry opens its details first (the window has «تعديل القيد»).
   const [viewing, setViewing] = useState<ExpenseItem | null>(null);
   const isPhone = useIsPhone();
-  const [printing, setPrinting] = useState(false);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<ExpenseCategory | ''>('');
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'spent_on', desc: true });
@@ -513,10 +511,6 @@ export function ExpensesPage({ me }: { me: Me }) {
             <Sheet size={18} aria-hidden />
             <span className="btn-label">السجل</span>
           </a>
-          <button type="button" className="btn" aria-label="طباعة السجل" disabled={!sheet} onClick={() => setPrinting(true)}>
-            <Printer size={18} aria-hidden />
-            <span className="btn-label">طباعة السجل</span>
-          </button>
           <button type="button" className="btn primary" aria-label="إضافة صرف" onClick={() => setDialog({ entry: null })}>
             <Plus size={18} aria-hidden />
             <span className="btn-label">إضافة صرف</span>
@@ -736,17 +730,6 @@ export function ExpensesPage({ me }: { me: Me }) {
             )}
           </section>
         </>
-      )}
-
-      {printing && sheet && (
-        <ExpensesPrintModal
-          title={label}
-          isMonth={isMonth}
-          items={rows}
-          filterNote={[category && `نوع الصرف: ${categoryLabel(category)}`, query.trim() && `بحث: ${query.trim()}`].filter(Boolean).join(' · ')}
-          currency={me.currency}
-          onClose={() => setPrinting(false)}
-        />
       )}
 
       {viewing && (

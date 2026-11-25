@@ -506,3 +506,80 @@ a.yl-month:hover { transform: translateY(-1px); }
 }
 .yl-donut { --donut-mix: #fff; }
 :root[data-theme="dark"] .yl-donut { --donut-mix: var(--ink-2); }
+
+/* ── Heading table v2: fixed column widths, rank, previous amount, richer lines ─────── */
+.yl-table { table-layout: fixed; min-width: 980px; }
+.yl-col-name { width: 26%; }
+.yl-col-count { width: 11%; }
+.yl-col-amount { width: 13%; }
+.yl-col-share { width: 17%; }
+.yl-col-prev { width: 15%; }
+.yl-col-trail { width: 18%; }
+.yl-table th, .yl-table td { padding: 12px 18px; }
+.yl-table thead th { padding-block: 12px; letter-spacing: 0; font-size: .74rem; }
+.yl-table .yl-c-num, .yl-table .yl-c-count { width: auto; text-align: center; }
+.yl-table .yl-c-amount { text-align: end; font-size: .95rem; }
+.yl-table thead .yl-c-num:not(.yl-c-count) { text-align: end; }
+.yl-table .yl-c-share, .yl-table .yl-c-trail { width: auto; min-width: 0; }
+.yl-table .yl-c-prev { text-align: end; }
+.yl-table .yl-c-trail { text-align: center; }
+.yl-table tbody tr { position: relative; }
+.yl-table tbody tr:nth-child(even) { background: color-mix(in srgb, var(--yl-theme) 2.5%, transparent); }
+.yl-table tbody tr:hover { background: color-mix(in srgb, var(--yl-theme) 6%, var(--surface)); }
+.yl-table tbody tr:hover .yl-c-name { box-shadow: inset -3px 0 0 var(--yl-theme); }
+.yl-table tbody tr.is-top .yl-rank { background: var(--yl-theme); color: #fff; }
+
+.yl-cat { gap: 10px; min-width: 0; }
+.yl-cat-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yl-rank { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 7px; background: var(--surface-2); color: var(--ink-3); font-size: .68rem; font-weight: 700; }
+.yl-count { display: inline-grid; place-items: center; min-width: 34px; height: 26px; padding-inline: 8px; border-radius: 99px; background: var(--surface-2); color: var(--ink); font-size: .82rem; font-weight: 700; }
+
+.yl-share-bar { height: 8px; }
+.yl-share-bar i { background: linear-gradient(90deg, color-mix(in srgb, var(--yl-theme) 60%, var(--surface)), var(--yl-theme)); }
+:root[dir="rtl"] .yl-share-bar i, [dir="rtl"] .yl-share-bar i { background: linear-gradient(270deg, color-mix(in srgb, var(--yl-theme) 60%, var(--surface)), var(--yl-theme)); }
+
+.yl-prev { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.yl-prev-amount { color: var(--ink-2); font-size: .86rem; font-weight: 600; }
+.yl-prev-none { color: var(--ink-3); }
+.yl-delta { display: inline-flex; align-items: center; gap: 2px; padding: 1px 7px; border-radius: 99px; font-size: .68rem; font-weight: 700; white-space: nowrap; }
+.yl-delta.bad { background: color-mix(in srgb, var(--danger) 11%, transparent); color: var(--danger); }
+.yl-delta.good { background: color-mix(in srgb, var(--paid) 12%, transparent); color: var(--paid); }
+.yl-delta.flat { background: var(--surface-2); color: var(--ink-3); }
+.yl-delta.new { background: color-mix(in srgb, var(--yl-theme) 12%, transparent); color: var(--yl-theme); }
+
+/* Richer table line. */
+.yl-spark.is-rich { width: 100%; max-width: 170px; height: 46px; margin-inline: auto; }
+.yl-spark-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 3; opacity: .7; vector-effect: non-scaling-stroke; }
+.yl-spark-fill { stroke: none; }
+.yl-spark.is-on .yl-spark-fill { opacity: 1; }
+.yl-spark-line { stroke-width: 2.2; }
+.yl-spark-peak { fill: var(--surface); stroke: currentColor; stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.yl-spark-mark { fill: currentColor; stroke: var(--surface); stroke-width: 2.4; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 4px color-mix(in srgb, currentColor 55%, transparent)); }
+
+.yl-table tfoot th, .yl-table tfoot td { padding-block: 14px; border-top: 2px solid color-mix(in srgb, var(--yl-theme) 30%, var(--line)); font-size: .95rem; }
+.yl-table tfoot .yl-c-count bdi { font-weight: 800; }
+
+@media (max-width: 767.98px) {
+  .yl-table { min-width: 0; table-layout: auto; }
+  .yl-table th, .yl-table td, .yl-table tfoot th, .yl-table tfoot td { padding: 0; border-top: 0; }
+  .yl-table tfoot tr { border-top: 2px solid color-mix(in srgb, var(--yl-theme) 30%, var(--line)); }
+  .yl-table colgroup { display: none; }
+  .yl-table tr {
+    grid-template-areas: "name amount" "share share" "meta meta" "trail trail";
+    gap: 8px 10px;
+  }
+  .yl-table tbody tr:hover .yl-c-name { box-shadow: none; }
+  .yl-table .yl-c-num.yl-c-count { grid-area: meta; justify-self: start; align-self: center; text-align: start; }
+  .yl-table .yl-c-count .yl-count { display: inline-flex; align-items: center; gap: 3px; height: 22px; min-width: 0; padding-inline: 8px; font-size: .72rem; white-space: nowrap; }
+  .yl-table .yl-c-count .yl-count::after { content: ' مساعدة'; font-weight: 500; color: var(--ink-3); }
+  .yl-table .yl-c-num:not(.yl-c-amount)::before { content: none; }
+  .yl-table .yl-c-prev { grid-area: meta; justify-self: end; align-self: center; }
+  .yl-table .yl-c-prev .yl-prev { flex-direction: row-reverse; align-items: center; gap: 6px; }
+  .yl-table .yl-c-prev .yl-prev::after { content: 'السابق'; order: 3; color: var(--ink-3); font-size: .66rem; }
+  .yl-table .yl-c-prev .yl-prev-amount { font-size: .76rem; }
+  .yl-table .yl-c-trail { grid-area: trail; justify-self: stretch; }
+  .yl-table .yl-c-trail .yl-spark.is-rich { width: 100%; max-width: none; height: 40px; }
+  .yl-table tfoot tr { grid-template-areas: "name amount" "meta meta"; }
+  .yl-table tfoot .yl-c-count .yl-count::after { content: none; }
+  .yl-rank { width: 20px; height: 20px; font-size: .62rem; }
+}
