@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
-  Banknote, Building2, CalendarDays, Check, Gift, Globe2, Hash, Minus, Package, Phone, Plus, StickyNote, Trash2, UserRound, X,
+  Banknote, Building2, CalendarDays, Check, Gift, Globe2, Hash, Minus, Package, Phone, Plus, StickyNote, Trash2, UserRound, UsersRound, X,
 } from 'lucide-react';
 import { api } from '../../api';
 import { formatNumber, today } from '../../format';
@@ -55,6 +55,14 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // The foundation's delegates, loaded the first time «من داخل المؤسسة» is chosen.
+  const [delegates, setDelegates] = useState<{ id: number; full_name: string; phone: string | null }[] | null>(null);
+  useEffect(() => {
+    if (type !== 'internal' || delegates !== null) return;
+    api<{ delegates: { id: number; full_name: string; phone: string | null }[] }>('/donations/delegates')
+      .then((result) => setDelegates(result.delegates))
+      .catch(() => setDelegates([]));
+  }, [type, delegates]);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -195,6 +203,31 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
           {/* ── Who gave it ─────────────────────────── */}
           <section className="dg-section" aria-labelledby="dg-who">
             <h3 id="dg-who"><span>2</span> من المتبرع؟</h3>
+            <div className="dg-switch" role="radiogroup" aria-label="صفة المتبرع">
+              <button type="button" role="radio" aria-checked={type === 'external'} onClick={() => setType('external')}><Globe2 size={16} aria-hidden /> من خارج المؤسسة</button>
+              <button type="button" role="radio" aria-checked={type === 'internal'} onClick={() => setType('internal')}><Building2 size={16} aria-hidden /> من داخل المؤسسة</button>
+            </div>
+            {type === 'internal' && (
+              <label className="dg-field">
+                <span className="dg-label">اختر من المندوبين <small>أو اكتب اسم عضو آخر أدناه</small></span>
+                <span className="dg-input dg-select">
+                  <UsersRound size={17} aria-hidden />
+                  <select
+                    value={delegates?.find((person) => person.full_name === name)?.id ?? ''}
+                    onChange={(event) => {
+                      const person = delegates?.find((row) => row.id === Number(event.target.value));
+                      if (!person) return;
+                      setName(person.full_name);
+                      if (person.phone && !phone) setPhone(person.phone);
+                    }}
+                    disabled={!delegates}
+                  >
+                    <option value="">{delegates === null ? 'جارٍ تحميل المندوبين…' : delegates.length ? `المندوبون (${delegates.length})` : 'لا مندوبين مسجّلين'}</option>
+                    {(delegates ?? []).map((person) => <option key={person.id} value={person.id}>{person.full_name}</option>)}
+                  </select>
+                </span>
+              </label>
+            )}
             <div className="dg-grid">
               <label className="dg-field">
                 <span className="dg-label">اسم المتبرع</span>
@@ -205,10 +238,6 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
                 <span className="dg-label">الهاتف <small>اختياري</small></span>
                 <span className="dg-input"><Phone size={17} aria-hidden /><input value={phone} onChange={(event) => setPhone(event.target.value)} inputMode="tel" maxLength={30} dir="ltr" placeholder="07xx xxx xxxx" /></span>
               </label>
-            </div>
-            <div className="dg-switch" role="radiogroup" aria-label="صفة المتبرع">
-              <button type="button" role="radio" aria-checked={type === 'external'} onClick={() => setType('external')}><Globe2 size={16} aria-hidden /> من خارج المؤسسة</button>
-              <button type="button" role="radio" aria-checked={type === 'internal'} onClick={() => setType('internal')}><Building2 size={16} aria-hidden /> من داخل المؤسسة</button>
             </div>
           </section>
 

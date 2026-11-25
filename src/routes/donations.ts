@@ -86,6 +86,13 @@ donations.get('/monthly', async (c) => {
   return c.json({ year, months, donors });
 });
 
+// The foundation's active delegates, offered as donors «من داخل المؤسسة».
+donations.get('/delegates', async (c) => {
+  const delegates = await all<{ id: number; full_name: string; phone: string | null }>(c,
+    "SELECT id, full_name, phone FROM users WHERE foundation_id = ? AND role = 'delegate' AND active = 1 ORDER BY full_name", fid(c));
+  return c.json({ delegates });
+});
+
 // One donor's file: every gift they ever gave (by name, as the register keys donors), plus where
 // they stand in the year — their rank among cash donors and their share of the year's cash.
 donations.get('/donor', async (c) => {

@@ -155,11 +155,11 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
         {/* ── Purposes «wallet» ─────────────────────────── */}
         <section className="dd-card dd-wallet" aria-labelledby="dd-wallet-title">
           <header className="dd-section-head">
-            <div><h2 id="dd-wallet-title">محفظة الأغراض</h2><small>{periodLabel} · <bdi>{formatNumber(data.inPeriod.length)}</bdi> تبرع</small></div>
+            <div><h2 id="dd-wallet-title">تفاصيل التبرع</h2><small>{periodLabel} · <bdi>{formatNumber(data.inPeriod.length)}</bdi> تبرع</small></div>
             <button type="button" className="dd-outline" onClick={onAdd}><Plus size={15} aria-hidden /> إضافة</button>
           </header>
           {data.purposes.length === 0 ? <p className="dd-empty">لا تبرعات في {periodLabel}.</p> : (
-            // Every purpose in one sideways strip, so a new one never pushes an older one out.
+            // Every purpose stays: two columns, and the panel scrolls down when there are more than four.
             <ul className="dd-purposes" aria-label="الأغراض">
               {data.purposes.map(([name, row], at) => (
                 <li key={name}>
