@@ -231,10 +231,27 @@ export function Shell({ me, onSignedOut, children }: Props) {
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
+  const [barHidden, setBarHidden] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const { theme, toggle, palette, setPalette } = useTheme();
   const route = useRoute();
   const brand = useBranding();
+
+  useEffect(() => { setBarHidden(false); }, [route]);
+
+  useEffect(() => {
+    let lastY = Math.max(0, window.scrollY);
+    const onScroll = () => {
+      const y = Math.max(0, window.scrollY);
+      const delta = y - lastY;
+      if (y < 24) setBarHidden(false);
+      else if (delta > 8 && y > 64) setBarHidden(true);
+      else if (delta < -6) setBarHidden(false);
+      lastY = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   useEffect(() => {
     if (!accountOpen) return undefined;
@@ -389,7 +406,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
       {pwOpen && <PasswordModal name={me.full_name} onClose={() => setPwOpen(false)} />}
 
       <div className="stage">
-        <header className="topbar">
+        <header className={`topbar${barHidden && !open ? ' is-hidden' : ''}`}>
           <button type="button" className="icon-btn menu-btn" aria-label="فتح القائمة" onClick={() => setOpen(true)}>
             <Menu size={22} aria-hidden />
           </button>
