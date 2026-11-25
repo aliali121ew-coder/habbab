@@ -38,8 +38,8 @@ try {
   });
 })();
 
-// The browser / installed-app title bar takes the top bar's colour (the --surface token) for the
-// current palette and light or dark mode. Called again whenever either changes.
+// The browser / installed-app status bar takes the top bar's exact light/dark colour so the
+// OS always picks high-contrast clock & battery icons (dark icons in light mode, white in dark).
 window.syncThemeColor = function () {
   var root = document.documentElement;
   var dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -50,25 +50,10 @@ window.syncThemeColor = function () {
   };
   var pair = colours[root.dataset.palette] || colours.blue;
   var colour = pair[dark ? 1 : 0];
-  // The page colour shows at the top (the background gradient fades into it), so the
-  // status bar takes that colour once the stylesheet has loaded.
-  {
-    // The page-top colour may be a color-mix() formula; let the browser resolve it, then write hex.
-    var probe = document.createElement('i');
-    probe.style.cssText = 'position:absolute;visibility:hidden;color:var(--page-top, var(--paper))';
-    root.appendChild(probe);
-    var resolved = getComputedStyle(probe).color;
-    probe.remove();
-    var nums = (resolved.match(/[\d.]+/g) || []).map(Number);
-    if (nums.length >= 3) {
-      var scale = resolved.indexOf('color(') === 0 ? 255 : 1;
-      colour = '#' + nums.slice(0, 3).map(function (n) {
-        return ('0' + Math.round(n * scale).toString(16)).slice(-2);
-      }).join('');
-    }
-  }
   var meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', colour);
+  var appleBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+  if (appleBar) appleBar.setAttribute('content', dark ? 'black-translucent' : 'default');
 };
 window.syncThemeColor();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', window.syncThemeColor);
