@@ -583,3 +583,126 @@ a.yl-month:hover { transform: translateY(-1px); }
   .yl-table tfoot .yl-c-count .yl-count::after { content: none; }
   .yl-rank { width: 20px; height: 20px; font-size: .62rem; }
 }
+
+/* ── Year page: the twelve months as one connected strip ───────────────────────
+   The strip sizes itself by its own width (container query), not the screen's, so with the side
+   menu open the amounts still fit: 12 across, then 6, then 4. */
+.yl-panel:has(.yl-strip) { container-type: inline-size; }
+.yl-strip {
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0;
+  margin: 14px 20px 18px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.yl-strip li { min-width: 0; }
+.yl-strip li + li { border-inline-start: 1px solid var(--line); }
+.yl-strip .yl-month {
+  position: relative;
+  gap: 4px;
+  min-height: 0;
+  padding: 11px 6px 13px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  align-items: center;
+}
+.yl-strip a.yl-month:hover, .yl-strip a.yl-month:focus-visible { transform: none; background: var(--yl-soft); }
+.yl-strip .yl-month.is-now { box-shadow: none; background: color-mix(in srgb, var(--yl-theme) 9%, var(--surface)); }
+.yl-strip .yl-month.is-now .yl-month-name { color: var(--yl-theme); font-weight: 700; }
+.yl-strip .yl-month-name { max-width: 100%; overflow: hidden; color: var(--ink-3); font-size: .76rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.yl-strip .yl-month-sum { max-width: 100%; color: var(--ink); font-size: clamp(.82rem, 1.05cqi, 1rem); font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
+.yl-strip .yl-month.is-future .yl-month-sum { color: var(--ink-3); font-weight: 600; }
+.yl-month-fill { position: absolute; inset: auto 0 0 0; height: 3px; background: transparent; }
+.yl-month-fill i { display: block; height: 100%; margin-inline: auto; border-radius: 3px 3px 0 0; background: var(--yl-theme); opacity: .75; }
+.yl-strip .yl-month.is-now .yl-month-fill i { opacity: 1; }
+@container (max-width: 1180px) {
+  .yl-strip { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .yl-strip li:nth-child(6n + 1) { border-inline-start: 0; }
+  .yl-strip li:nth-child(n + 7) { border-top: 1px solid var(--line); }
+  .yl-strip .yl-month-sum { font-size: .95rem; }
+}
+@container (max-width: 560px) {
+  .yl-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 10px 12px 12px; border-radius: 12px; }
+  .yl-strip li:nth-child(6n + 1) { border-inline-start: 1px solid var(--line); }
+  .yl-strip li:nth-child(4n + 1) { border-inline-start: 0; }
+  .yl-strip li:nth-child(n + 5) { border-top: 1px solid var(--line); }
+  .yl-strip .yl-month { padding: 9px 3px 11px; }
+  .yl-strip .yl-month-name { font-size: .66rem; }
+  .yl-strip .yl-month-sum { font-size: .74rem; }
+}
+
+@container (max-width: 330px) {
+  .yl-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .yl-strip li:nth-child(4n + 1) { border-inline-start: 1px solid var(--line); }
+  .yl-strip li:nth-child(3n + 1) { border-inline-start: 0; }
+  .yl-strip li:nth-child(n + 4) { border-top: 1px solid var(--line); }
+  .yl-strip .yl-month-sum { font-size: .8rem; }
+}
+
+/* The average chip sits on the side away from the axis figures. */
+.yl-avg em { inset-inline-end: auto; inset-inline-start: 72px; }
+.yl-foot-link { color: var(--ink-3); text-decoration: none; }
+.yl-foot-link:hover { color: var(--yl-theme); }
+
+/* ── «الكل»: three series side by side ─────────────────────────────────────── */
+.yl-chartcard { --c-spent: var(--yl-theme); --c-income: var(--yl-in); --c-boxes: var(--yl-box); }
+.yl-legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 14px 20px 0; padding: 0; list-style: none; }
+.yl-legend li { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink-2); font-size: .78rem; font-weight: 600; }
+.yl-legend li i { width: 10px; height: 10px; border-radius: 3px; }
+.yl-legend li b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.yl-legend .spent i { background: var(--c-spent); }
+.yl-legend .income i { background: var(--c-income); }
+.yl-legend .boxes i { background: var(--c-boxes); }
+.yl-legend.is-stacked { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; margin: 0; }
+.yl-legend.is-stacked li { flex-direction: column; gap: 2px; padding: 8px 4px; border-radius: 12px; font-size: .68rem; }
+.yl-legend.is-stacked li b { font-size: .8rem; }
+
+.yl-cbars .yl-mbar-row { gap: 8px; }
+.yl-cgroup-cols { display: flex; align-items: flex-end; justify-content: center; gap: 3px; width: 100%; height: 100%; }
+.yl-cgroup-cols i {
+  display: block;
+  flex: 0 1 12px;
+  min-width: 3px;
+  border-radius: 4px 4px 1px 1px;
+  opacity: .55;
+  transform-origin: bottom;
+  animation: yl-grow .6s cubic-bezier(.2, .9, .3, 1) backwards;
+  transition: opacity .2s;
+}
+.yl-cgroup-cols i.spent { background: var(--c-spent); }
+.yl-cgroup-cols i.income { background: var(--c-income); }
+.yl-cgroup-cols i.boxes { background: var(--c-boxes); }
+.is-current .yl-cgroup-cols i, .yl-cgroup.on .yl-cgroup-cols i { opacity: 1; }
+.is-current .yl-cgroup { background: color-mix(in srgb, var(--yl-theme) 6%, transparent); }
+.yl-tip-row { display: flex; align-items: center; gap: 6px; }
+.yl-tip-row i { width: 8px; height: 8px; border-radius: 2px; }
+.yl-tip-row bdi { margin-inline-start: auto; padding-inline-start: 10px; color: var(--ink); font-weight: 700; }
+.yl-tip-row.spent i { background: var(--c-spent); }
+.yl-tip-row.income i { background: var(--c-income); }
+.yl-tip-row.boxes i { background: var(--c-boxes); }
+.yl-tip-net { margin-top: 3px; padding-top: 4px; border-top: 1px solid var(--line); font-weight: 700; }
+.yl-tip-net.good { color: var(--paid); }
+.yl-tip-net.bad { color: var(--danger); }
+
+/* Phone rings. */
+.yl-rings { rotate: -90deg; }
+.yl-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 13; }
+.yl-ring-arc { fill: none; stroke-width: 13; stroke-linecap: round; animation: yl-ring 1s cubic-bezier(.2, .9, .3, 1) backwards; }
+.yl-rings .spent .yl-ring-arc { stroke: var(--c-spent); }
+.yl-rings .income .yl-ring-arc { stroke: var(--c-income); }
+.yl-rings .boxes .yl-ring-arc { stroke: var(--c-boxes); }
+@keyframes yl-ring { from { stroke-dasharray: 0 var(--len); } }
+.yl-rings-centre b { font-size: 1rem; }
+.yl-rings-centre b.good { color: var(--paid); }
+.yl-rings-centre b.bad { color: var(--danger); }
+.yl-donut-arc.boxes { stroke: var(--yl-box) !important; stroke-linecap: round; }
+@media (prefers-reduced-motion: reduce) { .yl-cgroup-cols i, .yl-ring-arc { animation: none; } }
+@media (max-width: 767.98px) {
+  .yl-series .yl-slide-btn { font-size: .74rem; gap: 4px; padding-inline: 4px; }
+  .yl-series .yl-slide-btn svg { display: none; }
+}
+.yl-chart-grid .yl-avg em bdi { position: static; translate: none; padding: 0; background: none; color: inherit; font-size: inherit; }

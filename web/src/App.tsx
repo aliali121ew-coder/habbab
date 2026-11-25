@@ -26,6 +26,8 @@ const pages = {
   home: () => import('./pages/home/HomePage'),
   expenses: () => import('./pages/expenses/ExpensesPage'),
   ledger: () => import('./pages/expenses/ExpensesLedgerPage'),
+  boxes: () => import('./pages/boxes/BoxesPage'),
+  box: () => import('./pages/boxes/BoxDetailPage'),
   families: () => import('./pages/FamiliesPage'),
   family: () => import('./pages/FamilyDetailPage'),
   patient: () => import('./pages/patients/PatientDetailPage'),
@@ -48,6 +50,8 @@ const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.Del
 const ComingSoonPage = lazy(() => pages.soon().then((m) => ({ default: m.ComingSoonPage })));
 const ReportsPage = lazy(() => pages.reports().then((m) => ({ default: m.ReportsPage })));
 const HomePage = lazy(() => pages.home().then((m) => ({ default: m.HomePage })));
+const BoxesPage = lazy(() => pages.boxes().then((m) => ({ default: m.BoxesPage })));
+const BoxDetailPage = lazy(() => pages.box().then((m) => ({ default: m.BoxDetailPage })));
 const ExpensesPage = lazy(() => pages.expenses().then((m) => ({ default: m.ExpensesPage })));
 const ExpensesLedgerPage = lazy(() => pages.ledger().then((m) => ({ default: m.ExpensesLedgerPage })));
 const FamiliesPage = lazy(() => pages.families().then((m) => ({ default: m.FamiliesPage })));
@@ -173,6 +177,10 @@ export function App() {
                 ? <PatientsPage me={me} />
                 : route === 'expenses-ledger'
                   ? <ExpensesLedgerPage me={me} />
+                  : route === 'boxes'
+                  ? <BoxesPage me={me} />
+                  : route === 'box-detail'
+                  ? <BoxDetailPage me={me} />
                   : route === 'expenses' || me.role === 'accountant'
                     ? <ExpensesPage me={me} />
                     : typeof route === 'number'

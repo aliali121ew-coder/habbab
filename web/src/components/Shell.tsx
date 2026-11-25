@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
-  Building2, Check, ChevronLeft, ChevronUp, HeartHandshake, KeyRound, MapPinned, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, Sun, User, Users, UsersRound, X, type LucideIcon,
+  Archive, Building2, Check, ChevronLeft, ChevronUp, HeartHandshake, KeyRound, MapPinned, HeartPulse, LayoutDashboard, LogOut, Menu, Moon, Palette as PaletteIcon, Receipt, Sun, User, Users, UsersRound, X, type LucideIcon,
 } from 'lucide-react';
 import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
@@ -37,6 +37,7 @@ const NAV: NavItem[] = [
   // The manager: every family; a delegate: their own families only (the server sends only those).
   { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, href: '#/families', roles: ['admin', 'delegate'], group: 'main', feature: 'families' },
   { id: 'expenses', label: 'الحركات المالية', icon: Receipt, href: '#/expenses', roles: ['admin', 'accountant'], group: 'records', feature: 'expenses' },
+  { id: 'boxes', label: 'صناديق الصدقات', icon: Archive, href: '#/boxes', roles: ['admin', 'accountant'], group: 'records', feature: 'expenses' },
   // A delegate sees the patients they follow (through their families, or given to them).
   { id: 'patients', label: 'المرضى', icon: HeartPulse, href: '#/patients', roles: ['admin', 'health', 'delegate'], group: 'records', feature: 'patients' },
   // A delegate's requests on the map, with the road route to each.
@@ -140,6 +141,7 @@ function pageTitle(route: ReturnType<typeof useRoute>, me: Me): string {
   if (crumbs) return crumbs[crumbs.length - 1].label;
   if (typeof route === 'number' || (typeof route === 'string' && route.startsWith('list:'))) return 'سجل المشتركين';
   if (route === 'expenses' || route === 'expenses-ledger') return 'الحركات المالية';
+  if (route === 'boxes' || route === 'box-detail') return 'صناديق الصدقات';
   if (me.role === 'delegate') return 'سجل المشتركين';
   if (me.role === 'accountant') return 'الحركات المالية';
   if (me.role === 'health') return 'المرضى';
@@ -345,6 +347,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
           {items.map((item) => {
             const onFamilies = route === 'families' || route === 'family-detail';
             const onExpenses = route === 'expenses' || route === 'expenses-ledger';
+            const onBoxes = route === 'boxes' || route === 'box-detail';
             const onPatients = route === 'patients' || route === 'patient-detail';
             const isActive = item.id.startsWith('soon:')
               ? route === item.id
@@ -352,8 +355,10 @@ export function Shell({ me, onSignedOut, children }: Props) {
               ? route === 'home'
               : item.id === 'families'
               ? onFamilies
+              : item.id === 'boxes'
+              ? onBoxes
               : item.id === 'expenses'
-                ? onExpenses || (me.role === 'accountant' && !onFamilies)
+                ? onExpenses || (me.role === 'accountant' && !onFamilies && !onBoxes)
                 : item.id === 'patients'
                   ? onPatients || (me.role === 'health' && !onFamilies)
                   : item.id === 'subscribers'

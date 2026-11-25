@@ -54,6 +54,12 @@ function shape(ledger: Ledger) {
   return { categories, monthTotals, monthCounts, total: sum(monthTotals), count: sum(monthCounts) };
 }
 
+// The charity boxes' income per month (صناديق الصدقات); null when it cannot be read.
+async function boxesOf(year: number): Promise<number[] | null> {
+  const result = await api<{ months: number[] }>(`/boxes/monthly?year=${year}`).catch(() => null);
+  return result?.months ?? null;
+}
+
 async function incomeOf(year: number): Promise<number[] | null> {
   const overview = await api<Overview>(`/collections/overview?year=${year}&delegates=0`).catch(() => null);
   if (!overview) return null;
@@ -282,19 +288,22 @@ function YearView({ me, year }: { me: Me; year: number }) {
   const [ledger, setLedger] = useState<Ledger | null>(null);
   const [lastLedger, setLastLedger] = useState<Ledger | null>(null);
   const [income, setIncome] = useState<number[] | null>(null);
+  const [boxIncome, setBoxIncome] = useState<number[] | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [sheet, money, last] = await Promise.all([
+      const [sheet, money, last, boxMoney] = await Promise.all([
         api<Ledger>(`/expenses/ledger?year=${year}`),
         incomeOf(year),
         api<Ledger>(`/expenses/ledger?year=${year - 1}`).catch(() => null),
+        boxesOf(year),
       ]);
       setLedger(sheet);
       setLastLedger(last);
       setIncome(money);
+      setBoxIncome(boxMoney);
     } catch (failure) {
       setError((failure as Error).message);
     }
@@ -349,9 +358,13 @@ function YearView({ me, year }: { me: Me; year: number }) {
             />
             <Kpi
               label="وارد الصناديق" icon={Archive} tone="box"
-              value={<span className="yl-none">—</span>}
-              // No charity-box records exist yet; nothing is made up here.
-              foot={<span className="yl-foot-label">لم تُسجَّل صناديق بعد</span>}
+              value={boxIncome && boxIncome.some((value) => value > 0) ? <bdi>{formatNumber(boxIncome[focus])}</bdi> : <span className="yl-none">—</span>}
+              unit={boxIncome && boxIncome.some((value) => value > 0) ? me.currency : undefined}
+              foot={boxIncome && boxIncome.some((value) => value > 0)
+                ? <><a className="yl-foot-label yl-foot-link" href="#/boxes">{MONTH_NAMES[focus]} · كل الصناديق</a><Pill value={focus > 0 ? change(boxIncome[focus - 1], boxIncome[focus]) : null} goodUp /></>
+                : <a className="yl-foot-label yl-foot-link" href="#/boxes">لم تُسجَّل صناديق بعد</a>}
+              spark={boxIncome && boxIncome.some((value) => value > 0) ? boxIncome.slice(0, focus + 1) : undefined}
+              currency={me.currency}
             />
             <Kpi
               label="التبرعات المالية" icon={Gift} tone="gift"
@@ -370,30 +383,26 @@ function YearView({ me, year }: { me: Me; year: number }) {
             <header className="yl-panel-head">
               <div>
                 <h2 id="yl-months"><CalendarDays size={18} aria-hidden /> أشهر <bdi>{year}</bdi></h2>
-                <p>اضغط على الشهر لعرض تفاصيله</p>
+                <p>اضغط على الشهر لفتح صفحته · المبالغ بالـ{me.currency}</p>
               </div>
             </header>
-            <ol className="yl-months">
+            <ol className="yl-months yl-strip">
               {MONTH_NAMES.map((name, month) => {
                 const future = isFuture(year, month);
                 const total = data.monthTotals[month];
+                // One cell of a connected strip: the month and its amount, a thin fill for its size.
                 const body = (
                   <>
-                    <span className="yl-month-top">
-                      <span className="yl-month-num"><bdi>{month + 1}</bdi></span>
-                      <span className="yl-month-name">{name}</span>
-                      {!future && <ChevronLeft size={15} className="yl-month-go" aria-hidden />}
-                    </span>
+                    <span className="yl-month-name">{name}</span>
                     <span className="yl-month-sum">{future ? '—' : <bdi>{formatNumber(total)}</bdi>}</span>
-                    <span className="yl-month-meta">{future ? 'لم يبدأ' : <><bdi>{formatNumber(data.monthCounts[month])}</bdi> مساعدة</>}</span>
-                    <span className="yl-month-bar"><i style={{ inlineSize: `${future ? 0 : (total / monthMax) * 100}%` }} /></span>
+                    <span className="yl-month-fill" aria-hidden><i style={{ inlineSize: `${future ? 0 : (total / monthMax) * 100}%` }} /></span>
                   </>
                 );
                 return (
                   <li key={name}>
                     {future
                       ? <span className="yl-month is-future" aria-disabled="true">{body}</span>
-                      : <a className={`yl-month${month === focus ? ' is-now' : ''}`} href={ledgerHref(year, month)}>{body}</a>}
+                      : <a className={`yl-month${month === focus ? ' is-now' : ''}`} href={ledgerHref(year, month)} title={`${name}: ${formatNumber(total)} ${me.currency} · ${formatNumber(data.monthCounts[month])} مساعدة`}>{body}</a>}
                   </li>
                 );
               })}
@@ -538,6 +547,7 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
   const [ledger, setLedger] = useState<Ledger | null>(null);
   const [income, setIncome] = useState<number[] | null>(null);
   const [lastYear, setLastYear] = useState<{ spent: number[]; income: number[] } | null>(null);
+  const [boxIncome, setBoxIncome] = useState<number[] | null>(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
   const [dialog, setDialog] = useState<{ entry: ExpenseItem | null } | null>(null);
@@ -555,6 +565,7 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
         api<Ledger>(`/expenses/ledger?year=${year - 1}`).catch(() => null),
         incomeOf(year - 1),
       ]);
+      void boxesOf(year).then(setBoxIncome);
       setSheet(items);
       setLedger(yearSheet);
       setIncome(money);
@@ -721,7 +732,7 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
                   <h2 id="yl-entries-title"><Pencil size={18} aria-hidden /> قيود {MONTH_NAMES[month]}</h2>
                   <p>اضغط على أي قيد لتعديله · أي تعديل يغيّر رصيد هذا الشهر وكل الأشهر بعده</p>
                 </div>
-                <button type="button" className="btn btn-primary yl-link" onClick={() => setDialog({ entry: null })}>
+                <button type="button" className="btn primary yl-link" onClick={() => setDialog({ entry: null })}>
                   <Plus size={16} aria-hidden /> إضافة قيد
                 </button>
               </header>
@@ -758,6 +769,7 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
             categories={data.year12.categories}
             monthTotals={data.year12.monthTotals}
             income={income}
+            boxes={boxIncome}
             currency={me.currency}
             isFuture={isFuture}
           />

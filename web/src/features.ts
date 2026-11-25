@@ -26,7 +26,7 @@ export const SOON_FEATURE: Record<string, Feature> = {
 export function routeFeature(route: Route): Feature | undefined {
   if (route === 'families' || route === 'family-detail') return 'families';
   if (route === 'patients' || route === 'patient-detail') return 'patients';
-  if (route === 'expenses' || route === 'expenses-ledger') return 'expenses';
+  if (route === 'expenses' || route === 'expenses-ledger' || route === 'boxes' || route === 'box-detail') return 'expenses';
   if (route === 'delegates' || typeof route === 'number') return 'subscribers';
   if (typeof route === 'string' && route.startsWith('list:')) return 'subscribers';
   if (typeof route === 'string' && route.startsWith('soon:')) return SOON_FEATURE[route.slice(5)];

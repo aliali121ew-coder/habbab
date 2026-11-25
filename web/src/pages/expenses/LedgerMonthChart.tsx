@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Archive, Layers, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
+import { Archive, BarChart3, Layers, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react';
 import { MONTH_NAMES, formatNumber, formatPercent } from '../../format';
 import { ledgerHref } from '../../route';
 
@@ -10,9 +10,10 @@ export interface ChartCategory {
   values: number[];
 }
 
-type Series = 'spent' | 'income' | 'boxes';
+type Series = 'all' | 'spent' | 'income' | 'boxes';
 
 const SERIES: { id: Series; label: string; icon: LucideIcon }[] = [
+  { id: 'all', label: 'الكل', icon: BarChart3 },
   { id: 'spent', label: 'الاستهلاك', icon: TrendingDown },
   { id: 'income', label: 'الوارد', icon: TrendingUp },
   { id: 'boxes', label: 'الصناديق', icon: Archive },
@@ -28,7 +29,7 @@ const usePhone = () => useSyncExternalStore(subscribeMedia, () => window.matchMe
 
 // A row of choices with one thumb that slides under the chosen one. Wide rows scroll sideways and
 // keep the chosen choice in view.
-function SlideTabs<T extends string>({ items, value, onChange, label, className = '' }: {
+export function SlideTabs<T extends string>({ items, value, onChange, label, className = '' }: {
   items: { id: T; label: string; icon?: LucideIcon; note?: string }[];
   value: T;
   onChange: (id: T) => void;
@@ -76,17 +77,19 @@ function SlideTabs<T extends string>({ items, value, onChange, label, className 
 // The month page's chart: a sliding switch between spending, income and charity boxes, and for
 // spending a sliding row of headings. The computer shows the year month by month with this month
 // lit; the phone shows this month as an animated ring of headings.
-export function LedgerMonthChart({ year, month, categories, monthTotals, income, currency, isFuture }: {
+export function LedgerMonthChart({ year, month, categories, monthTotals, income, boxes, currency, isFuture }: {
   year: number;
   month: number;
   categories: ChartCategory[];
   monthTotals: number[];
   income: number[] | null;
+  // The charity boxes' income per month; null while it loads or when it is not available.
+  boxes: number[] | null;
   currency: string;
   isFuture: (year: number, month: number) => boolean;
 }) {
   const phone = usePhone();
-  const [series, setSeries] = useState<Series>('spent');
+  const [series, setSeries] = useState<Series>('all');
   const [category, setCategory] = useState('all');
   // Headings with spending this month first (largest first), then the rest of the year's.
   const ordered = [...categories].sort((a, b) => b.values[month] - a.values[month] || b.values.reduce((s, v) => s + v, 0) - a.values.reduce((s, v) => s + v, 0));
@@ -95,7 +98,7 @@ export function LedgerMonthChart({ year, month, categories, monthTotals, income,
 
   const chosen = categories.find((item) => item.id === category) ?? null;
   const values = series === 'income' ? income ?? Array<number>(12).fill(0)
-    : series === 'boxes' ? Array<number>(12).fill(0)
+    : series === 'boxes' ? boxes ?? Array<number>(12).fill(0)
       : chosen ? chosen.values : monthTotals;
 
   const categoryTabs = [
@@ -108,10 +111,14 @@ export function LedgerMonthChart({ year, month, categories, monthTotals, income,
       <header className="yl-panel-head">
         <div>
           <h2 id="yl-chart-title">
-            {series === 'spent' ? <TrendingDown size={18} aria-hidden /> : series === 'income' ? <TrendingUp size={18} aria-hidden /> : <Archive size={18} aria-hidden />}
-            {phone ? `${SERIES.find((item) => item.id === series)!.label} ${MONTH_NAMES[month]}` : `${SERIES.find((item) => item.id === series)!.label} خلال ${year}`}
+            {series === 'all' ? <BarChart3 size={18} aria-hidden /> : series === 'spent' ? <TrendingDown size={18} aria-hidden /> : series === 'income' ? <TrendingUp size={18} aria-hidden /> : <Archive size={18} aria-hidden />}
+            {series === 'all'
+              ? (phone ? `مقارنة ${MONTH_NAMES[month]}` : `الاستهلاك والوارد والصناديق خلال ${year}`)
+              : phone ? `${SERIES.find((item) => item.id === series)!.label} ${MONTH_NAMES[month]}` : `${SERIES.find((item) => item.id === series)!.label} خلال ${year}`}
           </h2>
-          <p>{phone ? (series === 'spent' ? 'اسحب بين الأصناف أو اضغط على الدائرة' : series === 'income' ? 'كم يغطي الوارد من صرف الشهر' : 'وارد صناديق الصدقات') : `شهر ${MONTH_NAMES[month]} مميَّز · اضغط على أي شهر لفتحه · بالـ${currency}`}</p>
+          <p>{phone
+            ? (series === 'all' ? 'الاستهلاك والوارد والصناديق في هذا الشهر' : series === 'spent' ? 'اسحب بين الأصناف أو اضغط على الدائرة' : series === 'income' ? 'كم يغطي الوارد من صرف الشهر' : 'وارد صناديق الصدقات')
+            : `شهر ${MONTH_NAMES[month]} مميَّز · اضغط على أي شهر لفتحه · بالـ${currency}`}</p>
         </div>
         <SlideTabs items={SERIES} value={series} onChange={setSeries} label="نوع الحركة" className={`yl-series tone-${series}`} />
       </header>
@@ -122,7 +129,11 @@ export function LedgerMonthChart({ year, month, categories, monthTotals, income,
         </div>
       )}
 
-      {series === 'boxes' ? (
+      {series === 'all' ? (
+        phone
+          ? <CompareRings month={month} spent={monthTotals} income={income} boxes={boxes} currency={currency} />
+          : <CompareBars year={year} month={month} spent={monthTotals} income={income} boxes={boxes} currency={currency} isFuture={isFuture} />
+      ) : series === 'boxes' && !(boxes ?? []).some((value) => value > 0) ? (
         <div className="yl-chart-empty">
           <span aria-hidden><Archive size={26} /></span>
           <b>لم تُسجَّل صناديق بعد</b>
@@ -136,7 +147,9 @@ export function LedgerMonthChart({ year, month, categories, monthTotals, income,
       ) : phone ? (
         series === 'spent'
           ? <Donut items={ordered} month={month} total={monthTotal} selected={category} onSelect={setCategory} currency={currency} />
-          : <IncomeRing income={income![month]} spent={monthTotal} before={month > 0 ? income![month - 1] : null} currency={currency} />
+          : series === 'income'
+            ? <IncomeRing income={income![month]} spent={monthTotal} before={month > 0 ? income![month - 1] : null} currency={currency} />
+            : <IncomeRing income={values[month]} spent={monthTotal} before={month > 0 ? values[month - 1] : null} currency={currency} label="الصناديق" tone="boxes" />
       ) : (
         <MonthBars
           key={`${series}-${category}`}
@@ -154,13 +167,14 @@ export function LedgerMonthChart({ year, month, categories, monthTotals, income,
 
 /* ── Computer: twelve monthly columns ─────────────────────────────── */
 
-function MonthBars({ values, year, month, tone, currency, isFuture }: {
+export function MonthBars({ values, year, month, tone, currency, isFuture, hrefOf = (at) => ledgerHref(year, at) }: {
   values: number[];
   year: number;
   month: number;
   tone: Series;
   currency: string;
   isFuture: (year: number, month: number) => boolean;
+  hrefOf?: (month: number) => string | undefined;
 }) {
   const [active, setActive] = useState<number | null>(null);
   const max = Math.max(...values, 1);
@@ -187,7 +201,7 @@ function MonthBars({ values, year, month, tone, currency, isFuture }: {
             <li key={at} className={`${at === month ? 'is-current' : ''}${future ? ' is-future' : ''}`}>
               <a
                 className={`yl-mbar${active === at ? ' on' : ''}`}
-                href={future ? undefined : ledgerHref(year, at)}
+                href={future ? undefined : hrefOf(at)}
                 aria-label={`${MONTH_NAMES[at]}: ${formatNumber(value)} ${currency}`}
                 onPointerEnter={() => setActive(at)}
                 onFocus={() => setActive(at)}
@@ -207,7 +221,7 @@ function MonthBars({ values, year, month, tone, currency, isFuture }: {
                   </span>
                 )}
               </a>
-              <span className="yl-mlabel">{MONTH_NAMES[at]}</span>
+              <span className="yl-mlabel"><span className="yl-mlabel-full">{MONTH_NAMES[at]}</span><bdi className="yl-mlabel-num">{at + 1}</bdi></span>
             </li>
           );
         })}
@@ -307,17 +321,17 @@ function Donut({ items, month, total, selected, onSelect, currency }: {
 }
 
 // Income on the phone: one ring for how much of the month's spending the income covered.
-function IncomeRing({ income, spent, before, currency }: { income: number; spent: number; before: number | null; currency: string }) {
+function IncomeRing({ income, spent, before, currency, label = 'الوارد', tone = 'income' }: { income: number; spent: number; before: number | null; currency: string; label?: string; tone?: 'income' | 'boxes' }) {
   const cover = spent > 0 ? Math.min((income / spent) * 100, 100) : income > 0 ? 100 : 0;
   const delta = before && before > 0 ? ((income - before) / before) * 100 : null;
   return (
     <div className="yl-donut-wrap">
-      <svg className="yl-donut tone-income" viewBox="0 0 180 180" role="img" aria-label="الوارد مقابل الصرف">
+      <svg className={`yl-donut tone-${tone}`} viewBox="0 0 180 180" role="img" aria-label={`${label} مقابل الصرف`}>
         <circle className="yl-donut-track" cx="90" cy="90" r={R} />
-        <circle className="yl-donut-arc on income" cx="90" cy="90" r={R} style={{ strokeDasharray: `${(cover / 100) * C} ${C}` }} />
+        <circle className={`yl-donut-arc on ${tone}`} cx="90" cy="90" r={R} style={{ strokeDasharray: `${(cover / 100) * C} ${C}` }} />
       </svg>
       <div className="yl-donut-centre">
-        <small>الوارد</small>
+        <small>{label}</small>
         <b><bdi>{formatNumber(income)}</bdi></b>
         <span>{currency}</span>
       </div>
@@ -326,6 +340,144 @@ function IncomeRing({ income, spent, before, currency }: { income: number; spent
         <div><dt>الصرف</dt><dd><bdi>{formatNumber(spent)}</bdi></dd></div>
         <div><dt>عن الشهر السابق</dt><dd className={delta === null ? undefined : delta >= 0 ? 'good' : 'bad'}>{delta === null ? '—' : <>{delta >= 0 ? '▲' : '▼'} <bdi>{formatPercent(Math.abs(delta))}</bdi></>}</dd></div>
       </dl>
+    </div>
+  );
+}
+
+/* ── «الكل»: spending, income and boxes side by side ─────────────────────────── */
+
+const COMPARE = [
+  { key: 'spent', label: 'الاستهلاك', cls: 'spent' },
+  { key: 'income', label: 'الوارد', cls: 'income' },
+  { key: 'boxes', label: 'الصناديق', cls: 'boxes' },
+] as const;
+
+// Computer: each month a group of three thin columns on one scale, this month lit.
+function CompareBars({ year, month, spent, income, boxes, currency, isFuture }: {
+  year: number;
+  month: number;
+  spent: number[];
+  income: number[] | null;
+  boxes: number[] | null;
+  currency: string;
+  isFuture: (year: number, month: number) => boolean;
+}) {
+  const [active, setActive] = useState<number | null>(null);
+  const zero = Array<number>(12).fill(0);
+  const sets = { spent, income: income ?? zero, boxes: boxes ?? zero };
+  const max = Math.max(...spent, ...sets.income, ...sets.boxes, 1);
+  const ticks = [1, 0.5].map((part) => Math.round(max * part));
+  return (
+    <>
+      <ul className="yl-legend" aria-label="مفتاح الألوان">
+        {COMPARE.map((item) => (
+          <li key={item.key} className={item.cls}>
+            <i aria-hidden />
+            <span>{item.label}</span>
+            <b><bdi>{formatNumber(sets[item.key][month])}</bdi></b>
+          </li>
+        ))}
+      </ul>
+      <div className="yl-mbars yl-cbars" onPointerLeave={() => setActive(null)}>
+        <div className="yl-chart-grid" aria-hidden>
+          {ticks.map((tick) => <span key={tick} style={{ insetBlockEnd: `${(tick / max) * 100}%` }}><bdi>{formatNumber(tick)}</bdi></span>)}
+        </div>
+        <ol className="yl-mbar-row">
+          {MONTH_NAMES.map((name, at) => {
+            const future = isFuture(year, at);
+            return (
+              <li key={name} className={`${at === month ? 'is-current' : ''}${future ? ' is-future' : ''}`}>
+                <a
+                  className={`yl-mbar yl-cgroup${active === at ? ' on' : ''}`}
+                  href={future ? undefined : ledgerHref(year, at)}
+                  aria-label={`${name}: الاستهلاك ${formatNumber(spent[at])}، الوارد ${formatNumber(sets.income[at])}، الصناديق ${formatNumber(sets.boxes[at])}`}
+                  onPointerEnter={() => setActive(at)}
+                  onFocus={() => setActive(at)}
+                  onBlur={() => setActive(null)}
+                >
+                  <span className="yl-cgroup-cols">
+                    {COMPARE.map((item, index) => {
+                      const value = future ? 0 : sets[item.key][at];
+                      return (
+                        <i
+                          key={item.key}
+                          className={item.cls}
+                          style={{ blockSize: `${value > 0 ? Math.max((value / max) * 100, 1.5) : 0}%`, animationDelay: `${at * 30 + index * 60}ms` }}
+                        />
+                      );
+                    })}
+                  </span>
+                  {active === at && !future && (
+                    <span className="yl-tip" role="tooltip">
+                      <b>{name}</b>
+                      {COMPARE.map((item) => (
+                        <span key={item.key} className={`yl-tip-row ${item.cls}`}>
+                          <i aria-hidden />{item.label}
+                          <bdi>{formatNumber(sets[item.key][at])}</bdi>
+                        </span>
+                      ))}
+                      <span className={`yl-tip-net ${sets.income[at] + sets.boxes[at] - spent[at] >= 0 ? 'good' : 'bad'}`}>
+                        الفرق <bdi dir="ltr">{formatNumber(sets.income[at] + sets.boxes[at] - spent[at])}</bdi> {currency}
+                      </span>
+                    </span>
+                  )}
+                </a>
+                <span className="yl-mlabel">{name}</span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+    </>
+  );
+}
+
+// Phone: three rings one inside the other, each the month's figure against the largest of the three.
+function CompareRings({ month, spent, income, boxes, currency }: {
+  month: number;
+  spent: number[];
+  income: number[] | null;
+  boxes: number[] | null;
+  currency: string;
+}) {
+  const values = { spent: spent[month], income: income?.[month] ?? 0, boxes: boxes?.[month] ?? 0 };
+  const max = Math.max(values.spent, values.income, values.boxes, 1);
+  const net = values.income + values.boxes - values.spent;
+  const radii = [74, 56, 38];
+  return (
+    <div className="yl-donut-wrap">
+      <svg className="yl-donut yl-rings" viewBox="0 0 180 180" role="img" aria-label="مقارنة الاستهلاك والوارد والصناديق">
+        {COMPARE.map((item, index) => {
+          const r = radii[index];
+          const length = 2 * Math.PI * r;
+          return (
+            <g key={item.key} className={item.cls}>
+              <circle className="yl-ring-track" cx="90" cy="90" r={r} />
+              <circle
+                className="yl-ring-arc"
+                cx="90"
+                cy="90"
+                r={r}
+                style={{ strokeDasharray: `${(values[item.key] / max) * length} ${length}`, animationDelay: `${index * 120}ms`, ['--len' as string]: length }}
+              />
+            </g>
+          );
+        })}
+      </svg>
+      <div className="yl-donut-centre yl-rings-centre">
+        <small>الفرق</small>
+        <b className={net >= 0 ? 'good' : 'bad'}><bdi dir="ltr">{formatNumber(net)}</bdi></b>
+        <span>{currency}</span>
+      </div>
+      <ul className="yl-legend is-stacked">
+        {COMPARE.map((item) => (
+          <li key={item.key} className={item.cls}>
+            <i aria-hidden />
+            <span>{item.label}</span>
+            <b><bdi>{formatNumber(values[item.key])}</bdi></b>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

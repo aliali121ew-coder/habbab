@@ -6,6 +6,9 @@ export type Route =
   | 'delegates'
   | 'expenses'
   | 'expenses-ledger'
+  // صناديق الصدقات: every box, and one box with its months.
+  | 'boxes'
+  | 'box-detail'
   | 'patients'
   | 'patient-detail'
   | 'families'
@@ -30,6 +33,8 @@ function parse(hash: string): Route {
   if (hash === '#/expenses') return 'expenses';
   // The yearly ledger (#/expenses/ledger, optionally /2025) and one month of it (/2025-11).
   if (/^#\/expenses\/ledger(?:\/\d{4}(?:-\d{2})?)?$/.test(hash)) return 'expenses-ledger';
+  if (hash === '#/boxes') return 'boxes';
+  if (/^#\/boxes\/\d+$/.test(hash)) return 'box-detail';
   if (hash === '#/patients') return 'patients';
   if (/^#\/patients\/\d+$/.test(hash)) return 'patient-detail';
   if (hash === '#/system') return 'system';
@@ -57,6 +62,8 @@ export const ledgerFromHash = (hash: string): { year: number | null; month: numb
 };
 export const ledgerHref = (year: number, month?: number) =>
   `#/expenses/ledger/${year}${month === undefined ? '' : `-${String(month + 1).padStart(2, '0')}`}`;
+export const boxIdFromHash = () => Number(/^#\/boxes\/(\d+)$/.exec(location.hash)?.[1] ?? 0);
+export const boxHref = (boxId: number) => `#/boxes/${boxId}`;
 export const familyIdFromHash = () => Number(/^#\/families\/(\d+)$/.exec(location.hash)?.[1] ?? 0);
 
 export const registerHref = (delegateId: number | null) => (delegateId === null ? '#/all' : `#/delegates/${delegateId}`);

@@ -16,6 +16,7 @@ import { fail } from './lib/http';
 import { audit, dashboard, delegates, meta, users } from './routes/admin';
 import { auth } from './routes/auth';
 import { closings } from './routes/closings';
+import { boxes } from './routes/boxes';
 import { collections } from './routes/collections';
 import { expenses } from './routes/expenses';
 import { files, prescriptions } from './routes/prescriptions';
@@ -71,6 +72,8 @@ api.use('/delegates/*', requireFeature('subscribers'));
 api.use('/programs/*', requireFeature('aid'));
 api.use('/transactions/*', requireFeature('aid'));
 api.use('/expenses/*', requireFeature('expenses'));
+// Charity boxes sit under the money section.
+api.use('/boxes/*', requireFeature('expenses'));
 api.use('/prescriptions/*', requireFeature('patients'));
 api.use('/families/*', requireFeature('families'));
 api.route('/families', families);
@@ -94,6 +97,7 @@ api.route('/files', files);
 api.route('/closings', closings);
 api.route('/collections', collections);
 api.route('/expenses', expenses);
+api.route('/boxes', boxes);
 api.route('/delegates', delegates);
 api.route('/users', users);
 api.route('/audit', audit);
@@ -105,7 +109,7 @@ app.notFound((c) => c.json({ error: 'غير موجود' }, 404));
 const SECTIONS: Record<string, string> = {
   subscribers: 'المشتركون', collections: 'التحصيل والمندوبون', delegates: 'المندوبون', closings: 'الإقفال الشهري',
   programs: 'البرامج', transactions: 'الحركات المالية', expenses: 'المصاريف', prescriptions: 'الوصفات',
-  users: 'الحسابات', branding: 'الإعدادات', system: 'المؤسسات', families: 'العوائل', patients: 'المرضى', requests: 'طلبات المساعدة',
+  users: 'الحسابات', branding: 'الإعدادات', system: 'المؤسسات', families: 'العوائل', patients: 'المرضى', requests: 'طلبات المساعدة', boxes: 'صناديق الصدقات',
 };
 
 // A save or change refused for lack of permission (403) is written to the foundation's activity
