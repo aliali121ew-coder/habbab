@@ -28,7 +28,8 @@ function parse(hash: string): Route {
   // The combined register is gone; old #/all links land on the delegates page.
   if (hash === '#/all' || hash === '#/delegates') return 'delegates';
   if (hash === '#/expenses') return 'expenses';
-  if (hash === '#/expenses/ledger') return 'expenses-ledger';
+  // The yearly ledger (#/expenses/ledger, optionally /2025) and one month of it (/2025-11).
+  if (/^#\/expenses\/ledger(?:\/\d{4}(?:-\d{2})?)?$/.test(hash)) return 'expenses-ledger';
   if (hash === '#/patients') return 'patients';
   if (/^#\/patients\/\d+$/.test(hash)) return 'patient-detail';
   if (hash === '#/system') return 'system';
@@ -47,6 +48,15 @@ function parse(hash: string): Route {
 export const useRoute = () => parse(useSyncExternalStore(subscribe, () => location.hash));
 
 export const patientIdFromHash = () => Number(/^#\/patients\/(\d+)$/.exec(location.hash)?.[1] ?? 0);
+// The year and month the ledger page is on; month is null on the year overview.
+export const ledgerFromHash = (hash: string): { year: number | null; month: number | null } => {
+  const match = /^#\/expenses\/ledger\/(\d{4})(?:-(\d{2}))?$/.exec(hash);
+  if (!match) return { year: null, month: null };
+  const month = match[2] ? Number(match[2]) - 1 : null;
+  return { year: Number(match[1]), month: month !== null && month >= 0 && month < 12 ? month : null };
+};
+export const ledgerHref = (year: number, month?: number) =>
+  `#/expenses/ledger/${year}${month === undefined ? '' : `-${String(month + 1).padStart(2, '0')}`}`;
 export const familyIdFromHash = () => Number(/^#\/families\/(\d+)$/.exec(location.hash)?.[1] ?? 0);
 
 export const registerHref = (delegateId: number | null) => (delegateId === null ? '#/all' : `#/delegates/${delegateId}`);

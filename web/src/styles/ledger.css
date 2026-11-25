@@ -1,149 +1,251 @@
-/* The yearly expenses ledger (pages/expenses/ExpensesLedgerPage.tsx), set like an accounting
-   sheet: equal columns, figures aligned on their last digit, no colour in the cells. The month
-   and the total stay pinned while the headings scroll; the row and column under the pointer
-   light up together. */
-.lg-year { display: flex; align-items: center; height: 40px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
-.page-actions .lg-year .icon-btn { width: 30px; height: 100%; border: 0; border-radius: 9px; background: transparent; color: var(--brand); }
-.lg-year .icon-btn:hover:not(:disabled) { background: color-mix(in srgb, var(--brand) 12%, transparent); }
-.lg-year strong { min-width: 52px; text-align: center; font-size: 1rem; font-weight: 600; color: var(--ink); }
-
-.lg-board { display: flex; flex-direction: column; }
-.lg-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 18px; border-top: 3px solid var(--brand); border-bottom: 1px solid var(--line); }
-.lg-head h2 { margin: 0; font-size: 1.05rem; color: var(--ink); }
-.lg-head p { margin: 3px 0 0; font-size: .8rem; color: var(--ink-2); }
-.lg-head p b { font-weight: 600; color: var(--ink); }
-.lg-unit { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
-.lg-unit button { min-height: 30px; padding-inline: 12px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: .8rem; font-weight: 600; }
-.lg-unit button[aria-checked="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgb(0 0 0 / 12%); }
-
-.lg-wrap { overflow-x: auto; }
-.lg-table {
-  --lg-head: color-mix(in srgb, var(--ink) 4%, var(--surface));
-  --lg-pin: var(--surface);
-  --lg-hover: color-mix(in srgb, var(--brand) 6%, transparent);
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-variant-numeric: tabular-nums;
+/* The yearly money record (pages/expenses/ExpensesLedgerPage.tsx): a year overview — five
+   summary cards, the twelve months as tiles that open their own page, and one row per heading
+   with its count, amount, share and a line across the year — and the month page: four cards,
+   a day-by-day column chart and the headings of that month. Every main colour comes from
+   var(--bar-active), so it follows the chosen theme; dark mode follows the surface tokens. */
+.yl {
+  --yl-theme: var(--bar-active);
+  --yl-soft: color-mix(in srgb, var(--bar-active) 10%, var(--surface));
+  --yl-in: #10b981;
+  --yl-gift: #f59e0b;
+  --yl-box: #8b5cf6;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
 }
-.lg-c-month { width: 150px; }
-.lg-c-cat { width: 96px; }
-.lg-table.wide .lg-c-cat { width: 118px; }
-.lg-c-total { width: 168px; }
 
-.lg-table th, .lg-table td {
-  padding: 0 12px;
-  height: 42px;
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
-  text-align: end;
-  vertical-align: middle;
-  white-space: nowrap;
+/* Year / month switch in the header. */
+.yl-switch { display: flex; align-items: center; height: 40px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.yl-switch .icon-btn { display: grid; place-items: center; width: 30px; height: 100%; border: 0; border-radius: 9px; background: transparent; color: var(--yl-theme); }
+.yl-switch a.icon-btn:hover { background: var(--yl-soft); }
+.yl-switch span.icon-btn { opacity: .3; }
+.yl-switch strong { min-width: 58px; padding-inline: 4px; text-align: center; font-size: .95rem; font-weight: 700; color: var(--ink); white-space: nowrap; }
+
+/* ── Summary cards ─────────────────────────────────────────────── */
+.yl-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+.yl-kpis-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.yl-kpi {
+  --tone: var(--yl-theme);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 138px;
+  padding: 16px 18px 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--tone) 9%, transparent), transparent 60%),
+    var(--surface);
   overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: .86rem;
-  color: var(--ink);
 }
+.yl-kpi.skeleton { border: 0; }
+.yl-kpi::before { content: ''; position: absolute; inset-block-start: 0; inset-inline: 18px; height: 3px; border-radius: 0 0 3px 3px; background: var(--tone); opacity: .7; }
+.yl-kpi.tone-in { --tone: var(--yl-in); }
+.yl-kpi.tone-gift { --tone: var(--yl-gift); }
+.yl-kpi.tone-box { --tone: var(--yl-box); }
+.yl-kpi header { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.yl-kpi h2 { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); font-size: .84rem; font-weight: 600; }
+.yl-kpi-icon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 10px; background: color-mix(in srgb, var(--tone) 13%, var(--surface)); color: var(--tone); }
+.yl-tag { padding: 1px 7px; border-radius: 99px; background: var(--surface-2); color: var(--ink-3); font-size: .66rem; font-weight: 600; }
+.yl-kpi-value { display: flex; align-items: baseline; gap: 5px; margin: 0; color: var(--ink); font-size: clamp(1.15rem, 1.7vw, 1.5rem); font-weight: 700; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.yl-kpi-value small { color: var(--ink-3); font-size: .74rem; font-weight: 500; }
+.yl-kpi-name { font-size: clamp(1rem, 1.4vw, 1.2rem); overflow: hidden; text-overflow: ellipsis; }
+.yl-none { color: var(--ink-3); }
+.yl-kpi footer { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; margin-top: auto; min-width: 0; }
+.yl-foot { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.yl-foot-label { color: var(--ink-3); font-size: .74rem; font-weight: 500; white-space: nowrap; }
+.yl-foot-label b { color: var(--ink); font-weight: 700; }
+.yl-kpi footer { flex-wrap: wrap; }
+.yl-kpi-spark { width: 84px; height: 30px; flex: none; margin-inline-start: auto; }
 
-/* Headings: two lines at most, set on the same bottom line as each other. */
-.lg-table thead th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  height: 54px;
-  padding-block: 8px;
-  vertical-align: bottom;
-  background: var(--lg-head);
-  border-bottom: 1px solid color-mix(in srgb, var(--ink) 22%, var(--line));
+.yl-pill { display: inline-flex; align-items: center; gap: 3px; width: fit-content; padding: 2px 8px; border-radius: 99px; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.yl-pill span { font-weight: 500; opacity: .85; }
+.yl-pill.good { background: color-mix(in srgb, var(--paid) 12%, transparent); color: var(--paid); }
+.yl-pill.bad { background: color-mix(in srgb, var(--danger) 11%, transparent); color: var(--danger); }
+.yl-pill.flat { background: var(--surface-2); color: var(--ink-3); }
+
+/* ── Sparkline ─────────────────────────────────────────────── */
+.yl-spark { display: block; width: 120px; height: 34px; overflow: visible; color: var(--tone, var(--yl-theme)); }
+.yl-spark-base { stroke: var(--line); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.yl-spark-area { fill: currentColor; opacity: .1; }
+.yl-spark-line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.yl-spark-dot { fill: currentColor; stroke: var(--surface); stroke-width: 1.5; }
+.yl-spark-hit { fill: transparent; }
+.yl-spark-hit:hover { fill: color-mix(in srgb, currentColor 10%, transparent); }
+
+/* ── Panels ─────────────────────────────────────────────── */
+.yl-panel { min-width: 0; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); overflow: hidden; }
+.yl-skel-panel { min-height: 360px; border: 0; }
+.yl-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.yl-panel-head h2 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ink); font-size: 1.02rem; font-weight: 700; }
+.yl-panel-head h2 svg { color: var(--yl-theme); }
+.yl-panel-head p { margin: 4px 0 0; color: var(--ink-3); font-size: .78rem; }
+.yl-link { min-height: 34px; font-size: .8rem; }
+.yl-mini-facts { display: flex; gap: 18px; margin: 0; }
+.yl-mini-facts div { text-align: center; }
+.yl-mini-facts dt { color: var(--ink-3); font-size: .7rem; }
+.yl-mini-facts dd { margin: 0; color: var(--ink); font-size: .95rem; font-weight: 700; }
+
+/* ── Month tiles ─────────────────────────────────────────────── */
+.yl-months { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 16px 20px 20px; list-style: none; }
+.yl-month {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color .15s, background-color .15s, transform .15s;
+}
+a.yl-month:hover, a.yl-month:focus-visible { border-color: color-mix(in srgb, var(--yl-theme) 45%, var(--line)); background: var(--yl-soft); }
+a.yl-month:hover { transform: translateY(-1px); }
+.yl-month.is-now { border-color: color-mix(in srgb, var(--yl-theme) 55%, var(--line)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--yl-theme) 30%, transparent); }
+.yl-month.is-future { opacity: .5; }
+.yl-month-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.yl-month-num { display: grid; place-items: center; flex: none; width: 22px; height: 22px; border-radius: 7px; background: var(--yl-soft); color: var(--yl-theme); font-size: .7rem; font-weight: 700; }
+.yl-month-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .86rem; font-weight: 600; }
+.yl-month-go { flex: none; margin-inline-start: auto; color: var(--ink-3); }
+.yl-month-sum { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.yl-month-meta { color: var(--ink-3); font-size: .72rem; }
+.yl-month-bar { display: block; height: 4px; margin-top: auto; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.yl-month-bar i { display: block; height: 100%; border-radius: 99px; background: var(--yl-theme); }
+
+/* ── Category table ─────────────────────────────────────────────── */
+.yl-table-wrap { overflow-x: auto; }
+.yl-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.yl-table th, .yl-table td { padding: 11px 16px; border-bottom: 1px solid var(--line); text-align: start; vertical-align: middle; }
+.yl-table thead th { background: var(--surface-2); color: var(--ink-3); font-size: .74rem; font-weight: 600; white-space: nowrap; }
+.yl-table tbody tr { transition: background-color .12s; }
+.yl-table tbody tr:hover { background: color-mix(in srgb, var(--yl-theme) 5%, transparent); }
+.yl-table tfoot th, .yl-table tfoot td { border-bottom: 0; background: var(--surface-2); color: var(--ink); font-weight: 700; }
+.yl-c-name { min-width: 180px; }
+.yl-c-num { width: 1%; white-space: nowrap; color: var(--ink-2); font-size: .9rem; }
+.yl-c-amount { color: var(--ink); font-weight: 700; }
+.yl-c-share { width: 22%; min-width: 150px; }
+.yl-c-trail { width: 1%; }
+.yl-table tbody .yl-c-name { color: var(--ink); font-size: .9rem; font-weight: 600; }
+.yl-cat { display: flex; align-items: center; gap: 10px; }
+.yl-cat-icon { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 10px; background: var(--yl-soft); color: var(--yl-theme); }
+.yl-share { display: flex; align-items: center; gap: 10px; }
+.yl-share-bar { flex: 1; height: 6px; border-radius: 99px; background: var(--surface-2); overflow: hidden; }
+.yl-share-bar i { display: block; height: 100%; border-radius: 99px; background: var(--yl-theme); }
+.yl-share bdi { min-width: 36px; color: var(--ink-2); font-size: .8rem; font-weight: 600; text-align: end; }
+
+/* ── Daily chart ─────────────────────────────────────────────── */
+.yl-chart { position: relative; height: 260px; margin: 18px 20px 14px; padding-inline-start: 56px; }
+.yl-chart-grid { position: absolute; inset: 0 0 24px 0; pointer-events: none; }
+.yl-chart-grid span { position: absolute; inset-inline: 0; border-top: 1px dashed var(--line); }
+.yl-chart-grid bdi { position: absolute; inset-inline-start: 0; translate: 0 -50%; padding-inline-end: 6px; background: var(--surface); color: var(--ink-3); font-size: .68rem; }
+.yl-chart-grid::after { content: ''; position: absolute; inset-inline: 56px 0; inset-block-end: 0; border-top: 1px solid var(--line); }
+.yl-bars { position: relative; display: grid; gap: 3px; height: 100%; margin: 0; padding: 0; list-style: none; }
+.yl-bars li { display: flex; flex-direction: column; min-width: 0; }
+.yl-bar { position: relative; flex: 1; display: flex; align-items: flex-end; justify-content: center; min-width: 0; padding: 0; border: 0; border-radius: 6px; background: transparent; cursor: default; }
+.yl-bar:hover, .yl-bar.on { background: color-mix(in srgb, var(--yl-theme) 7%, transparent); }
+.yl-bar i { display: block; width: min(100%, 22px); border-radius: 4px 4px 0 0; background: color-mix(in srgb, var(--yl-theme) 78%, var(--surface)); }
+.yl-bar.on i { background: var(--yl-theme); }
+.yl-day { display: flex; justify-content: center; height: 24px; padding-top: 6px; color: var(--ink-3); font-size: .66rem; white-space: nowrap; overflow: visible; }
+.yl-tip {
+  position: absolute;
+  inset-block-end: calc(100% + 8px);
+  inset-inline-start: 50%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
   color: var(--ink-2);
-  font-size: .76rem;
-  font-weight: 600;
-  white-space: normal;
-}
-.lg-label { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.35; }
-
-/* Month and total: pinned to either side, set apart by a firmer rule. */
-.lg-table .lg-month {
-  position: sticky;
-  inset-inline-start: 0;
-  z-index: 1;
+  font-size: .74rem;
   text-align: start;
-  background: var(--lg-pin);
-  border-inline-end: 1px solid var(--line);
-  color: var(--ink);
-  font-weight: 500;
+  white-space: nowrap;
+  translate: 50% 0;
+  pointer-events: none;
 }
-.lg-num { display: inline-block; width: 24px; color: var(--ink-3); font-size: .76rem; font-weight: 500; }
-.lg-table .lg-total {
-  position: sticky;
-  inset-inline-end: 0;
-  z-index: 1;
-  background: color-mix(in srgb, var(--ink) 3%, var(--lg-pin));
-  border-inline-start: 1px solid var(--line);
-}
-.lg-table thead .lg-month, .lg-table thead .lg-total { z-index: 3; background: var(--lg-head); color: var(--ink-2); }
-/* A soft edge where the scrolling headings pass under the pinned columns (RTL: the month sits on
-   the right, the total on the left). */
-.lg-table .lg-month { box-shadow: -8px 0 10px -10px rgb(0 0 0 / 45%); }
-.lg-table .lg-total { box-shadow: 8px 0 10px -10px rgb(0 0 0 / 45%); }
-.lg-tot { display: grid; grid-template-columns: minmax(0, 1fr) 54px; align-items: center; gap: 6px; }
-.lg-sum { text-align: end; font-weight: 600; color: var(--ink); }
-.lg-delta { justify-self: start; display: inline-flex; align-items: center; gap: 2px; font-size: .72rem; font-weight: 600; color: var(--ink-3); }
-.lg-delta span { font-size: .55rem; }
-.lg-delta.up { color: var(--danger); }
-.lg-delta.down { color: var(--brand); }
+.yl-tip b { color: var(--ink); font-size: .8rem; }
+.yl-bars li:nth-child(-n+4) .yl-tip { translate: 0 0; inset-inline-start: 0; }
+.yl-bars li:nth-last-child(-n+4) .yl-tip { translate: 0 0; inset-inline-start: auto; inset-inline-end: 0; }
+.yl-bar .yl-tip { inset-block-end: auto; inset-block-start: 4px; }
 
-.lg-zero { color: var(--ink-3); opacity: .45; }
-
-/* Light column rules, and every other month on a faint band, so a figure is easy to follow
-   along its row and down its column. The pinned cells take the band as a solid colour so the
-   scrolling figures never show through them. */
-.lg-table { --lg-band: color-mix(in srgb, var(--ink) 3.5%, var(--surface)); --lg-rule: color-mix(in srgb, var(--line) 55%, transparent); }
-.lg-table th + th, .lg-table th + td, .lg-table td + td { border-inline-start: 1px solid var(--lg-rule); }
-.lg-table tbody tr:nth-child(even) > * { background-color: var(--lg-band); }
-.lg-table tbody tr:nth-child(even) > .lg-total { background-color: color-mix(in srgb, var(--ink) 6%, var(--surface)); }
-
-/* Reading aid: the row and the column under the pointer, the crossing a shade deeper. */
-.lg-table tbody tr:hover > * { background-image: linear-gradient(var(--lg-hover), var(--lg-hover)); }
-.lg-table .col-on { background-image: linear-gradient(var(--lg-hover), var(--lg-hover)); }
-.lg-table tbody tr:hover > .col-on { background-image: linear-gradient(color-mix(in srgb, var(--brand) 13%, transparent), color-mix(in srgb, var(--brand) 13%, transparent)); }
-.lg-table thead .col-on { color: var(--brand); }
-
-.lg-table tbody tr.future > * { height: 34px; }
-.lg-table tbody tr.future .lg-month { color: var(--ink-3); font-weight: 400; }
-
-.lg-table tfoot th, .lg-table tfoot td { background-color: var(--lg-head); border-bottom: 0; font-weight: 600; }
-.lg-table tfoot tr:first-child > * { height: 46px; border-top: 1.5px solid color-mix(in srgb, var(--ink) 35%, var(--line)); }
-.lg-table tfoot .lg-total { background-color: color-mix(in srgb, var(--ink) 6%, var(--surface)); }
-.lg-table tfoot .lg-share > * { height: 32px; font-size: .74rem; font-weight: 500; color: var(--ink-3); }
-.lg-table tfoot .lg-share .lg-sum { font-weight: 500; color: var(--ink-3); }
-.lg-table tfoot .lg-month { font-weight: 600; }
-
-:root[data-theme="dark"] .lg-delta.down, :root[data-theme="dark"] .page-actions .lg-year .icon-btn, :root[data-theme="dark"] .lg-table thead .col-on { color: var(--bar-active); }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .lg-delta.down,
-  :root:not([data-theme="light"]) .page-actions .lg-year .icon-btn,
-  :root:not([data-theme="light"]) .lg-table thead .col-on { color: var(--bar-active); }
+/* ── Tablets & small laptops ─────────────────────────────────────────────── */
+@media (max-width: 1279.98px) {
+  .yl-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .yl-kpis-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .yl-months { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-@media (max-width: 520px) {
-  .lg-c-month { width: 116px; }
-  .lg-c-total { width: 140px; }
-  .lg-tot { grid-template-columns: minmax(0, 1fr) 44px; }
-}
-
-/* Phones: month names were cut ("كانون الثاني", "تشرين الأول"); the month column is wide enough
-   for the longest one. The year arrows and the thousands/full toggle get finger-sized tap areas
-   without changing their look. */
-@media (max-width: 520px) {
-  .lg-c-month { width: 138px; }
-  .lg-table .lg-month { text-overflow: clip; }
-}
+/* ── Phone ─────────────────────────────────────────────── */
 @media (max-width: 767.98px) {
-  .page-actions .lg-year .icon-btn, .lg-head button { position: relative; }
-  .page-actions .lg-year .icon-btn::after, .lg-head button::after { content: ''; position: absolute; inset: -6px -2px; }
+  .yl { gap: 14px; }
+  .yl-kpis, .yl-kpis-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .yl-kpis > .yl-kpi:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .yl-kpi { min-height: 0; gap: 7px; padding: 12px 12px 11px; border-radius: 15px; }
+  .yl-kpi::before { inset-inline: 12px; }
+  .yl-kpi h2 { font-size: .74rem; }
+  .yl-kpi-icon { width: 26px; height: 26px; border-radius: 8px; }
+  .yl-kpi-icon svg { width: 14px; height: 14px; }
+  .yl-tag { padding: 0 5px; font-size: .6rem; }
+  .yl-kpi-value { font-size: clamp(.98rem, 4.6vw, 1.2rem); }
+  .yl-kpi-value small { font-size: .64rem; }
+  .yl-kpi-spark { display: none; }
+  .yl-foot { gap: 3px; }
+  .yl-foot-label { font-size: .68rem; }
+  .yl-pill { padding: 1px 6px; font-size: .66rem; }
+
+  .yl-panel { border-radius: 15px; }
+  .yl-panel-head { padding: 12px 14px; }
+  .yl-panel-head h2 { font-size: .94rem; }
+  .yl-mini-facts { gap: 12px; }
+
+  .yl-months { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; }
+  .yl-month { gap: 4px; padding: 9px; border-radius: 12px; }
+  .yl-month-num, .yl-month-go { display: none; }
+  .yl-month-name { font-size: .76rem; }
+  .yl-month-sum { font-size: .88rem; }
+  .yl-month-meta { font-size: .64rem; }
+
+  /* The table becomes one card per heading: name and amount on top, then count, share and line. */
+  .yl-table, .yl-table tbody, .yl-table tfoot { display: block; }
+  .yl-table thead { display: none; }
+  .yl-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "name amount" "share share" "count trail";
+    gap: 8px 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .yl-table th, .yl-table td { padding: 0; border: 0; width: auto; min-width: 0; }
+  .yl-table .yl-c-name { grid-area: name; }
+  .yl-table .yl-c-amount { grid-area: amount; align-self: center; font-size: .95rem; }
+  .yl-table .yl-c-num:not(.yl-c-amount) { grid-area: count; align-self: center; font-size: .74rem; color: var(--ink-3); }
+  .yl-table .yl-c-num:not(.yl-c-amount)::before { content: attr(data-label) ' '; }
+  .yl-table .yl-c-share { grid-area: share; }
+  .yl-table .yl-c-trail { grid-area: trail; justify-self: end; }
+  .yl-table .yl-c-trail .yl-spark { width: 96px; height: 26px; }
+  .yl-table tfoot tr { grid-template-areas: "name amount" "count count"; background: var(--surface-2); border-bottom: 0; }
+  .yl-table tfoot .yl-c-share, .yl-table tfoot .yl-c-trail { display: none; }
+  .yl-cat { gap: 8px; }
+  .yl-cat-icon { width: 28px; height: 28px; border-radius: 8px; }
+
+  .yl-chart { height: 200px; margin: 14px 12px 10px; padding-inline-start: 0; }
+  .yl-chart-grid bdi { display: none; }
+  .yl-chart-grid::after { inset-inline-start: 0; }
+  .yl-bars { gap: 2px; }
+  .yl-bar { border-radius: 3px; }
+  .yl-bar i { border-radius: 2px 2px 0 0; }
 }
-@media (max-width: 520px) {
-  /* "بالألف" / "المبلغ كاملاً" were 2px wider than their buttons. */
-  .lg-unit button { flex: none; white-space: nowrap; padding-inline: 8px; }
+@media (max-width: 359.98px) {
+  .yl-months { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+@media (prefers-reduced-motion: reduce) { .yl-month, .yl-table tbody tr { transition: none; } a.yl-month:hover { transform: none; } }
