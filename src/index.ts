@@ -3,7 +3,7 @@ import { HTTPException } from 'hono/http-exception';
 import type { AppEnv, Env } from './env';
 import { runMonthlyJobs } from './jobs';
 import { requireAuth } from './lib/auth';
-import { requireFeature } from './lib/features';
+import { requireAnyFeature, requireFeature } from './lib/features';
 import { system } from './routes/system';
 import { branding } from './routes/branding';
 import { families } from './routes/families';
@@ -75,8 +75,9 @@ api.use('/transactions/*', requireFeature('aid'));
 api.use('/expenses/*', requireFeature('expenses'));
 // Charity boxes sit under the money section.
 api.use('/boxes/*', requireFeature('expenses'));
-// The donors' register is the «المساعدات» section.
-api.use('/donations/*', requireFeature('aid'));
+// The donors' register serves «المساعدات» and «التبرعات»; the monthly cash totals are read by the
+// money pages too (only this foundation's rows, empty when it records no donations).
+api.use('/donations/*', requireAnyFeature(['aid', 'donations'], '/donations/monthly'));
 api.use('/prescriptions/*', requireFeature('patients'));
 api.use('/families/*', requireFeature('families'));
 api.route('/families', families);

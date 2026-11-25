@@ -40,3 +40,14 @@ export function requireFeature(feature: Feature, ...openPaths: string[]): Middle
     await next();
   };
 }
+
+// For data two sections share (the donors' register serves «المساعدات» and «التبرعات»): any one
+// of the features is enough.
+export function requireAnyFeature(features: Feature[], ...openPaths: string[]): MiddlewareHandler<AppEnv> {
+  return async (c, next) => {
+    const open = openPaths.some((path) => c.req.path.endsWith(path));
+    const has = c.get('user').features;
+    if (!open && !features.some((feature) => has.includes(feature))) fail(403, 'هذه الخدمة غير مفعّلة لمؤسستك');
+    await next();
+  };
+}
