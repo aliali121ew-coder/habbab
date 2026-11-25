@@ -8,9 +8,9 @@
 .bottom-nav { display: none; }
 
 @media (max-width: 767px) {
-  /* ── top bar ── */
+  /* ── top bar (scrolls away with the page, not pinned) ── */
   .topbar {
-    position: sticky !important; top: 0; z-index: 40; pointer-events: auto !important;
+    position: relative !important; top: auto; z-index: 20; pointer-events: auto !important;
     display: flex; align-items: center; gap: 6px;
     margin: 0 !important; padding: calc(8px + var(--safe-top, 0px)) 10px 8px !important;
     background: var(--surface) !important; border-bottom: 1px solid var(--line) !important;
