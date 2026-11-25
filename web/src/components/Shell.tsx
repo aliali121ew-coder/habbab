@@ -231,27 +231,53 @@ export function Shell({ me, onSignedOut, children }: Props) {
   const [open, setOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
-  const [barHidden, setBarHidden] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
+  const topbarRef = useRef<HTMLElement>(null);
   const { theme, toggle, palette, setPalette } = useTheme();
   const route = useRoute();
   const brand = useBranding();
 
-  useEffect(() => { setBarHidden(false); }, [route]);
-
+  // Scrubbed directly by finger/scroll delta (matches BottomNav): fades 100% -> 0% on scroll down,
+  // and gradually reveals 10% -> 100% on scroll up in lockstep with hand motion.
   useEffect(() => {
+    const el = topbarRef.current;
+    if (!el) return;
+    if (open) {
+      el.style.setProperty('--tb-hide', '0');
+      el.classList.remove('is-gone');
+      return;
+    }
+    const RANGE = 110;
+    let progress = 0;
     let lastY = Math.max(0, window.scrollY);
-    const onScroll = () => {
-      const y = Math.max(0, window.scrollY);
-      const delta = y - lastY;
-      if (y < 24) setBarHidden(false);
-      else if (delta > 8 && y > 64) setBarHidden(true);
-      else if (delta < -6) setBarHidden(false);
-      lastY = y;
+    let raf = 0;
+
+    const apply = () => {
+      raf = 0;
+      el.style.setProperty('--tb-hide', progress.toFixed(3));
+      el.classList.toggle('is-gone', progress >= 0.96);
     };
+    apply();
+
+    const onScroll = () => {
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const y = Math.min(maxY, Math.max(0, window.scrollY));
+      const delta = y - lastY;
+      lastY = y;
+      if (y <= 16) {
+        progress = 0;
+      } else if (delta !== 0) {
+        progress = Math.min(1, Math.max(0, progress + delta / RANGE));
+      }
+      if (!raf) raf = window.requestAnimationFrame(apply);
+    };
+
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [route, open]);
 
   useEffect(() => {
     if (!accountOpen) return undefined;
@@ -406,7 +432,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
       {pwOpen && <PasswordModal name={me.full_name} onClose={() => setPwOpen(false)} />}
 
       <div className="stage">
-        <header className={`topbar${barHidden && !open ? ' is-hidden' : ''}`}>
+        <header ref={topbarRef} className="topbar">
           <button type="button" className="icon-btn menu-btn" aria-label="فتح القائمة" onClick={() => setOpen(true)}>
             <Menu size={22} aria-hidden />
           </button>

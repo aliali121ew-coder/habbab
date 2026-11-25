@@ -8,23 +8,18 @@
 .bottom-nav { display: none; }
 
 @media (max-width: 767px) {
-  /* ── top bar (Facebook-style headroom: hides on scroll down, reappears on scroll up) ── */
+  /* ── top bar (gesture-scrubbed fade 0–100% & slide with scroll, matching bottom bar) ── */
   .topbar {
     position: sticky !important; top: 0; z-index: 30; pointer-events: auto !important;
     display: flex; align-items: center; gap: 6px;
     margin: 0 !important; padding: calc(8px + var(--safe-top, 0px)) 10px 8px !important;
     background: var(--surface) !important; border-bottom: 1px solid var(--line) !important;
     box-shadow: 0 6px 18px -16px rgb(15 23 42 / 45%) !important;
-    transition: transform .24s cubic-bezier(.22, 1, .36, 1);
-    will-change: transform;
+    opacity: calc(1 - var(--tb-hide, 0));
+    transform: translate3d(0, calc(var(--tb-hide, 0) * -105%), 0);
+    will-change: transform, opacity;
   }
-  .topbar.is-hidden {
-    transform: translateY(calc(-100% - 12px));
-    pointer-events: none !important;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .topbar { transition: none; }
-  }
+  .topbar.is-gone { pointer-events: none !important; }
   .topbar-greet { display: none !important; }
   .topbar-title {
     display: block; flex: 1; min-width: 0; margin: 0 4px; font-size: 1.22rem; font-weight: 800; color: var(--ink);
