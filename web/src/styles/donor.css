@@ -290,3 +290,29 @@
   .dp-full { display: none; }
   .dp-short { display: inline; }
 }
+
+/* Donor photo: the picture takes the initial's place; a glass button adds or changes it. */
+.dp-photo { object-fit: cover; padding: 0; }
+.dp-photo-btn {
+  position: absolute;
+  top: 14px;
+  inset-inline-end: 14px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 99px;
+  background: rgb(255 255 255 / 22%);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: .74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dp-photo-btn:hover { background: rgb(255 255 255 / 34%); }
+.dp-photo-btn.busy { opacity: .7; cursor: progress; }
+.dp-photo-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.dp-photo-btn:focus-within { outline: 3px solid #fff; outline-offset: 2px; }
+.dp-photo-error { position: absolute; top: 56px; inset-inline: 14px; z-index: 2; padding: 6px 10px; border-radius: 10px; background: #fee2e2; color: #b91c1c; font-size: .74rem; font-weight: 700; }

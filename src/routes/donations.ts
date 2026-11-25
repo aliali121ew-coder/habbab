@@ -5,6 +5,7 @@ import { requireRole } from '../lib/auth';
 import { all, auditDetail, auditInsertedStmt, auditStmt, batch, fid, first, stmt } from '../lib/db';
 import { fail, idParam, parseOrFail, readJson, zDate, zText } from '../lib/http';
 import { currentMonth } from '../lib/text';
+import { putEncrypted, readImage, signFileLink } from './prescriptions';
 
 // Donations received (المساعدات): the donor — inside the foundation or outside it — and what they
 // gave, money or goods. Cash donations are the «التبرعات المالية» figure on the money pages.
@@ -111,6 +112,7 @@ donations.get('/donor', async (c) => {
        GROUP BY donor_name ORDER BY total DESC`, fid(c), `${year}-01`, `${year}-12`),
   ]);
   if (!items.length) fail(404, 'لا تبرعات بهذا الاسم');
+  const photo = await first<{ file_key: string }>(c, 'SELECT file_key FROM donor_photos WHERE foundation_id = ? AND donor_name = ?', fid(c), name);
   const yearCash = totals.reduce((sum, row) => sum + row.total, 0);
   const at = totals.findIndex((row) => row.donor_name === name);
   return c.json({
@@ -120,7 +122,65 @@ donations.get('/donor', async (c) => {
     year_cash: yearCash,
     donors_count: totals.length,
     rank: at >= 0 ? at + 1 : null,
+    photo_url: photo ? await signFileLink(c, photo.file_key) : null,
   });
+});
+
+// Every donor in the register (all years): their total cash, how many gifts, in-kind gifts, first
+// and last gift, how to reach them and their photo. Largest givers first.
+donations.get('/donors', async (c) => {
+  const [rows, photos] = await Promise.all([
+    all<{
+      donor_name: string; gifts: number; cash: number; goods: number; first_on: string; last_on: string;
+      phone: string | null; address: string | null; internal: number;
+    }>(c,
+      `SELECT donor_name, COUNT(*) AS gifts,
+         SUM(CASE WHEN kind = 'cash' THEN amount ELSE 0 END) AS cash,
+         SUM(CASE WHEN kind = 'in_kind' THEN 1 ELSE 0 END) AS goods,
+         MIN(received_on) AS first_on, MAX(received_on) AS last_on,
+         MAX(donor_phone) AS phone, MAX(donor_address) AS address,
+         MAX(CASE WHEN donor_type = 'internal' THEN 1 ELSE 0 END) AS internal
+       FROM donations WHERE foundation_id = ? AND deleted_at IS NULL
+       GROUP BY donor_name ORDER BY cash DESC, gifts DESC LIMIT 3000`, fid(c)),
+    all<{ donor_name: string; file_key: string }>(c, 'SELECT donor_name, file_key FROM donor_photos WHERE foundation_id = ?', fid(c)),
+  ]);
+  const keys = new Map(photos.map((row) => [row.donor_name, row.file_key]));
+  const donors = await Promise.all(rows.map(async (row) => ({
+    name: row.donor_name,
+    gifts: row.gifts,
+    cash: row.cash ?? 0,
+    goods: row.goods ?? 0,
+    first_on: row.first_on,
+    last_on: row.last_on,
+    phone: row.phone,
+    address: row.address,
+    type: row.internal ? 'internal' : 'external',
+    photo_url: keys.has(row.donor_name) ? await signFileLink(c, keys.get(row.donor_name)!) : null,
+  })));
+  return c.json({ donors });
+});
+
+// A donor's photo: multipart with `name` and `image` (already squared and compressed on the device).
+donations.post('/donor/photo', async (c) => {
+  const form = await c.req.formData().catch(() => fail(400, 'صيغة الطلب غير صحيحة'));
+  const name = parseOrFail(zText(120).min(1, 'اسم المتبرع مطلوب'), form.get('name'));
+  const image = await readImage(form.get('image'), 400 * 1024);
+  if (!image) fail(422, 'الصورة مطلوبة');
+  const known = await first(c, 'SELECT 1 FROM donations WHERE foundation_id = ? AND donor_name = ? AND deleted_at IS NULL LIMIT 1', fid(c), name);
+  if (!known) fail(404, 'لا تبرعات بهذا الاسم');
+  const old = await first<{ file_key: string }>(c, 'SELECT file_key FROM donor_photos WHERE foundation_id = ? AND donor_name = ?', fid(c), name);
+  const key = `donors/${crypto.randomUUID()}.bin`;
+  await putEncrypted(c, key, image);
+  await batch(c, [
+    stmt(c,
+      `INSERT INTO donor_photos (foundation_id, donor_name, file_key, updated_by) VALUES (?, ?, ?, ?)
+       ON CONFLICT(foundation_id, donor_name) DO UPDATE SET file_key = excluded.file_key, updated_by = excluded.updated_by,
+         updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
+      fid(c), name, key, c.get('user').id),
+    auditStmt(c, 'update_photo', 'donor', null, auditDetail(name)),
+  ]);
+  if (old) c.executionCtx.waitUntil(c.env.FILES.delete(old.file_key));
+  return c.json({ photo_url: await signFileLink(c, key) });
 });
 
 donations.post('/', async (c) => {

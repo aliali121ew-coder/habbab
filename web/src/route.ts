@@ -11,6 +11,8 @@ export type Route =
   | 'box-detail'
   // One donor's file: #/donors/<name> (donors are keyed by name in the register).
   | `donor:${string}`
+  // Every donor in the register.
+  | 'donors'
   | 'patients'
   | 'patient-detail'
   | 'families'
@@ -35,6 +37,7 @@ function parse(hash: string): Route {
   if (hash === '#/expenses') return 'expenses';
   // The yearly ledger (#/expenses/ledger, optionally /2025) and one month of it (/2025-11).
   if (/^#\/expenses\/ledger(?:\/\d{4}(?:-\d{2})?)?$/.test(hash)) return 'expenses-ledger';
+  if (hash === '#/donors') return 'donors';
   const donor = /^#\/donors\/(.+)$/.exec(hash);
   if (donor) { try { return `donor:${decodeURIComponent(donor[1])}`; } catch { return 'home'; } }
   if (hash === '#/boxes') return 'boxes';

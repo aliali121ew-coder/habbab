@@ -130,6 +130,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
               setDay(next.day ?? null);
             }}
           />
+          <a className="dd-ghost" href="#/donors"><Users size={16} aria-hidden /> سجل المتبرعين</a>
           <button type="button" className="dd-primary" onClick={onAdd}><Plus size={16} aria-hidden /> تبرع جديد</button>
         </div>
       </header>
@@ -152,7 +153,6 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
             <MoreHorizontal size={18} aria-hidden className="dd-more" />
           </header>
           <p className="dd-amount"><bdi>{formatNumber(data.goodsNow)}</bdi> <small>مساعدة</small><Delta value={data.goodsDelta} /></p>
-          <button type="button" className="dd-card-foot" onClick={() => { setKind('in_kind'); document.getElementById('dd-table')?.scrollIntoView({ behavior: 'smooth' }); }}>عرض المواد <ArrowLeft size={16} aria-hidden /></button>
         </article>
         <article className="dd-card">
           <header>
@@ -161,9 +161,6 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
             <MoreHorizontal size={18} aria-hidden className="dd-more" />
           </header>
           <p className="dd-amount"><bdi>{formatNumber(data.donorsNow)}</bdi> <small>متبرع</small><Delta value={data.donorsDelta} /></p>
-          {data.top
-            ? <a className="dd-card-foot" href={donorHref(data.top[0])}>أكبر متبرع: {data.top[0]} <ArrowLeft size={16} aria-hidden /></a>
-            : <span className="dd-card-foot muted">لا تبرعات مالية في الفترة</span>}
         </article>
       </section>
 

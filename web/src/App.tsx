@@ -31,6 +31,7 @@ const pages = {
   aid: () => import('./pages/aid/AidPage'),
   donations: () => import('./pages/donations/DonationsPage'),
   donor: () => import('./pages/donations/DonorPage'),
+  donors: () => import('./pages/donations/DonorsPage'),
   families: () => import('./pages/FamiliesPage'),
   family: () => import('./pages/FamilyDetailPage'),
   patient: () => import('./pages/patients/PatientDetailPage'),
@@ -53,6 +54,7 @@ const DelegatesPage = lazy(() => pages.delegates().then((m) => ({ default: m.Del
 const ComingSoonPage = lazy(() => pages.soon().then((m) => ({ default: m.ComingSoonPage })));
 const ReportsPage = lazy(() => pages.reports().then((m) => ({ default: m.ReportsPage })));
 const HomePage = lazy(() => pages.home().then((m) => ({ default: m.HomePage })));
+const DonorsPage = lazy(() => pages.donors().then((m) => ({ default: m.DonorsPage })));
 const DonorPage = lazy(() => pages.donor().then((m) => ({ default: m.DonorPage })));
 const DonationsPage = lazy(() => pages.donations().then((m) => ({ default: m.DonationsPage })));
 const AidPage = lazy(() => pages.aid().then((m) => ({ default: m.AidPage })));
@@ -149,6 +151,8 @@ export function App() {
         ? <SystemPage me={me} />
         : !hasFeature(me, routeFeature(route) ?? ROLE_FEATURE[me.role])
         ? <StateMessage kind="empty" title="هذه الصفحة غير مفعّلة لمؤسستك" hint="يفعّلها مدير النظام من صفحة المؤسسات." />
+        : route === 'donors' && me.role === 'admin'
+        ? <DonorsPage me={me} />
         : typeof route === 'string' && route.startsWith('donor:') && me.role === 'admin'
         ? <DonorPage key={route} me={me} name={route.slice(6)} />
         : route === 'soon:donations' && me.role === 'admin'

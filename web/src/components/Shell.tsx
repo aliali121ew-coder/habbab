@@ -143,6 +143,7 @@ function pageTitle(route: ReturnType<typeof useRoute>, me: Me): string {
   if (route === 'expenses' || route === 'expenses-ledger') return 'الحركات المالية';
   if (route === 'boxes' || route === 'box-detail') return 'صناديق الصدقات';
   if (typeof route === 'string' && route.startsWith('donor:')) return 'ملف المتبرع';
+  if (route === 'donors') return 'سجل المتبرعين';
   if (me.role === 'delegate') return 'سجل المشتركين';
   if (me.role === 'accountant') return 'الحركات المالية';
   if (me.role === 'health') return 'المرضى';
@@ -351,7 +352,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
             const onBoxes = route === 'boxes' || route === 'box-detail';
             const onPatients = route === 'patients' || route === 'patient-detail';
             const isActive = item.id.startsWith('soon:')
-              ? route === item.id || (item.id === 'soon:donations' && typeof route === 'string' && route.startsWith('donor:'))
+              ? route === item.id || (item.id === 'soon:donations' && typeof route === 'string' && (route === 'donors' || route.startsWith('donor:')))
               : item.id === 'home'
               ? route === 'home'
               : item.id === 'families'

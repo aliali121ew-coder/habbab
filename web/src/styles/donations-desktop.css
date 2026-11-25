@@ -396,3 +396,44 @@
 /* Donor's donations in the period. */
 .dd-count { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 10px; border-radius: 99px; background: var(--dd-soft); color: var(--dd-ink-2); font-size: .74rem; font-weight: 600; white-space: nowrap; }
 .dd-count bdi { color: var(--dd-ink); font-size: .86rem; font-weight: 800; }
+
+/* Cards without a footer keep their bottom padding. */
+.dd-cards .dd-card:not(:has(.dd-card-foot)) { padding-bottom: 18px; }
+a.dd-ghost { text-decoration: none; }
+
+/* ── سجل المتبرعين (pages/donations/DonorsPage.tsx) ─────────────────────────── */
+.dr .breadcrumbs { margin-bottom: 4px; }
+.dr-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.dr-search { flex: 1 1 280px; }
+.dr-search input { width: 100%; }
+.dr-filter button { display: inline-flex; align-items: center; gap: 6px; }
+.dr-filter bdi { padding: 0 6px; border-radius: 99px; background: rgb(0 0 0 / 6%); font-size: .7rem; }
+.dr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.dr-skel { min-height: 210px; }
+.dr-card { gap: 14px; height: 100%; color: var(--dd-ink); text-decoration: none; transition: transform .2s, box-shadow .2s, border-color .2s; }
+.dr-card:hover, .dr-card:focus-visible { transform: translateY(-3px); border-color: color-mix(in srgb, var(--dd-green) 40%, var(--dd-line)); box-shadow: 0 18px 34px -24px var(--dd-green); }
+.dr-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.dr-photo { flex: none; width: 58px; height: 58px; border-radius: 18px; object-fit: cover; box-shadow: 0 0 0 3px var(--dd-card), 0 0 0 4px var(--dd-line); }
+.dr-initial { display: grid; place-items: center; background: linear-gradient(150deg, var(--dd-green-2), var(--dd-green)); color: #fff; font-size: 1.5rem; font-weight: 800; }
+.dr-initial.internal { background: linear-gradient(150deg, #60a5fa, #2563eb); }
+.dr-who { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
+.dr-who b { max-width: 100%; overflow: hidden; font-size: 1rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.dr-badge { padding: 2px 9px; border-radius: 99px; background: var(--dd-mint); color: var(--dd-green); font-size: .68rem; font-weight: 700; }
+.dr-badge.internal { background: color-mix(in srgb, #2563eb 12%, var(--dd-card)); color: #2563eb; }
+.dr-contact { display: flex; flex-direction: column; gap: 6px; color: var(--dd-ink-2); font-size: .8rem; }
+.dr-contact span { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dr-contact svg { flex: none; color: var(--dd-ink-3); }
+.dr-contact em { color: var(--dd-ink-3); font-style: normal; }
+.dr-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--dd-line); }
+.dr-stats span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dr-stats small { display: inline-flex; align-items: center; gap: 3px; color: var(--dd-ink-3); font-size: .66rem; white-space: nowrap; }
+.dr-stats b { overflow: hidden; color: var(--dd-ink); font-size: .9rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dr-empty { align-items: center; padding: 40px 20px; color: var(--dd-ink-3); text-align: center; }
+.dr-empty b { color: var(--dd-ink); }
+.dr-empty p { margin: 0; font-size: .84rem; }
+@media (max-width: 767.98px) {
+  .dr-grid { grid-template-columns: 1fr; gap: 10px; }
+  .dr-who { flex: 1; }
+  .dr-tools .dd-toggle, .dr-tools .dd-filter { flex: 1 1 100%; }
+  .dr-filter button { flex: 1; justify-content: center; }
+}

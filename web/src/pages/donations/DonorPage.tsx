@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  ArrowRight, ArrowUpLeft, Banknote, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Gift, Hash, MapPin, MessageCircle, Package, Phone, Plus, Receipt, Trophy, TrendingDown, TrendingUp, UserRound,
+  ArrowRight, ArrowUpLeft, Banknote, CalendarDays, Camera, Check, ChevronDown, ChevronLeft, ChevronRight, Gift, Hash, MapPin, MessageCircle, Package, Phone, Plus, Receipt, Trophy, TrendingDown, TrendingUp, UserRound,
 } from 'lucide-react';
 import { api, type Me } from '../../api';
+import { compressAvatar } from '../../image';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
 import { MONTH_NAMES, formatCompact, formatNumber, formatPercent } from '../../format';
@@ -15,6 +16,7 @@ interface File {
   year_cash: number;
   donors_count: number;
   rank: number | null;
+  photo_url: string | null;
 }
 
 const now = new Date();
@@ -31,6 +33,25 @@ export function DonorPage({ me, name }: { me: Me; name: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState<{ donation: Donation | null } | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  // A new photo: squared and compressed on the device, then stored with the donor's name.
+  const uploadPhoto = async (picked: globalThis.File | undefined) => {
+    if (!picked) return;
+    setPhotoError('');
+    setPhotoBusy(true);
+    try {
+      const form = new FormData();
+      form.append('name', name);
+      form.append('image', await compressAvatar(picked), 'donor.jpg');
+      const result = await api<{ photo_url: string }>('/donations/donor/photo', { method: 'POST', form });
+      setFile((now) => (now ? { ...now, photo_url: result.photo_url } : now));
+    } catch (failure) {
+      setPhotoError((failure as Error).message);
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
   const [calendar, setCalendar] = useState<{ year: number; month: number } | null>(null);
 
   const load = useCallback(async () => {
@@ -144,7 +165,15 @@ export function DonorPage({ me, name }: { me: Me; name: string }) {
           {/* ── Donor card ───────────────────────────── */}
           <section className="dp-card dp-person" aria-label="بطاقة المتبرع">
             <span className="dp-person-glow" aria-hidden />
-            <span className="dp-initial" aria-hidden>{file.name.trim().charAt(0)}</span>
+            {file.photo_url
+              ? <img className="dp-initial dp-photo" src={file.photo_url} alt={`صورة ${file.name}`} />
+              : <span className="dp-initial" aria-hidden>{file.name.trim().charAt(0)}</span>}
+            <label className={`dp-photo-btn${photoBusy ? ' busy' : ''}`} title={file.photo_url ? 'تغيير الصورة' : 'إضافة صورة'}>
+              <Camera size={16} aria-hidden />
+              <span>{photoBusy ? 'جارٍ الرفع…' : file.photo_url ? 'تغيير الصورة' : 'إضافة صورة'}</span>
+              <input type="file" accept="image/*" disabled={photoBusy} onChange={(event) => { void uploadPhoto(event.target.files?.[0]); event.target.value = ''; }} />
+            </label>
+            {photoError && <span className="dp-photo-error" role="alert">{photoError}</span>}
             <div className="dp-person-foot">
               <div>
                 <b>{file.name}</b>
