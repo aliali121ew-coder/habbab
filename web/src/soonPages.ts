@@ -6,7 +6,7 @@ export type SoonGroup = 'records' | 'admin';
 
 /** Sections already listed in the menu that will be programmed later; each opens a «قيد التطوير» page. */
 export const SOON_PAGES: { slug: string; label: string; icon: LucideIcon; group: SoonGroup; hint: string }[] = [
-  { slug: 'aid', label: 'المساعدات', icon: HandHeart, group: 'records', hint: 'سجل موحّد لكل المساعدات المقدّمة من المؤسسة، بحسب النوع والمستفيد.' },
+  { slug: 'aid', label: 'المساعدات', icon: HandHeart, group: 'records', hint: 'سجل المتبرعين من داخل المؤسسة وخارجها وما قدّموه من مبالغ ومساعدات عينية.' },
   { slug: 'activity', label: 'سجل العمليات', icon: Activity, group: 'records', hint: 'كل ما يُضاف ويُعدّل ويُحذف في النظام، بمن قام به ومتى.' },
   { slug: 'reports', label: 'التقارير', icon: BarChart3, group: 'admin', hint: 'تقارير شهرية وسنوية للتحصيل والصرف والمستفيدين، قابلة للطباعة.' },
   { slug: 'requests', label: 'طلبات المساعدة', icon: Headset, group: 'admin', hint: 'استقبال طلبات المساعدة الجديدة ومتابعتها حتى البتّ فيها.' },

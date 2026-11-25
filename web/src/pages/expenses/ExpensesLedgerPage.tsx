@@ -7,7 +7,6 @@ import {
 import { api, type Me } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
 import { StateMessage } from '../../components/StateMessage';
-import { SAMPLE_DONATIONS } from '../../data/donations';
 import { MONTH_NAMES, formatNumber, formatPercent, monthIndex } from '../../format';
 import { ledgerFromHash, ledgerHref } from '../../route';
 import { CATEGORIES, CATEGORY_BY_ID, type ExpenseCategory } from './categories';
@@ -58,6 +57,11 @@ function shape(ledger: Ledger) {
 async function boxesOf(year: number): Promise<number[] | null> {
   const result = await api<{ months: number[] }>(`/boxes/monthly?year=${year}`).catch(() => null);
   return result?.months ?? null;
+}
+
+// Cash donations per month (the «المساعدات» register), with how many donors gave each month.
+async function donationsOf(year: number): Promise<{ months: number[]; donors: number[] } | null> {
+  return api<{ months: number[]; donors: number[] }>(`/donations/monthly?year=${year}`).catch(() => null);
 }
 
 async function incomeOf(year: number): Promise<number[] | null> {
@@ -289,17 +293,20 @@ function YearView({ me, year }: { me: Me; year: number }) {
   const [lastLedger, setLastLedger] = useState<Ledger | null>(null);
   const [income, setIncome] = useState<number[] | null>(null);
   const [boxIncome, setBoxIncome] = useState<number[] | null>(null);
+  const [gifts, setGifts] = useState<{ months: number[]; donors: number[] } | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [sheet, money, last, boxMoney] = await Promise.all([
+      const [sheet, money, last, boxMoney, giftMoney] = await Promise.all([
         api<Ledger>(`/expenses/ledger?year=${year}`),
         incomeOf(year),
         api<Ledger>(`/expenses/ledger?year=${year - 1}`).catch(() => null),
         boxesOf(year),
+        donationsOf(year),
       ]);
+      setGifts(giftMoney);
       setLedger(sheet);
       setLastLedger(last);
       setIncome(money);
@@ -368,9 +375,13 @@ function YearView({ me, year }: { me: Me; year: number }) {
             />
             <Kpi
               label="التبرعات المالية" icon={Gift} tone="gift"
-              // Sample figures (data/donations.ts) until the donations section exists.
-              value={<bdi>{formatNumber(SAMPLE_DONATIONS.cash)}</bdi>} unit={me.currency}
-              foot={<><span className="yl-foot-label"><bdi>{formatNumber(SAMPLE_DONATIONS.donors)}</bdi> متبرع · <span className="yl-tag">تجريبي</span></span><Pill value={change(SAMPLE_DONATIONS.cashBefore, SAMPLE_DONATIONS.cash)} goodUp /></>}
+              // Cash donations from the «المساعدات» register.
+              value={gifts ? <bdi>{formatNumber(gifts.months[focus])}</bdi> : '—'} unit={gifts ? me.currency : undefined}
+              foot={gifts
+                ? <><a className="yl-foot-label yl-foot-link" href="#/soon/aid"><bdi>{formatNumber(gifts.donors[focus])}</bdi> متبرع · {MONTH_NAMES[focus]}</a><Pill value={focus > 0 ? change(gifts.months[focus - 1], gifts.months[focus]) : null} goodUp /></>
+                : <span className="yl-foot-label">غير متاح لمؤسستك</span>}
+              spark={gifts && gifts.months.some((value) => value > 0) ? gifts.months.slice(0, focus + 1) : undefined}
+              currency={me.currency}
             />
             <Kpi
               label="الاستهلاك السنوي" icon={Layers}

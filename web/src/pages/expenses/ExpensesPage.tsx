@@ -6,7 +6,6 @@ import {
 } from 'lucide-react';
 import { BackToClose } from '../../components/useBackToClose';
 import { useIsPhone } from '../../useIsPhone';
-import { SAMPLE_DONATIONS } from '../../data/donations';
 import { api, type Me, type Overview } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { DatePicker, monthRange, periodLabel, wholeMonth, type DateRange } from '../../components/DatePicker';
@@ -157,6 +156,9 @@ interface Flow {
   income: number;
   // Charity boxes collected in the month (صناديق الصدقات); money in, like the subscribers' payments.
   boxes: number;
+  // Cash donations recorded on the «المساعدات» page (shown on their card; not in the balance).
+  donations: number;
+  prevDonations: number;
   spent: number;
   prevIncome: number;
   prevBoxes: number;
@@ -208,9 +210,8 @@ function BalanceCards({ flow, currency }: { flow: Flow | null; year?: number; mo
       </article>
       <article className="bal-card bal-phone">
         <h2><Gift size={14} aria-hidden /> تبرعات مالية</h2>
-        {/* Sample figures (data/donations.ts) until the donations section exists, as on the home page. */}
-        <p className="bal-value"><bdi>{formatNumber(SAMPLE_DONATIONS.cash)}</bdi> <small>{currency}</small></p>
-        {pill(change(SAMPLE_DONATIONS.cashBefore, SAMPLE_DONATIONS.cash), true)}
+        <p className="bal-value">{amount(flow?.donations)}</p>
+        {flow && pill(change(flow.prevDonations, flow.donations), true)}
       </article>
       <article className={`bal-card bal-now${flow && closing < 0 ? ' neg' : ''}`}>
         <h2>الرصيد الحالي</h2>
@@ -364,12 +365,14 @@ export function ExpensesPage({ me }: { me: Me }) {
     if (!sheet) return undefined;
     let live = true;
     void (async () => {
-      const [thisYear, lastYear, lastSheet, thisBoxes, lastBoxes] = await Promise.all([
+      const [thisYear, lastYear, lastSheet, thisBoxes, lastBoxes, thisGifts, lastGifts] = await Promise.all([
         api<Overview>(`/collections/overview?year=${year}&delegates=0`).catch(() => null),
         api<Overview>(`/collections/overview?year=${year - 1}&delegates=0`).catch(() => null),
         api<MonthSheet>(`/expenses?from=${year - 1}-12-01&to=${year - 1}-12-31`).catch(() => null),
         api<{ months: number[] }>(`/boxes/monthly?year=${year}`).catch(() => null),
         api<{ months: number[] }>(`/boxes/monthly?year=${year - 1}`).catch(() => null),
+        api<{ months: number[] }>(`/donations/monthly?year=${year}`).catch(() => null),
+        api<{ months: number[] }>(`/donations/monthly?year=${year - 1}`).catch(() => null),
       ]);
       if (!live) return;
       const incomeOf = (overview: Overview | null) => Array.from({ length: 12 }, (_, at) => overview?.months.find((item) => monthIndex(item.period) === at)?.paid_amount ?? 0);
@@ -386,6 +389,8 @@ export function ExpensesPage({ me }: { me: Me }) {
         opening: net(moneyIn(lastIncome, lastBoxMonths), lastSpent, 12) + net(moneyIn(income, boxes), spent, month),
         income: income[month],
         boxes: boxes[month] ?? 0,
+        donations: thisGifts?.months[month] ?? 0,
+        prevDonations: month > 0 ? thisGifts?.months[month - 1] ?? 0 : lastGifts?.months[11] ?? 0,
         spent: spent[month] ?? 0,
         prevIncome: month > 0 ? income[month - 1] : lastIncome[11],
         prevBoxes: month > 0 ? boxes[month - 1] ?? 0 : lastBoxMonths[11] ?? 0,

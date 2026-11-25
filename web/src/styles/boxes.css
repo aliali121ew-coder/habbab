@@ -118,3 +118,17 @@
   .bx-months td.is-empty { display: none !important; }
   .bx-months tr.is-future, .bx-months tr.is-early { padding-block: 8px; }
 }
+
+/* ── المساعدات (pages/aid): donors' register ─────────────────────────────── */
+.aid-strip .yl-month { width: 100%; font: inherit; color: inherit; cursor: pointer; }
+.aid-strip button.yl-month:hover { background: var(--yl-soft); }
+.aid-clear { padding: 0; border: 0; background: none; color: var(--bar-active); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.aid-kind { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 99px; font-size: .72rem; font-weight: 700; }
+.aid-kind.cash { background: color-mix(in srgb, #f59e0b 14%, transparent); color: #b45309; }
+.aid-kind.in_kind { background: color-mix(in srgb, #8b5cf6 13%, transparent); color: #7c3aed; }
+:root[data-theme="dark"] .aid-kind.cash { color: #fbbf24; }
+:root[data-theme="dark"] .aid-kind.in_kind { color: #c4b5fd; }
+.aid .bx-tools .yl-slide { flex: none; }
+@media (max-width: 767.98px) {
+  .aid .bx-tools .yl-slide { flex: 1 1 100%; }
+}
