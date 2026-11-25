@@ -163,7 +163,7 @@ export function DonorPage({ me, name }: { me: Me; name: string }) {
           </header>
 
           {/* ── Donor card ───────────────────────────── */}
-          <section className="dp-card dp-person" aria-label="بطاقة المتبرع">
+          <section className={`dp-card dp-person${file.photo_url ? ' has-photo' : ''}`} aria-label="بطاقة المتبرع">
             <span className="dp-person-glow" aria-hidden />
             {file.photo_url
               ? <img className="dp-initial dp-photo" src={file.photo_url} alt={`صورة ${file.name}`} />

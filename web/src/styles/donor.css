@@ -316,3 +316,36 @@
 .dp-photo-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .dp-photo-btn:focus-within { outline: 3px solid #fff; outline-offset: 2px; }
 .dp-photo-error { position: absolute; top: 56px; inset-inline: 14px; z-index: 2; padding: 6px 10px; border-radius: 10px; background: #fee2e2; color: #b91c1c; font-size: .74rem; font-weight: 700; }
+
+/* With a photo: the picture fills the top 80% of the card edge to edge, and a shade rises from the
+   bottom (deep at the name, about 30% where it meets the picture) so the text always reads. */
+.dp-person.has-photo { --dp-shade: 24 16 70; background: rgb(var(--dp-shade)); }
+:root[data-theme="dark"] .dp-person.has-photo { --dp-shade: 14 10 38; }
+.dp-person.has-photo .dp-person-glow { display: none; }
+.dp-person.has-photo .dp-photo {
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: 80%;
+  margin: 0;
+  border-radius: 0;
+  background: #fff;
+  object-fit: cover;
+  object-position: center;
+  box-shadow: none;
+}
+.dp-person.has-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(0deg,
+    rgb(var(--dp-shade)) 0%,
+    rgb(var(--dp-shade)) 20%,
+    rgb(var(--dp-shade) / 70%) 26%,
+    rgb(var(--dp-shade) / 30%) 38%,
+    rgb(var(--dp-shade) / 0%) 52%);
+  pointer-events: none;
+}
+.dp-person.has-photo .dp-person-foot { z-index: 2; background: none; }
+.dp-person.has-photo .dp-photo-btn { z-index: 3; border-color: rgb(255 255 255 / 70%); background: rgb(20 14 60 / 35%); }
+.dp-person.has-photo .dp-glass-badge { background: rgb(255 255 255 / 14%); }
