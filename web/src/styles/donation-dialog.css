@@ -124,3 +124,49 @@
   .dg-kind-check { position: absolute; top: 12px; inset-inline-end: 12px; }
   .dg-kind b { font-size: .9rem; }
 }
+
+/* ── Wider, shorter: gradient header, compact type cards, two columns on computers ─────── */
+.dg-head {
+  border-bottom: 0;
+  background:
+    radial-gradient(120% 160% at 100% 0%, color-mix(in srgb, var(--dg-a) 55%, #fff 0%) 0%, transparent 60%),
+    linear-gradient(120deg, color-mix(in srgb, var(--dg-a) 78%, #fff), var(--dg-a) 55%, color-mix(in srgb, var(--dg-a) 70%, #0b1020));
+  color: #fff;
+}
+.dg-head .dg-titles p { color: rgb(255 255 255 / 80%); }
+.dg-head .dg-icon { background: rgb(255 255 255 / 18%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 30%); backdrop-filter: blur(6px); }
+.dg-head .dg-close { border-color: rgb(255 255 255 / 35%); background: rgb(255 255 255 / 14%); color: #fff; }
+.dg-head .dg-close:hover { background: rgb(255 255 255 / 26%); color: #fff; }
+
+.dg-kind { min-height: 0; padding: 9px 12px; border-radius: 14px; }
+.dg-kind-icon { width: 36px; height: 36px; border-radius: 11px; }
+.dg-kind-icon svg { width: 18px; height: 18px; }
+.dg-kind b { font-size: .9rem; }
+.dg-kind small { font-size: .7rem; }
+.dg-amount-box { height: 58px; }
+.dg-amount-box input { font-size: 1.6rem; }
+.dg-quick button, .dg-chips button { min-height: 34px; padding-inline: 12px; font-size: .78rem; }
+.dg-input, .dg-stepper { height: 44px; }
+.dg-switch button { min-height: 38px; }
+.dg-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+@media (min-width: 1024px) {
+  .dg { width: min(1000px, calc(100vw - 48px)); }
+  .dg-body {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas: "what who" "details details" "error error";
+    gap: 18px 28px;
+    padding: 18px 24px 20px;
+  }
+  .dg-section[aria-labelledby="dg-what"] { grid-area: what; }
+  .dg-section[aria-labelledby="dg-who"] { grid-area: who; }
+  .dg-section[aria-labelledby="dg-details"] { grid-area: details; padding-top: 16px; border-top: 1px dashed var(--line); }
+  .dg-error { grid-area: error; }
+  /* «من المتبرع؟» stacks its two fields so it lines up with the left column. */
+  .dg-section[aria-labelledby="dg-who"] .dg-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 767.98px) {
+  .dg-grid-3 { grid-template-columns: 1fr; }
+  .dg-head { padding-top: calc(14px + var(--safe-top, 0px)); }
+}

@@ -221,7 +221,7 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
                 {PURPOSES.map((option) => <button key={option} type="button" role="radio" aria-checked={purpose === option} onClick={() => setPurpose(option)}>{option}</button>)}
               </div>
             </div>
-            <div className="dg-grid">
+            <div className="dg-grid dg-grid-3">
               <label className="dg-field">
                 <span className="dg-label">تاريخ الاستلام</span>
                 <span className="dg-input"><CalendarDays size={17} aria-hidden /><input type="date" value={date} max={today()} onChange={(event) => setDate(event.target.value)} dir="ltr" /></span>
@@ -230,11 +230,11 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
                 <span className="dg-label">رقم الوصل <small>اختياري</small></span>
                 <span className="dg-input"><Hash size={17} aria-hidden /><input value={receipt} onChange={(event) => setReceipt(event.target.value)} maxLength={40} dir="ltr" placeholder="R-0000" /></span>
               </label>
+              <label className="dg-field">
+                <span className="dg-label">ملاحظة <small>اختياري</small></span>
+                <span className="dg-input"><StickyNote size={17} aria-hidden /><input value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} placeholder="أي تفصيل يفيد لاحقاً" /></span>
+              </label>
             </div>
-            <label className="dg-field">
-              <span className="dg-label">ملاحظة <small>اختياري</small></span>
-              <span className="dg-input dg-textarea"><StickyNote size={17} aria-hidden /><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={300} rows={2} placeholder="أي تفصيل يفيد لاحقاً" /></span>
-            </label>
           </section>
 
           {error && <p className="dg-error" role="alert">{error}</p>}
