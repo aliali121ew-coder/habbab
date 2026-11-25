@@ -14,7 +14,8 @@ interface Props {
   month: number;
   collected: number[];
   spent: number[] | null;
-  donations: { cash: number; food: { label: string; qty: number; unit: string }[] };
+  // This month's donations from the donors' register; null when the foundation cannot read them.
+  donations: { cash: number; food: { label: string; qty: number; unit: string }[] } | null;
 }
 
 type Range = 'week' | 'month' | 'year';
@@ -239,15 +240,18 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
           <span className="flex items-baseline justify-between gap-2">
             <span className="text-sm font-extrabold" style={{ color: 'var(--fp-ink)' }}>التبرعات</span>
             <span className="whitespace-nowrap text-base font-extrabold tabular-nums" style={{ color: 'var(--fp-emerald)' }}>
-              <bdi dir="ltr">{formatNumber(donations.cash)}</bdi> <small className="text-[11px] font-medium">{currency}</small>
+              {donations ? <><bdi dir="ltr">{formatNumber(donations.cash)}</bdi> <small className="text-[11px] font-medium">{currency}</small></> : '—'}
             </span>
           </span>
           <span className="mt-1.5 flex flex-wrap gap-1">
-            {donations.food.slice(0, 2).map((f) => (
+            {(donations?.food ?? []).slice(0, 2).map((f) => (
               <span key={f.label} className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums" style={{ backgroundColor: 'var(--fp-muted-2)', color: 'var(--fp-ink-2)' }}>
-                {formatNumber(f.qty)} {f.unit} {f.label === 'سلة غذائية' ? 'غذائية' : f.label}
+                {f.qty > 0 ? <>{formatNumber(f.qty)} {f.label.startsWith(f.unit) ? '' : `${f.unit} `}</> : null}{f.label}
               </span>
             ))}
+            {donations && donations.food.length === 0 && (
+              <span className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>لا مواد عينية هذا الشهر</span>
+            )}
           </span>
         </span>
         <ChevronLeft size={18} className="shrink-0" style={{ color: 'var(--fp-ink-3)' }} aria-hidden />

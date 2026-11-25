@@ -7,7 +7,6 @@ import {
 import { api, type Feature, type Me, type Overview } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { AidHeroBanner } from '../../components/shared/AidHeroBanner';
-import { SAMPLE_DONATIONS } from '../../data/donations';
 import { useFamilies } from '../../data/families';
 import { formatNumber, MONTH_NAMES, monthIndex } from '../../format';
 import { AidDisbursementsTable } from './AidDisbursementsTable';
@@ -82,9 +81,16 @@ function DeltaPill({ value, goodWhenUp = true }: { value: number | null; goodWhe
   );
 }
 
+// This year's donations (the donors' register shared by «المساعدات» and «التبرعات»).
+interface GiftSheet {
+  items: { kind: 'cash' | 'in_kind'; amount: number | null; item: string | null; quantity: number | null; unit: string | null; received_on: string }[];
+  previous_december_cash: number;
+}
+
 export function HomePage({ me }: { me: Me }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [sheet, setSheet] = useState<MonthSheet | null>(null);
+  const [gifts, setGifts] = useState<GiftSheet | null>(null);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -92,15 +98,19 @@ export function HomePage({ me }: { me: Me }) {
     const now = new Date();
     const range = monthRange(now);
     try {
-      const [nextOverview, nextSheet] = await Promise.all([
+      const giving = me.features.includes('donations') || me.features.includes('aid');
+      const [nextOverview, nextSheet, nextGifts] = await Promise.all([
         api<Overview>(`/collections/overview?year=${now.getFullYear()}&delegates=0`),
         api<MonthSheet>(`/expenses?from=${range.from}&to=${range.to}`).catch(() => null),
+        giving ? api<GiftSheet>(`/donations?year=${now.getFullYear()}`).catch(() => null) : Promise.resolve(null),
       ]);
       setOverview(nextOverview);
       setSheet(nextSheet);
+      setGifts(nextGifts);
     } catch (failure) {
       setError((failure as Error).message);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -146,6 +156,26 @@ export function HomePage({ me }: { me: Me }) {
   const spentDelta = sheet ? change(spentNow, spentBefore) : null;
   const aidCountDelta = sheet ? change(aidCountNow, aidCountBefore) : null;
 
+  // This month's donations from the donors' register: the cash given, its change on last month,
+  // and the goods that came in most (by how many times they were given).
+  const giftKey = overview.focus.slice(0, 7);
+  const giftPrevKey = month > 0 ? `${giftKey.slice(0, 4)}-${pad(month)}` : null;
+  const giftCash = (key: string) => (gifts?.items ?? []).filter((item) => item.kind === 'cash' && item.received_on.startsWith(key)).reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const goods = new Map<string, { qty: number; unit: string; times: number }>();
+  (gifts?.items ?? []).filter((item) => item.kind === 'in_kind' && item.received_on.startsWith(giftKey)).forEach((item) => {
+    const key = `${item.item ?? ''}|${item.unit ?? ''}`;
+    const row = goods.get(key) ?? { qty: 0, unit: item.unit ?? '', times: 0 };
+    row.qty += item.quantity ?? 0;
+    row.times += 1;
+    goods.set(key, row);
+  });
+  const donations = {
+    cash: giftCash(giftKey),
+    food: [...goods].sort((a, b) => b[1].times - a[1].times).map(([key, row]) => ({ label: key.split('|')[0], qty: row.qty, unit: row.unit })),
+  };
+  const donationsBefore = giftPrevKey ? giftCash(giftPrevKey) : gifts?.previous_december_cash ?? 0;
+  const donationsDelta = gifts ? change(donations.cash, donationsBefore) : null;
+
   const paidCount = overview.months[month]?.paid_count ?? 0;
   const rate = overview.alive > 0 ? Math.round((paidCount / overview.alive) * 100) : 0;
 
@@ -172,14 +202,15 @@ export function HomePage({ me }: { me: Me }) {
     { label: 'الوارد الشهري', feature: 'subscribers', icon: Wallet, tone: 'var(--fp-primary)', soft: 'var(--fp-primary-soft)', value: formatNumber(collectedNow), unit, foot: <DeltaPill value={incomeDelta} goodWhenUp /> },
     { label: 'المصروف الشهري', feature: 'expenses', icon: Receipt, tone: 'var(--fp-amber)', soft: 'var(--fp-amber-soft)', value: sheet ? formatNumber(spentNow) : '—', unit: sheet ? unit : undefined, foot: <DeltaPill value={spentDelta} goodWhenUp={false} /> },
     {
-      // Sample figures (data/donations.ts) until the donations section exists.
+      // This month's cash donations from the donors' register, and the goods that came in most.
       label: 'التبرعات', icon: Gift, tone: 'var(--fp-primary)', soft: 'var(--fp-primary-soft)', href: '#/soon/donations',
-      value: formatNumber(SAMPLE_DONATIONS.cash), unit,
+      value: gifts ? formatNumber(donations.cash) : '—', unit: gifts ? unit : undefined,
       foot: (
-        <span className="flex flex-wrap gap-1">
-          {SAMPLE_DONATIONS.food.slice(0, 2).map((f) => (
+        <span className="flex flex-wrap items-center gap-1">
+          <DeltaPill value={donationsDelta} goodWhenUp />
+          {donations.food.slice(0, 2).map((f) => (
             <span key={f.label} className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums" style={{ backgroundColor: 'var(--fp-muted-2)', color: 'var(--fp-ink-2)' }}>
-              {formatNumber(f.qty)} {f.unit} {f.label === 'سلة غذائية' ? 'غذائية' : f.label}
+              {f.qty > 0 ? <>{formatNumber(f.qty)} {f.label.startsWith(f.unit) ? '' : `${f.unit} `}</> : null}{f.label}
             </span>
           ))}
         </span>
@@ -236,7 +267,7 @@ export function HomePage({ me }: { me: Me }) {
               month={month}
               collected={collected}
               spent={sheet ? spentYear : null}
-              donations={SAMPLE_DONATIONS}
+              donations={gifts ? donations : null}
             />
             </Suspense>
           </div>
