@@ -9,6 +9,8 @@ export type Route =
   // صناديق الصدقات: every box, and one box with its months.
   | 'boxes'
   | 'box-detail'
+  // One donor's file: #/donors/<name> (donors are keyed by name in the register).
+  | `donor:${string}`
   | 'patients'
   | 'patient-detail'
   | 'families'
@@ -33,6 +35,8 @@ function parse(hash: string): Route {
   if (hash === '#/expenses') return 'expenses';
   // The yearly ledger (#/expenses/ledger, optionally /2025) and one month of it (/2025-11).
   if (/^#\/expenses\/ledger(?:\/\d{4}(?:-\d{2})?)?$/.test(hash)) return 'expenses-ledger';
+  const donor = /^#\/donors\/(.+)$/.exec(hash);
+  if (donor) { try { return `donor:${decodeURIComponent(donor[1])}`; } catch { return 'home'; } }
   if (hash === '#/boxes') return 'boxes';
   if (/^#\/boxes\/\d+$/.test(hash)) return 'box-detail';
   if (hash === '#/patients') return 'patients';
@@ -63,6 +67,7 @@ export const ledgerFromHash = (hash: string): { year: number | null; month: numb
 export const ledgerHref = (year: number, month?: number) =>
   `#/expenses/ledger/${year}${month === undefined ? '' : `-${String(month + 1).padStart(2, '0')}`}`;
 export const boxIdFromHash = () => Number(/^#\/boxes\/(\d+)$/.exec(location.hash)?.[1] ?? 0);
+export const donorHref = (name: string) => `#/donors/${encodeURIComponent(name)}`;
 export const boxHref = (boxId: number) => `#/boxes/${boxId}`;
 export const familyIdFromHash = () => Number(/^#\/families\/(\d+)$/.exec(location.hash)?.[1] ?? 0);
 

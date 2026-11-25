@@ -86,6 +86,34 @@ donations.get('/monthly', async (c) => {
   return c.json({ year, months, donors });
 });
 
+// One donor's file: every gift they ever gave (by name, as the register keys donors), plus where
+// they stand in the year — their rank among cash donors and their share of the year's cash.
+donations.get('/donor', async (c) => {
+  const name = parseOrFail(zText(120).min(1, 'اسم المتبرع مطلوب'), c.req.query('name'));
+  const year = parseOrFail(zYear, c.req.query('year') || currentMonth().slice(0, 4));
+  const [items, totals] = await Promise.all([
+    all<Row & { created_by_name: string | null }>(c,
+      `SELECT ${COLUMNS}, u.full_name AS created_by_name FROM donations d LEFT JOIN users u ON u.id = d.created_by
+       WHERE d.foundation_id = ? AND d.donor_name = ? AND d.deleted_at IS NULL
+       ORDER BY d.received_on DESC, d.id DESC LIMIT 2000`, fid(c), name),
+    all<{ donor_name: string; total: number }>(c,
+      `SELECT donor_name, SUM(amount) AS total FROM donations
+       WHERE foundation_id = ? AND month BETWEEN ? AND ? AND kind = 'cash' AND deleted_at IS NULL
+       GROUP BY donor_name ORDER BY total DESC`, fid(c), `${year}-01`, `${year}-12`),
+  ]);
+  if (!items.length) fail(404, 'لا تبرعات بهذا الاسم');
+  const yearCash = totals.reduce((sum, row) => sum + row.total, 0);
+  const at = totals.findIndex((row) => row.donor_name === name);
+  return c.json({
+    name,
+    year,
+    items,
+    year_cash: yearCash,
+    donors_count: totals.length,
+    rank: at >= 0 ? at + 1 : null,
+  });
+});
+
 donations.post('/', async (c) => {
   const entry = await readJson(c, z.object(body));
   check(entry);

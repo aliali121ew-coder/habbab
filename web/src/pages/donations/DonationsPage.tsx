@@ -5,6 +5,7 @@ import {
 import { api, type Me } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { MONTH_NAMES, formatNumber, formatPercent } from '../../format';
+import { donorHref } from '../../route';
 import { DonationDialog, type Donation } from '../aid/DonationDialog';
 
 interface Sheet { year: number; items: Donation[]; previous_december_cash: number }
@@ -217,8 +218,10 @@ export function DonationsPage({ me }: { me: Me }) {
                   return (
                     <li key={rank} className={`dn-step r${rank + 1}`} style={{ '--i': rank } as React.CSSProperties}>
                       <span className="dn-medal" aria-hidden>{rank === 0 ? <Crown size={16} /> : <Medal size={15} />}</span>
-                      <span className={`dn-avatar ${row.type}`} aria-hidden>{row.name.trim().charAt(0)}</span>
-                      <b className="dn-step-name">{row.name}</b>
+                      <a className="dn-step-link" href={donorHref(row.name)} aria-label={`ملف ${row.name}`}>
+                        <span className={`dn-avatar ${row.type}`} aria-hidden>{row.name.trim().charAt(0)}</span>
+                      </a>
+                      <a className="dn-step-name" href={donorHref(row.name)}>{row.name}</a>
                       <span className="dn-step-amount"><bdi>{formatNumber(row.cash)}</bdi></span>
                       <span className="dn-block"><bdi>{rank + 1}</bdi></span>
                     </li>
@@ -230,7 +233,7 @@ export function DonationsPage({ me }: { me: Me }) {
                   {data.board.slice(3, 8).map((row, at) => (
                     <li key={row.name}>
                       <span className="dn-rank-no"><bdi>{at + 4}</bdi></span>
-                      <span className="dn-rank-name">{row.name}</span>
+                      <a className="dn-rank-name" href={donorHref(row.name)}>{row.name}</a>
                       <span className="dn-rank-bar"><i style={{ inlineSize: `${(row.cash / Math.max(data.board[0].cash, 1)) * 100}%` }} /></span>
                       <bdi className="dn-rank-amount">{formatNumber(row.cash)}</bdi>
                     </li>

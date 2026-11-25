@@ -7,6 +7,7 @@ import { StateMessage } from '../../components/StateMessage';
 import { MONTH_NAMES, formatNumber } from '../../format';
 import { SlideTabs } from '../expenses/LedgerMonthChart';
 import { Card, DeltaPill, showDate } from '../boxes/BoxesPage';
+import { donorHref } from '../../route';
 import { DonationDialog, type Donation } from './DonationDialog';
 
 interface Sheet { year: number; items: Donation[]; previous_december_cash: number }
@@ -226,7 +227,7 @@ export function AidPage({ me }: { me: Me }) {
                           <span className="bx-holder">
                             <span className={`bx-avatar${row.donor_type === 'internal' ? ' is-delegate' : ''}`} aria-hidden>{row.donor_name.trim().charAt(0)}</span>
                             <span className="bx-holder-text">
-                              <b>{row.donor_name}</b>
+                              <a className="aid-donor" href={donorHref(row.donor_name)} onClick={(event) => event.stopPropagation()}>{row.donor_name}</a>
                               <small>
                                 <span className={`bx-badge${row.donor_type === 'internal' ? '' : ' muted'}`}>{row.donor_type === 'internal' ? 'من داخل المؤسسة' : 'من خارج المؤسسة'}</span>
                                 {row.donor_phone && <bdi dir="ltr">{row.donor_phone}</bdi>}

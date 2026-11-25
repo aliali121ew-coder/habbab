@@ -132,3 +132,5 @@
 @media (max-width: 767.98px) {
   .aid .bx-tools .yl-slide { flex: 1 1 100%; }
 }
+.aid-donor { overflow: hidden; color: var(--ink); font-size: .9rem; font-weight: 600; text-decoration: none; text-overflow: ellipsis; }
+.aid-donor:hover { color: var(--bar-active); text-decoration: underline; }

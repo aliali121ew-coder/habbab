@@ -349,3 +349,8 @@
   .dn-year button { width: 44px; height: 44px; }
   .dn-search { height: 46px; }
 }
+
+/* Names on the honour board open the donor's file. */
+.dn-step-link { display: block; border-radius: 16px; }
+a.dn-step-name, a.dn-rank-name { text-decoration: none; }
+a.dn-step-name:hover, a.dn-rank-name:hover { color: var(--dn-a); text-decoration: underline; }
