@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   Banknote, ChevronLeft, ChevronRight, Crown, Flame, Gift, HandHeart, Heart, Medal, Package, Plus, Search, Sparkles, TrendingDown, TrendingUp, Users,
 } from 'lucide-react';
@@ -7,6 +7,7 @@ import { StateMessage } from '../../components/StateMessage';
 import { MONTH_NAMES, formatNumber, formatPercent } from '../../format';
 import { donorHref } from '../../route';
 import { DonationDialog, type Donation } from '../aid/DonationDialog';
+import { DonationsDesktop } from './DonationsDesktop';
 
 interface Sheet { year: number; items: Donation[]; previous_december_cash: number }
 
@@ -144,6 +145,38 @@ export function DonationsPage({ me }: { me: Me }) {
 
   const monthChange = data && data.prev > 0 ? ((data.cash[focus] - data.prev) / data.prev) * 100 : null;
   const donorNames = useMemo(() => [...new Set(sheet?.items.map((item) => item.donor_name) ?? [])], [sheet]);
+  const desktop = useDesktop();
+  const dialogNode = dialog && (
+    <DonationDialog
+      donation={dialog.donation}
+      donors={donorNames}
+      currency={me.currency}
+      onClose={() => setDialog(null)}
+      onSaved={() => { setDialog(null); void load(); }}
+    />
+  );
+
+  // On a computer the page takes the approved finance-dashboard layout; the phone keeps the wall.
+  if (desktop) {
+    return (
+      <>
+        {error && !sheet && <StateMessage kind="error" title="تعذّر تحميل التبرعات" hint={error} onRetry={load} />}
+        {!sheet && !error && <div className="dd" aria-busy="true"><div className="dd-card skeleton dd-skel" /></div>}
+        {sheet && (
+          <DonationsDesktop
+            items={sheet.items}
+            previousDecemberCash={sheet.previous_december_cash}
+            year={year}
+            onYear={setYear}
+            currency={me.currency}
+            onAdd={() => setDialog({ donation: null })}
+            onOpen={(donation) => setDialog({ donation })}
+          />
+        )}
+        {dialogNode}
+      </>
+    );
+  }
 
   return (
     <div className="dn">
@@ -378,18 +411,23 @@ export function DonationsPage({ me }: { me: Me }) {
         </>
       )}
 
-      {dialog && (
-        <DonationDialog
-          donation={dialog.donation}
-          donors={donorNames}
-          currency={me.currency}
-          onClose={() => setDialog(null)}
-          onSaved={() => { setDialog(null); void load(); }}
-        />
-      )}
+      {dialogNode}
     </div>
   );
 }
+
+const desktopQuery = '(min-width: 1024px)';
+const subscribeDesktop = (listener: () => void) => {
+  const media = window.matchMedia(desktopQuery);
+  media.addEventListener('change', listener);
+  // Some browsers (and device emulation) skip the media event on resize; the resize event covers it.
+  window.addEventListener('resize', listener);
+  return () => {
+    media.removeEventListener('change', listener);
+    window.removeEventListener('resize', listener);
+  };
+};
+const useDesktop = () => useSyncExternalStore(subscribeDesktop, () => window.matchMedia(desktopQuery).matches);
 
 // The year's cash as one smooth glowing line that draws itself in, January on the right.
 function Pulse({ values, upTo, currency }: { values: number[]; upTo: number; currency: string }) {

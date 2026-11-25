@@ -15,6 +15,7 @@
 @import './boxes.css' layer(base);
 @import './donations.css' layer(base);
 @import './donor.css' layer(base);
+@import './donations-desktop.css' layer(base);
 @import './patients.css' layer(base);
 @import './families.css' layer(base);
 @import './family-profile.css' layer(base);

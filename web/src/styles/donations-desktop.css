@@ -1,0 +1,229 @@
+/* The donations page on a computer (pages/donations/DonationsDesktop.tsx), after the approved
+   finance-dashboard picture: white cards on a quiet background, one deep-green hero card, green
+   pills and a soft-green bar chart with the chosen month in deep green. The picture's palette is
+   kept on purpose; dark mode has its own steps. Shown from 1024px; phones keep «جدار العطاء». */
+.dd {
+  --dd-green: #146c43;
+  --dd-green-2: #1f8f5a;
+  --dd-mint: #e7f5ee;
+  --dd-mint-2: #cdeadb;
+  --dd-card: #ffffff;
+  --dd-ink: #111827;
+  --dd-ink-2: #4b5563;
+  --dd-ink-3: #9ca3af;
+  --dd-line: #e9edf1;
+  --dd-soft: #f6f8fa;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  color: var(--dd-ink);
+}
+:root[data-theme="dark"] .dd {
+  --dd-green: #1f9d63;
+  --dd-green-2: #34c27e;
+  --dd-mint: #163327;
+  --dd-mint-2: #1f4a37;
+  --dd-card: #15201c;
+  --dd-ink: #eef5f1;
+  --dd-ink-2: #b7c7bf;
+  --dd-ink-3: #7d8f86;
+  --dd-line: #26352f;
+  --dd-soft: #1b2823;
+}
+.dd .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.dd-skel { min-height: 520px; }
+
+/* Header. */
+.dd-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; }
+.dd-head h1 { margin: 0; font-size: 1.6rem; font-weight: 800; }
+.dd-head p { margin: 4px 0 0; color: var(--dd-ink-2); font-size: .86rem; }
+.dd-head-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.dd-year { display: flex; align-items: center; height: 40px; padding: 3px; border: 1px solid var(--dd-line); border-radius: 12px; background: var(--dd-card); }
+.dd-year button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 9px; background: transparent; color: var(--dd-ink-2); cursor: pointer; }
+.dd-year button:hover:not(:disabled) { background: var(--dd-soft); }
+.dd-year button:disabled { opacity: .3; cursor: default; }
+.dd-year strong { min-width: 50px; text-align: center; font-weight: 700; }
+.dd-select select { min-height: 40px; padding-inline: 14px 34px; border: 1px solid var(--dd-line); border-radius: 12px; background: var(--dd-card); color: var(--dd-ink); font: inherit; font-size: .86rem; font-weight: 600; cursor: pointer; }
+.dd-ghost, .dd-outline, .dd-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding-inline: 14px;
+  border: 1px solid var(--dd-line);
+  border-radius: 12px;
+  background: var(--dd-card);
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: .86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s;
+}
+.dd-ghost:hover, .dd-outline:hover { background: var(--dd-soft); }
+.dd-primary { border-color: var(--dd-green); background: var(--dd-green); color: #fff; }
+.dd-primary:hover { background: var(--dd-green-2); }
+.dd-outline { min-height: 34px; border-radius: 10px; font-size: .8rem; }
+
+/* Cards. */
+.dd-card { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px; border: 1px solid var(--dd-line); border-radius: 18px; background: var(--dd-card); }
+.dd-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.dd-cards .dd-card { gap: 14px; padding: 18px 18px 0; }
+.dd-cards header { display: flex; align-items: flex-start; gap: 10px; }
+.dd-cards header h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+.dd-cards header small { color: var(--dd-ink-3); font-size: .74rem; }
+.dd-tile { display: grid; place-items: center; flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--dd-soft); color: var(--dd-ink); }
+.dd-more { margin-inline-start: auto; color: var(--dd-ink-3); }
+.dd-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin: 0; font-size: 1.9rem; font-weight: 800; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.dd-amount small { color: var(--dd-ink-3); font-size: .8rem; font-weight: 600; }
+.dd-delta { align-self: center; padding: 2px 8px; border-radius: 99px; background: var(--dd-mint); color: var(--dd-green); font-size: .72rem; font-weight: 700; }
+.dd-delta.down { background: color-mix(in srgb, #e11d48 12%, transparent); color: #e11d48; }
+.dd-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -18px;
+  padding: 14px 18px;
+  border: 0;
+  border-top: 1px solid var(--dd-line);
+  background: transparent;
+  color: var(--dd-ink);
+  font: inherit;
+  font-size: .86rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.dd-card-foot:hover { color: var(--dd-green); }
+.dd-card-foot.muted { color: var(--dd-ink-3); cursor: default; }
+/* The green hero card. */
+.dd-card-hero { border-color: transparent; background: linear-gradient(160deg, var(--dd-green-2), var(--dd-green) 70%); color: #fff; box-shadow: 0 18px 36px -22px var(--dd-green); }
+.dd-card-hero header small, .dd-card-hero .dd-amount small, .dd-card-hero .dd-more { color: rgb(255 255 255 / 72%); }
+.dd-card-hero .dd-tile { background: rgb(255 255 255 / 16%); color: #fff; }
+.dd-card-hero .dd-delta { background: rgb(255 255 255 / 20%); color: #fff; }
+.dd-card-hero .dd-card-foot { border-top-color: rgb(255 255 255 / 18%); color: #fff; }
+
+/* Purposes wallet + flow. */
+.dd-row { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; }
+.dd-section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dd-section-head h2 { margin: 0; font-size: 1.05rem; font-weight: 800; }
+.dd-section-head small { color: var(--dd-ink-3); font-size: .76rem; }
+.dd-empty { margin: 0; padding: 24px 0; color: var(--dd-ink-3); font-size: .86rem; text-align: center; }
+.dd-purposes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+.dd-purposes li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "flag name" "amount amount" "note note" "status status";
+  gap: 6px 10px;
+  padding: 14px;
+  border: 1px solid var(--dd-line);
+  border-radius: 14px;
+  background: var(--dd-card);
+}
+.dd-flag { grid-area: flag; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 99px; color: #fff; font-size: .8rem; font-weight: 800; }
+.dd-purpose-name { grid-area: name; align-self: center; overflow: hidden; font-size: .86rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.dd-purposes b { grid-area: amount; font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dd-purposes b small { color: var(--dd-ink-3); font-size: .7rem; font-weight: 600; }
+.dd-purpose-note { grid-area: note; color: var(--dd-ink-3); font-size: .72rem; }
+.dd-status { grid-area: status; width: fit-content; padding: 2px 9px; border-radius: 99px; background: var(--dd-soft); color: var(--dd-ink-2); font-size: .7rem; font-weight: 700; }
+.dd-status.on { background: var(--dd-mint); color: var(--dd-green); }
+
+.dd-flow-total { margin: 6px 0 0; font-size: 1.9rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dd-flow-total small { color: var(--dd-ink-3); font-size: .8rem; font-weight: 600; }
+.dd-toggle { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--dd-line); border-radius: 12px; background: var(--dd-soft); }
+.dd-toggle button { min-height: 32px; padding-inline: 14px; border: 0; border-radius: 9px; background: transparent; color: var(--dd-ink-2); font: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.dd-toggle button[aria-pressed="true"] { background: var(--dd-green); color: #fff; }
+.dd-bars { position: relative; height: 250px; margin-top: 6px; padding-inline-start: 58px; }
+.dd-grid { position: absolute; inset: 0 0 26px 0; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+.dd-grid span { display: flex; align-items: center; gap: 8px; color: var(--dd-ink-3); font-size: .68rem; }
+.dd-grid span::after { content: ''; flex: 1; border-top: 1px dashed var(--dd-line); }
+.dd-grid bdi { min-width: 50px; text-align: end; }
+.dd-bars ol { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; height: 100%; margin: 0; padding: 0; list-style: none; }
+.dd-bars li { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.dd-bars li button { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 0; border: 0; background: transparent; cursor: pointer; }
+.dd-bars li button:disabled { cursor: default; }
+.dd-bars li i {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 46px;
+  border-radius: 8px 8px 2px 2px;
+  background: linear-gradient(180deg, var(--dd-mint-2), var(--dd-mint));
+  transform-origin: bottom;
+  animation: dd-grow .6s cubic-bezier(.2, .9, .3, 1) backwards;
+  transition: background-color .2s;
+}
+.dd-bars li.is-on i { background: linear-gradient(180deg, var(--dd-green-2), var(--dd-green)); }
+.dd-bars li.is-future i { background: var(--dd-soft); }
+@keyframes dd-grow { from { transform: scaleY(0); } }
+.dd-dot { position: absolute; top: -7px; left: 50%; width: 14px; height: 14px; border: 3px solid var(--dd-green); border-radius: 99px; background: #fff; translate: -50% 0; }
+.dd-month { height: 26px; padding-top: 8px; overflow: hidden; color: var(--dd-ink-3); font-size: .68rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.dd-bars li.is-on .dd-month { color: var(--dd-ink); font-weight: 700; }
+.dd-tip {
+  position: absolute;
+  bottom: calc(100% - 40px);
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 150px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #111827;
+  color: #fff;
+  font-size: .72rem;
+  white-space: nowrap;
+  translate: -50% -24px;
+  pointer-events: none;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 25%);
+}
+.dd-tip small { color: rgb(255 255 255 / 60%); font-size: .66rem; }
+.dd-tip span { display: flex; align-items: center; gap: 6px; }
+.dd-tip span b { margin-inline-start: auto; padding-inline-start: 12px; }
+.dd-tip i { width: 8px; height: 8px; border-radius: 2px; }
+.dd-tip i.g { background: #34d399; }
+.dd-tip i.w { background: #fbbf24; }
+.dd-bars li:nth-child(-n+2) .dd-tip { left: auto; right: 0; translate: 0 -24px; }
+.dd-bars li:nth-last-child(-n+2) .dd-tip { left: 0; translate: 0 -24px; }
+
+/* Recent donations table. */
+.dd-table-tools { display: flex; align-items: center; gap: 8px; }
+.dd-search, .dd-filter { display: flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border: 1px solid var(--dd-line); border-radius: 12px; background: var(--dd-card); color: var(--dd-ink-3); }
+.dd-search input { min-height: 0; height: 100%; width: 200px; padding: 0; border: 0; background: transparent; font-size: .86rem; outline: none; }
+.dd-filter select { min-height: 0; height: 100%; padding: 0; border: 0; background: transparent; color: var(--dd-ink); font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; }
+.dd-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.dd-table th { padding: 12px 14px; border-bottom: 1px solid var(--dd-line); background: var(--dd-soft); color: var(--dd-ink-2); font-size: .76rem; font-weight: 600; text-align: start; white-space: nowrap; }
+.dd-table th:first-child { border-start-start-radius: 10px; border-end-start-radius: 10px; }
+.dd-table th:last-child { border-start-end-radius: 10px; border-end-end-radius: 10px; }
+.dd-table td { padding: 13px 14px; border-bottom: 1px solid var(--dd-line); color: var(--dd-ink-2); font-size: .84rem; white-space: nowrap; }
+.dd-table tbody tr { cursor: pointer; transition: background-color .12s; }
+.dd-table tbody tr:hover { background: var(--dd-soft); }
+.dd-what { display: inline-flex; align-items: center; gap: 10px; color: var(--dd-ink); font-weight: 600; }
+.dd-what-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; }
+.dd-what-icon.cash { background: var(--dd-mint); color: var(--dd-green); }
+.dd-what-icon.in_kind { background: color-mix(in srgb, #f59e0b 16%, var(--dd-card)); color: #b45309; }
+:root[data-theme="dark"] .dd-what-icon.in_kind { color: #fbbf24; }
+.dd-code { color: var(--dd-ink-3); font-size: .78rem; }
+.dd-donor { color: var(--dd-ink); font-weight: 600; text-decoration: none; }
+.dd-donor:hover { color: var(--dd-green); text-decoration: underline; }
+.dd-money { color: var(--dd-ink) !important; font-weight: 700; }
+.dd-money small { color: var(--dd-ink-3); font-size: .7rem; font-weight: 500; }
+.dd-state { padding: 3px 10px; border-radius: 99px; background: color-mix(in srgb, #f59e0b 14%, transparent); color: #b45309; font-size: .72rem; font-weight: 700; }
+.dd-state.ok { background: var(--dd-mint); color: var(--dd-green); }
+:root[data-theme="dark"] .dd-state { color: #fbbf24; }
+.dd-row-more { display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 9px; background: transparent; color: var(--dd-ink-3); cursor: pointer; }
+.dd-row-more:hover { background: var(--dd-soft); color: var(--dd-ink); }
+.dd-load { align-self: center; min-height: 40px; padding-inline: 18px; border: 1px dashed var(--dd-line); border-radius: 12px; background: transparent; color: var(--dd-green); font: inherit; font-weight: 700; cursor: pointer; }
+
+.dd :is(button, a, select, input):focus-visible { outline: 3px solid color-mix(in srgb, var(--dd-green) 55%, transparent); outline-offset: 2px; }
+
+@media (max-width: 1279.98px) {
+  .dd-row { grid-template-columns: 1fr; }
+  .dd-cards .dd-amount { font-size: 1.6rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dd *, .dd *::before { animation: none !important; transition: none !important; }
+}
