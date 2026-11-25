@@ -54,6 +54,7 @@ const dayIn = ({ from, to }: DateRange) => {
 // 2026-11-05 → 2026/11/05: one width for every date in the table.
 const shortDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '/');
 const categoryLabel = (id: ExpenseCategory) => CATEGORY_BY_ID.get(id)?.label ?? id;
+const beneficiaryCountLabel = (n: number) => (n === 1 ? 'مستفيد' : n <= 10 ? 'مستفيدين' : 'مستفيداً');
 const categoryOrder = new Map(CATEGORIES.map((item, index) => [item.id, index]));
 
 // The same period one month earlier: the whole previous month for a month, else the same days a
@@ -444,11 +445,15 @@ export function ExpensesPage({ me }: { me: Me }) {
         const s = getExpenseStatus(it.id, it.category, statusMap);
         return STATUS_ORDER[s] < STATUS_ORDER[worst] ? s : worst;
       }, getExpenseStatus(items[0].id, items[0].category, statusMap));
+      const beneficiaryCount = new Set(
+        items.map((it) => it.beneficiary_id ?? it.beneficiary_name ?? `#${it.id}`),
+      ).size;
       return {
         category: cat,
         items,
         total,
         count: items.length,
+        beneficiaryCount,
         latestDate,
         status,
         primaryName: items[0].beneficiary_name,
@@ -459,7 +464,7 @@ export function ExpensesPage({ me }: { me: Me }) {
       const dir = sort.desc ? -1 : 1;
       if (sort.key === 'amount') return dir * (a.total - b.total);
       if (sort.key === 'category') return dir * ((categoryOrder.get(a.category) ?? 0) - (categoryOrder.get(b.category) ?? 0));
-      if (sort.key === 'beneficiary') return dir * (a.primaryName ?? '').localeCompare(b.primaryName ?? '', 'ar');
+      if (sort.key === 'beneficiary') return dir * (a.beneficiaryCount - b.beneficiaryCount);
       if (sort.key === 'status') return dir * (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
       return dir * a.latestDate.localeCompare(b.latestDate);
     });
@@ -560,7 +565,7 @@ export function ExpensesPage({ me }: { me: Me }) {
                     <tr>
                       {header('category', 'نوع الصرف', 'col-cat', 'text')}
                       {header('amount', 'المبلغ', 'col-amount', 'number', true)}
-                      {header('beneficiary', 'المستفيد ورقم الملف', 'col-person', 'text')}
+                      {header('beneficiary', 'المستفيدون', 'col-person', 'number')}
                       {header('status', 'حالة المستفيد', 'col-status', 'text')}
                       <th scope="col" className="col-details">التفاصيل</th>
                       {header('spent_on', 'التاريخ', 'col-date', 'date')}
@@ -591,16 +596,16 @@ export function ExpensesPage({ me }: { me: Me }) {
                           </td>
                           <td className="col-amount"><bdi>{formatNumber(group.total)}</bdi> <small className="exp-cur">{me.currency}</small></td>
                           <td className="col-person">
-                            <span className="exp-person-name">
-                              {group.primaryName ?? <span className="exp-missing">غير محدد</span>}
-                              {group.count > 1 && <span className="exp-more-people">+{formatNumber(group.count - 1)}</span>}
-                            </span>
-                            {single && single.beneficiary_id !== null && (
-                              <span className="exp-file-no" title="مرتبط بسجل المشتركين">رقم الملف: <bdi>#{single.beneficiary_id}</bdi></span>
-                            )}
-                            {group.count > 1 && (
-                              <span className="exp-file-no">اضغط لعرض التفاصيل</span>
-                            )}
+                            <button
+                              type="button"
+                              className={`exp-person-count${expanded ? ' open' : ''}`}
+                              aria-expanded={expanded}
+                              title="اضغط لعرض تفاصيل المستفيدين"
+                              onClick={(event) => { event.stopPropagation(); toggleCategory(group.category); }}
+                            >
+                              <User size={14} aria-hidden />
+                              <span><bdi>{formatNumber(group.beneficiaryCount)}</bdi> {beneficiaryCountLabel(group.beneficiaryCount)}</span>
+                            </button>
                           </td>
                           <td className="col-status">
                             {single ? (

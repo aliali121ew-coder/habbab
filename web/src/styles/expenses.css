@@ -600,6 +600,22 @@ dialog.exp-dialog::backdrop {
   background: color-mix(in srgb, var(--brand) 12%, var(--surface));
   color: var(--brand); font-size: .72rem; font-weight: 700;
 }
+.exp-person-count {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 99px;
+  border: 1px solid color-mix(in srgb, var(--brand) 24%, var(--line));
+  background: color-mix(in srgb, var(--brand) 8%, var(--surface));
+  color: var(--brand); font: inherit; font-size: .82rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+  transition: background-color .15s ease, border-color .15s ease, transform .12s ease;
+}
+.exp-person-count:hover,
+.exp-person-count.open {
+  border-color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 16%, var(--surface));
+}
+.exp-person-count:active { transform: scale(.97); }
+.exp-person-count svg { flex: none; }
 .exp-cat-row.expanded td { background: color-mix(in srgb, var(--brand) 4%, var(--surface)); border-bottom-color: transparent; }
 .exp-capsule-toggle {
   width: 32px; height: 32px; display: inline-grid; place-items: center; padding: 0;
