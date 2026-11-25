@@ -55,6 +55,12 @@ const dayIn = ({ from, to }: DateRange) => {
 const shortDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '/');
 const categoryLabel = (id: ExpenseCategory) => CATEGORY_BY_ID.get(id)?.label ?? id;
 const beneficiaryCountLabel = (n: number) => (n === 1 ? 'مستفيد' : n <= 10 ? 'مستفيدين' : 'مستفيداً');
+const briefWords = (text: string | null, max = 3) => {
+  const cleaned = text?.trim();
+  if (!cleaned) return '';
+  const words = cleaned.split(/\s+/);
+  return words.length > max ? `${words.slice(0, max).join(' ')}…` : cleaned;
+};
 const categoryOrder = new Map(CATEGORIES.map((item, index) => [item.id, index]));
 
 // The same period one month earlier: the whole previous month for a month, else the same days a
@@ -623,7 +629,19 @@ export function ExpensesPage({ me }: { me: Me }) {
                             )}
                           </td>
                           <td className="col-details">
-                            {single ? (single.details || <span className="exp-missing">غير محدد</span>) : `${formatNumber(group.count)} قيود مجمّعة`}
+                            <div className="exp-details-lines">
+                              {group.items.slice(0, 3).map((item) => {
+                                const snippet = briefWords(item.details, 3);
+                                return (
+                                  <span key={item.id} className={`exp-detail-line${snippet ? '' : ' muted'}`}>
+                                    {snippet || 'غير محدد'}
+                                  </span>
+                                );
+                              })}
+                              {group.items.length > 3 && (
+                                <span className="exp-details-more">+{formatNumber(group.items.length - 3)}</span>
+                              )}
+                            </div>
                           </td>
                           <td className="col-date">
                             <span className="exp-date-pill">
