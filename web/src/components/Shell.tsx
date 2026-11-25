@@ -56,16 +56,6 @@ const GROUPS: { id: NavItem['group']; label: string }[] = [
 
 const ROLE_LABELS: Record<Role, string> = { admin: 'مدير عام', accountant: 'محاسب', delegate: 'مندوب', health: 'مسؤول صحي' };
 
-function Khatam({ size = 26 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
-      <rect x="7" y="7" width="18" height="18" />
-      <rect x="7" y="7" width="18" height="18" transform="rotate(45 16 16)" />
-      <circle cx="16" cy="16" r="3.2" />
-    </svg>
-  );
-}
-
 interface Props {
   me: Me;
   onSignedOut: () => void;
@@ -321,7 +311,12 @@ export function Shell({ me, onSignedOut, children }: Props) {
           <strong className="drawer-title">{shortBrandName(brand.name)}</strong>
         </div>
         <div className="rail-brand">
-          <span className="rail-mark rail-logo">{brand.logo ? <img src={brand.logo} alt="" /> : <Khatam size={26} />}</span>
+          <div className="rail-crest" aria-hidden>
+            <img className="rail-crest-frame" src={drawerFrameUrl} alt="" />
+            <span className="rail-crest-mark">
+              <img src={drawerLogoUrl} alt="" />
+            </span>
+          </div>
           <span className="rail-name">
             <strong>سجلات الخير</strong>
             <small>المشتركون والمساعدات</small>

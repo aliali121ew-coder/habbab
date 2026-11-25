@@ -178,9 +178,19 @@
 @media (min-width: 1024px) {
   .rail-brand { flex-direction: column; align-items: center; text-align: center; gap: 8px !important; padding: 10px 4px 6px !important; margin-block-end: 0 !important; border-block-end: 0 !important; position: relative; }
   .rail-brand .rail-close { position: absolute; top: 4px; inset-inline-end: 4px; }
-  .rail-logo { width: 64px !important; height: 64px !important; padding: 3px; border-radius: 50% !important; overflow: hidden;
-    background: linear-gradient(140deg, #e8c77a, #b8892f) !important; box-shadow: 0 0 0 4px rgb(232 199 122 / 18%), 0 10px 22px -10px rgb(0 0 0 / 60%); }
-  .rail-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+  .rail-crest {
+    position: relative; width: 104px; height: 104px; flex: none; display: grid; place-items: center;
+  }
+  .rail-crest-frame {
+    position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: contain;
+    opacity: .8; pointer-events: none;
+  }
+  .rail-crest-mark {
+    position: relative; z-index: 1; width: 72px; height: 72px; display: grid; place-items: center;
+    border-radius: 50%; overflow: hidden;
+    box-shadow: 0 8px 20px -6px rgb(0 0 0 / 60%);
+  }
+  .rail-crest-mark img { width: 108%; height: 108%; object-fit: cover; border-radius: 50%; display: block; }
   .rail-brand .rail-name { align-items: center; }
   .rail-brand .rail-name strong { font-size: 1.05rem; }
   .rail-ornament { display: flex; align-items: center; gap: 8px; margin: 6px 6px 12px; color: #e8c77a; }
