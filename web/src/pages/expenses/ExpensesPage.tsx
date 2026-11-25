@@ -155,8 +155,11 @@ interface Flow {
   // same two for the month before (for the change).
   opening: number;
   income: number;
+  // Charity boxes collected in the month (صناديق الصدقات); money in, like the subscribers' payments.
+  boxes: number;
   spent: number;
   prevIncome: number;
+  prevBoxes: number;
   prevSpent: number;
 }
 
@@ -170,7 +173,7 @@ function Signed({ value }: { value: number }) {
 // The month's money in five cards across both phone and desktop: spending, income (each with its
 // change on last month), charity boxes, cash donations, and the current balance.
 function BalanceCards({ flow, currency }: { flow: Flow | null; year?: number; month?: number; currency: string }) {
-  const closing = flow ? flow.opening + flow.income - flow.spent : 0;
+  const closing = flow ? flow.opening + flow.income + flow.boxes - flow.spent : 0;
   // Change pill under the figure (green when it moved the good way).
   const pill = (value: number | null, goodUp: boolean) => {
     if (value === null) return <span className="bal-pill flat" title="مقارنة بالشهر السابق">— عن السابق</span>;
@@ -200,9 +203,8 @@ function BalanceCards({ flow, currency }: { flow: Flow | null; year?: number; mo
       </article>
       <article className="bal-card bal-phone">
         <h2><Archive size={14} aria-hidden /> صناديق الصدقات</h2>
-        {/* No charity-box records exist yet; nothing is made up here. */}
-        <p className="bal-value bal-none">—</p>
-        <span className="bal-pill flat">لم تُسجَّل بعد</span>
+        <p className="bal-value">{amount(flow?.boxes)}</p>
+        {flow && pill(change(flow.prevBoxes, flow.boxes), true)}
       </article>
       <article className="bal-card bal-phone">
         <h2><Gift size={14} aria-hidden /> تبرعات مالية</h2>
@@ -362,10 +364,12 @@ export function ExpensesPage({ me }: { me: Me }) {
     if (!sheet) return undefined;
     let live = true;
     void (async () => {
-      const [thisYear, lastYear, lastSheet] = await Promise.all([
+      const [thisYear, lastYear, lastSheet, thisBoxes, lastBoxes] = await Promise.all([
         api<Overview>(`/collections/overview?year=${year}&delegates=0`).catch(() => null),
         api<Overview>(`/collections/overview?year=${year - 1}&delegates=0`).catch(() => null),
         api<MonthSheet>(`/expenses?from=${year - 1}-12-01&to=${year - 1}-12-31`).catch(() => null),
+        api<{ months: number[] }>(`/boxes/monthly?year=${year}`).catch(() => null),
+        api<{ months: number[] }>(`/boxes/monthly?year=${year - 1}`).catch(() => null),
       ]);
       if (!live) return;
       const incomeOf = (overview: Overview | null) => Array.from({ length: 12 }, (_, at) => overview?.months.find((item) => monthIndex(item.period) === at)?.paid_amount ?? 0);
@@ -373,12 +377,18 @@ export function ExpensesPage({ me }: { me: Me }) {
       const lastIncome = incomeOf(lastYear);
       const spent = sheet.year.map((item) => item.total);
       const lastSpent = lastSheet?.year.map((item) => item.total) ?? Array(12).fill(0);
+      const boxes = thisBoxes?.months ?? Array<number>(12).fill(0);
+      const lastBoxMonths = lastBoxes?.months ?? Array<number>(12).fill(0);
+      // Money in = subscribers' payments + charity boxes.
+      const moneyIn = (pay: number[], box: number[]) => pay.map((value, at) => value + (box[at] ?? 0));
       const net = (inc: number[], out: number[], upTo: number) => inc.slice(0, upTo).reduce((sum, value, at) => sum + value - (out[at] ?? 0), 0);
       setFlow({
-        opening: net(lastIncome, lastSpent, 12) + net(income, spent, month),
+        opening: net(moneyIn(lastIncome, lastBoxMonths), lastSpent, 12) + net(moneyIn(income, boxes), spent, month),
         income: income[month],
+        boxes: boxes[month] ?? 0,
         spent: spent[month] ?? 0,
         prevIncome: month > 0 ? income[month - 1] : lastIncome[11],
+        prevBoxes: month > 0 ? boxes[month - 1] ?? 0 : lastBoxMonths[11] ?? 0,
         prevSpent: month > 0 ? spent[month - 1] ?? 0 : lastSpent[11] ?? 0,
       });
     })();
