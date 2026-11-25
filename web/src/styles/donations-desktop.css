@@ -437,3 +437,97 @@ a.dd-ghost { text-decoration: none; }
   .dr-tools .dd-toggle, .dr-tools .dd-filter { flex: 1 1 100%; }
   .dr-filter button { flex: 1; justify-content: center; }
 }
+
+/* ── Ring of the period's donations by kind (phone only) ─────────────────────── */
+.dd-ring-card { display: none; }
+.dd-ring-body { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.dd-ring { position: relative; width: min(64vw, 230px); aspect-ratio: 1; }
+.dd-ring svg { width: 100%; height: 100%; rotate: -90deg; }
+.dd-ring-track { fill: none; stroke: var(--dd-soft); stroke-width: 20; }
+.dd-ring-arc { fill: none; stroke-width: 20; }
+.dd-ring-centre { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.dd-ring-centre b { color: var(--dd-ink); font-size: 2rem; font-weight: 900; line-height: 1; }
+.dd-ring-centre small { color: var(--dd-ink-3); font-size: .74rem; font-weight: 600; }
+.dd-ring-legend { display: grid; gap: 8px; width: 100%; margin: 0; padding: 0; list-style: none; }
+.dd-ring-legend li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; grid-template-areas: "dot name count" ". cash cash"; align-items: center; gap: 2px 8px; padding: 9px 12px; border: 1px solid var(--dd-line); border-radius: 12px; }
+.dd-ring-legend i { grid-area: dot; width: 10px; height: 10px; border-radius: 3px; }
+.dd-ring-name { grid-area: name; overflow: hidden; color: var(--dd-ink); font-size: .84rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.dd-ring-count { grid-area: count; color: var(--dd-ink-3); font-size: .74rem; font-weight: 600; }
+.dd-ring-legend b { grid-area: cash; color: var(--dd-ink); font-size: .84rem; font-weight: 800; }
+.dd-ring-legend b small { color: var(--dd-ink-3); font-size: .66rem; font-weight: 600; }
+
+/* ── Phone: the same overview, stacked ─────────────────────────────────────── */
+@media (max-width: 767.98px) {
+  .dd { gap: 14px; }
+  .dd-head { flex-direction: column; align-items: stretch; gap: 12px; }
+  .dd-head h1 { font-size: 1.35rem; }
+  .dd-head-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+  .dd-head-tools .dd-date-btn { width: 100%; justify-content: space-between; }
+  .dd-head-tools .dd-date-btn > span { flex: 1; text-align: start; }
+  .dd-head-tools a.dd-ghost { padding-inline: 12px; }
+  .dd-head-tools .dd-ghost, .dd-head-tools .dd-primary { min-height: 42px; white-space: nowrap; font-size: .8rem; }
+  .dd-cal { width: min(360px, calc(100vw - 28px)); inset-inline-end: auto; inset-inline-start: 0; }
+
+  /* Cards: the cash card across, then two side by side. */
+  .dd-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dd-cards .dd-card-hero { grid-column: 1 / -1; }
+  .dd-cards .dd-card { gap: 8px; padding: 14px 14px 0; border-radius: 16px; }
+  .dd-cards .dd-card:not(:has(.dd-card-foot)) { padding-bottom: 14px; }
+  .dd-cards header { gap: 8px; }
+  .dd-cards header h2 { font-size: .86rem; }
+  .dd-cards header small { display: none; }
+  .dd-cards .dd-card-hero header small { display: block; font-size: .7rem; }
+  .dd-cards .dd-more { display: none; }
+  .dd-tile { width: 34px; height: 34px; border-radius: 10px; }
+  .dd-amount { font-size: 1.45rem; }
+  .dd-card-hero .dd-amount { font-size: 1.8rem; }
+  .dd-cards .dd-card:not(.dd-card-hero) .dd-amount { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .dd-card-foot { margin: 0 -14px; padding: 12px 14px; font-size: .8rem; }
+
+  /* The ring shows; the year's bars and the purposes panel do not. */
+  .dd-ring-card { display: flex; }
+  .dd-row { display: none; }
+
+  /* Donations as cards. */
+  .dd-table-card { padding: 14px; }
+  .dd-table-card .dd-section-head { flex-direction: column; align-items: stretch; }
+  .dd-table-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .dd-search input { width: 100%; }
+  .dd-table, .dd-table tbody { display: block; }
+  .dd-table thead { display: none; }
+  .dd-table tbody { display: grid; gap: 10px; }
+  .dd-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "pic what money"
+      "pic donor count"
+      "pic date code";
+    align-items: center;
+    gap: 6px 12px;
+    padding: 12px;
+    border: 1px solid var(--dd-line);
+    border-radius: 16px;
+    background: var(--dd-card);
+  }
+  .dd-table tbody tr:hover { background: var(--dd-soft); }
+  .dd-table td { padding: 0; border: 0; font-size: .78rem; white-space: nowrap; }
+  .dd-table td:nth-child(1) { grid-area: what; min-width: 0; overflow: hidden; }
+  .dd-table td:nth-child(1) .dd-what { display: block; overflow: hidden; font-size: .88rem; text-overflow: ellipsis; }
+  .dd-table td:nth-child(2) { grid-area: code; justify-self: end; }
+  .dd-table td:nth-child(3) { grid-area: date; color: var(--dd-ink-3); font-size: .72rem; }
+  .dd-table td:nth-child(4) { grid-area: donor; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .dd-table td:nth-child(5) { grid-area: money; justify-self: end; font-size: .9rem; }
+  .dd-table td:nth-child(6) { grid-area: count; justify-self: end; }
+  .dd-table td:nth-child(7) { grid-area: pic; align-self: stretch; display: flex; align-items: center; }
+  .dd-table td:nth-child(7) .dd-pic-wrap small { display: none; }
+  .dd-table td:nth-child(7) .dn-icon-tile { width: 48px !important; height: 48px !important; }
+  .dd-count { padding: 2px 8px; font-size: .68rem; }
+  .dd-count bdi { font-size: .78rem; }
+}
+@media (max-width: 767.98px) {
+  .dd-head-tools { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dd-head-tools .dd-date { grid-column: 1 / -1; }
+  .dd-head-tools .dd-date-btn { white-space: nowrap; }
+  .dd-head-tools a.dd-ghost, .dd-head-tools .dd-primary { justify-content: center; }
+}

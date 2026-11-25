@@ -164,6 +164,9 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
         </article>
       </section>
 
+      {/* Phone only: the period's donations as a ring, one colour per kind. */}
+      <KindRing items={data.inPeriod} label={periodLabel} currency={currency} />
+
       <div className="dd-row">
         {/* ── Purposes «wallet» ─────────────────────────── */}
         <section className="dd-card dd-wallet" aria-labelledby="dd-wallet-title">
@@ -420,4 +423,68 @@ function formatCompactAr(value: number) {
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value % 1_000_000 ? 1 : 0)}M`;
   if (value >= 1_000) return `${Math.round(value / 1_000)}K`;
   return String(value);
+}
+
+// The ring's colours, in a fixed order (largest kind first).
+const RING_TONES = ['#16a34a', '#f59e0b', '#2563eb', '#db2777', '#7c3aed', '#0891b2', '#ea580c', '#64748b'];
+
+// The period's donations as a ring: each kind (money, food basket, flour, clothes …) its own colour,
+// its share of the donations' count, with the count in the middle and a legend under it.
+function KindRing({ items, label, currency }: { items: Donation[]; label: string; currency: string }) {
+  const kinds = new Map<string, { count: number; cash: number }>();
+  items.forEach((item) => {
+    const key = donationIcon(item).label;
+    const row = kinds.get(key) ?? { count: 0, cash: 0 };
+    row.count += 1;
+    row.cash += item.amount ?? 0;
+    kinds.set(key, row);
+  });
+  const rows = [...kinds].sort((a, b) => b[1].count - a[1].count);
+  const total = items.length;
+  const R = 62;
+  const C = 2 * Math.PI * R;
+  const gap = rows.length > 1 ? 4 : 0;
+  let start = 0;
+  return (
+    <section className="dd-card dd-ring-card" aria-labelledby="dd-ring-title">
+      <header className="dd-section-head">
+        <div><h2 id="dd-ring-title">تبرعات {label}</h2><small>حسب النوع</small></div>
+      </header>
+      {total === 0 ? <p className="dd-empty">لا تبرعات في {label}.</p> : (
+        <div className="dd-ring-body">
+          <div className="dd-ring">
+            <svg viewBox="0 0 160 160" role="img" aria-label={`تبرعات ${label} حسب النوع`}>
+              <circle cx="80" cy="80" r={R} className="dd-ring-track" />
+              {rows.map(([name, row], at) => {
+                const length = (row.count / total) * C;
+                const arc = (
+                  <circle
+                    key={name}
+                    cx="80"
+                    cy="80"
+                    r={R}
+                    className="dd-ring-arc"
+                    style={{ stroke: RING_TONES[at % RING_TONES.length], strokeDasharray: `${Math.max(length - gap, 1)} ${C}`, strokeDashoffset: -start }}
+                  />
+                );
+                start += length;
+                return arc;
+              })}
+            </svg>
+            <span className="dd-ring-centre"><b><bdi>{formatNumber(total)}</bdi></b><small>تبرع</small></span>
+          </div>
+          <ul className="dd-ring-legend">
+            {rows.map(([name, row], at) => (
+              <li key={name}>
+                <i style={{ background: RING_TONES[at % RING_TONES.length] }} aria-hidden />
+                <span className="dd-ring-name">{name}</span>
+                <span className="dd-ring-count"><bdi>{formatNumber(row.count)}</bdi> · <bdi>{formatPercent((row.count / total) * 100)}</bdi></span>
+                {row.cash > 0 && <b><bdi>{formatNumber(row.cash)}</bdi> <small>{currency}</small></b>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
 }
