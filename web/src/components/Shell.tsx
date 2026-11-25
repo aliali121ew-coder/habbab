@@ -15,7 +15,7 @@ import { useTheme, type Palette } from '../theme';
 import { queuedPayments } from '../paymentQueue';
 import { clearLocalRecords } from '../localRecords';
 import drawerBgUrl from '../assets/drawer-bg.jpg';
-import drawerFrameUrl from '../assets/drawer-frame.jpg';
+import drawerFrameUrl from '../assets/drawer-frame.png';
 import drawerLogoUrl from '../assets/drawer-logo.jpg';
 
 interface NavItem {

@@ -301,7 +301,7 @@
   }
   .drawer-crest-frame {
     position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; object-fit: contain;
-    mix-blend-mode: screen; opacity: .68; pointer-events: none;
+    opacity: .72; pointer-events: none;
   }
   .drawer-mark {
     position: relative; z-index: 1; width: 78px; height: 78px; display: grid; place-items: center;
