@@ -299,6 +299,39 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
             </tbody>
           </table>
         )}
+        {rows.length > 0 && (
+          <ul className="dd-mlist">
+            {rows.slice(0, limit).map((item) => {
+              const cash = item.kind === 'cash';
+              const gifts = giftsBy.get(item.donor_name) ?? 1;
+              return (
+                <li key={item.id} className={`dd-mcard ${cash ? 'cash' : 'goods'}`}>
+                  <button type="button" className="dd-mcard-main" onClick={() => onOpen(item)} aria-label={`فتح تبرع ${item.donor_name}`}>
+                    <DonationIconTile donation={item} size={46} />
+                    <span className="dd-mcard-what">
+                      <b>{cash ? 'تبرع مالي' : item.item ?? 'مواد'}</b>
+                      <small>{cash ? item.purpose || 'عامة' : donationIcon(item).label !== item.item ? donationIcon(item).label : 'تبرع عيني'}</small>
+                    </span>
+                    <span className="dd-mcard-value">
+                      {cash
+                        ? <b><bdi>{formatNumber(item.amount ?? 0)}</bdi> <small>{currency}</small></b>
+                        : <b><bdi>{item.quantity ? formatNumber(item.quantity) : '—'}</bdi> <small>{item.unit || 'عيني'}</small></b>}
+                      <bdi className="dd-mcard-code">{item.receipt_no ?? `TB-${String(item.id).padStart(5, '0')}`}</bdi>
+                    </span>
+                  </button>
+                  <div className="dd-mcard-foot">
+                    <a className="dd-mcard-donor" href={donorHref(item.donor_name)}>
+                      <Users size={14} aria-hidden />
+                      <span>{item.donor_name}</span>
+                    </a>
+                    <span className="dd-mcard-gifts" title={`تبرعات ${item.donor_name} في ${periodLabel}`}><bdi>{formatNumber(gifts)}</bdi> {gifts === 1 ? 'تبرع' : 'تبرعات'}</span>
+                    <span className="dd-mcard-date" title={showDate(item.received_on)}><CalendarDays size={14} aria-hidden /><bdi>{Number(item.received_on.slice(8, 10))} {SHORT_MONTHS[monthOf(item)]}</bdi></span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {rows.length > limit && <button type="button" className="dd-load" onClick={() => setLimit(limit + 10)}>عرض المزيد · <bdi>{formatNumber(rows.length - limit)}</bdi></button>}
       </section>
     </div>
@@ -428,9 +461,10 @@ function formatCompactAr(value: number) {
 // The ring's colours, in a fixed order (largest kind first).
 const RING_TONES = ['#16a34a', '#f59e0b', '#2563eb', '#db2777', '#7c3aed', '#0891b2', '#ea580c', '#64748b'];
 
-// The period's donations as a ring: each kind (money, food basket, flour, clothes …) its own colour,
-// its share of the donations' count, with the count in the middle and a legend under it.
+// The period's donations as a ring: each kind (money, food basket, flour, clothes …) its own colour and
+// its share of the donations' count. The middle shows the totals, or the kind tapped in the legend.
 function KindRing({ items, label, currency }: { items: Donation[]; label: string; currency: string }) {
+  const [active, setActive] = useState<string | null>(null);
   const kinds = new Map<string, { count: number; cash: number }>();
   items.forEach((item) => {
     const key = donationIcon(item).label;
@@ -439,49 +473,91 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
     row.cash += item.amount ?? 0;
     kinds.set(key, row);
   });
-  const rows = [...kinds].sort((a, b) => b[1].count - a[1].count);
+  const rows = [...kinds].sort((a, b) => b[1].count - a[1].count || b[1].cash - a[1].cash);
   const total = items.length;
-  const R = 62;
+  const cashTotal = items.reduce((sum, item) => sum + (item.amount ?? 0), 0);
+  const chosenAt = rows.findIndex(([name]) => name === active);
+  const chosen = chosenAt >= 0 ? rows[chosenAt] : null;
+  const toggle = (name: string) => setActive(active === name ? null : name);
+  const R = 64;
+  const W = 13;
   const C = 2 * Math.PI * R;
-  const gap = rows.length > 1 ? 4 : 0;
+  // Round caps reach W/2 past each end, so each arc is drawn short by a cap and a small gap.
+  const gap = rows.length > 1 ? W + 5 : 0;
   let start = 0;
   return (
     <section className="dd-card dd-ring-card" aria-labelledby="dd-ring-title">
       <header className="dd-section-head">
-        <div><h2 id="dd-ring-title">تبرعات {label}</h2><small>حسب النوع</small></div>
+        <div><h2 id="dd-ring-title">توزيع التبرعات</h2><small>{label} · حسب النوع</small></div>
+        {total > 0 && <span className="dd-ring-pill"><bdi>{formatNumber(rows.length)}</bdi> {rows.length === 1 ? 'نوع' : 'أنواع'}</span>}
       </header>
       {total === 0 ? <p className="dd-empty">لا تبرعات في {label}.</p> : (
         <div className="dd-ring-body">
           <div className="dd-ring">
             <svg viewBox="0 0 160 160" role="img" aria-label={`تبرعات ${label} حسب النوع`}>
               <circle cx="80" cy="80" r={R} className="dd-ring-track" />
+              <circle cx="80" cy="80" r={R - 17} className="dd-ring-inner" />
               {rows.map(([name, row], at) => {
                 const length = (row.count / total) * C;
+                const dash = rows.length > 1 ? Math.max(length - gap, 0.5) : C;
                 const arc = (
                   <circle
                     key={name}
                     cx="80"
                     cy="80"
                     r={R}
-                    className="dd-ring-arc"
-                    style={{ stroke: RING_TONES[at % RING_TONES.length], strokeDasharray: `${Math.max(length - gap, 1)} ${C}`, strokeDashoffset: -start }}
+                    className={`dd-ring-arc${active === name ? ' is-on' : ''}${active && active !== name ? ' is-off' : ''}`}
+                    style={{ stroke: RING_TONES[at % RING_TONES.length], strokeDasharray: `${dash} ${C}`, strokeDashoffset: -(start + gap / 2) }}
+                    onClick={() => toggle(name)}
                   />
                 );
                 start += length;
                 return arc;
               })}
             </svg>
-            <span className="dd-ring-centre"><b><bdi>{formatNumber(total)}</bdi></b><small>تبرع</small></span>
+            <span className="dd-ring-centre" aria-live="polite">
+              {chosen ? (
+                <>
+                  <small className="dd-ring-kicker" style={{ color: RING_TONES[chosenAt % RING_TONES.length] }}>{chosen[0]}</small>
+                  <b><bdi>{formatPercent((chosen[1].count / total) * 100)}</bdi></b>
+                  <small><bdi>{formatNumber(chosen[1].count)}</bdi> من <bdi>{formatNumber(total)}</bdi></small>
+                </>
+              ) : (
+                <>
+                  <small className="dd-ring-kicker">المجموع</small>
+                  <b><bdi>{formatNumber(total)}</bdi></b>
+                  <small>{total === 1 ? 'تبرع' : 'تبرعات'}</small>
+                </>
+              )}
+            </span>
           </div>
+          {cashTotal > 0 && (
+            <p className="dd-ring-cash">
+              <Wallet size={15} aria-hidden />
+              <span>{chosen ? `نقداً في ${chosen[0]}` : 'مجموع المبالغ'}</span>
+              <b><bdi>{formatNumber(chosen ? chosen[1].cash : cashTotal)}</bdi> <small>{currency}</small></b>
+            </p>
+          )}
           <ul className="dd-ring-legend">
-            {rows.map(([name, row], at) => (
-              <li key={name}>
-                <i style={{ background: RING_TONES[at % RING_TONES.length] }} aria-hidden />
-                <span className="dd-ring-name">{name}</span>
-                <span className="dd-ring-count"><bdi>{formatNumber(row.count)}</bdi> · <bdi>{formatPercent((row.count / total) * 100)}</bdi></span>
-                {row.cash > 0 && <b><bdi>{formatNumber(row.cash)}</bdi> <small>{currency}</small></b>}
-              </li>
-            ))}
+            {rows.map(([name, row], at) => {
+              const share = (row.count / total) * 100;
+              return (
+                <li key={name}>
+                  <button type="button" aria-pressed={active === name} onClick={() => toggle(name)} style={{ ['--tone' as string]: RING_TONES[at % RING_TONES.length] }}>
+                    <span className="dd-ring-line">
+                      <i aria-hidden />
+                      <span className="dd-ring-name">{name}</span>
+                      <bdi className="dd-ring-share">{formatPercent(share)}</bdi>
+                    </span>
+                    <span className="dd-ring-bar" aria-hidden><span style={{ width: `${Math.max(share, 3)}%` }} /></span>
+                    <span className="dd-ring-meta">
+                      <span><bdi>{formatNumber(row.count)}</bdi> {row.count === 1 ? 'تبرع' : 'تبرعات'}</span>
+                      {row.cash > 0 && <span><bdi>{formatNumber(row.cash)}</bdi> {currency}</span>}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
