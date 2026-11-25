@@ -14,7 +14,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
           return (
             <li key={`${item.label}-${index}`} className="crumb-item">
               {index > 0 && <ChevronLeft size={14} className="crumb-sep" aria-hidden />}
-              {/* The path stops at the parent page, so every item with a link stays clickable — the last one too. */}
+              {/* Every item with a link stays clickable; the last item names the page itself. */}
               {item.href ? (
                 <a href={item.href} className="crumb-link">
                   {item.href === '#/' && <Home size={14} aria-hidden />}

@@ -473,7 +473,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
               <button type="button" onClick={() => void enterFoundation(me.home_foundation_id)}>العودة إلى مؤسستي</button>
             </div>
           )}
-          {me.role === 'admin' && (crumbsFor(route)?.length ?? 0) > 1 && <div className="shell-crumbs" data-route={route}><Breadcrumbs items={crumbsFor(route)!.slice(0, -1)} /></div>}
+          {me.role === 'admin' && (crumbsFor(route)?.length ?? 0) > 1 && <div className="shell-crumbs" data-route={route}><Breadcrumbs items={crumbsFor(route)!} /></div>}
           {children}
         </main>
         <BottomNav me={me} route={route} />

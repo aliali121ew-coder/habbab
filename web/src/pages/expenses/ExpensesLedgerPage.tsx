@@ -1,7 +1,7 @@
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
-  Archive, ArrowDown, ArrowRight, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, Download,
+  Archive, ArrowDown, ArrowRight, ArrowUp, CalendarDays, ChevronLeft, ChevronRight,
   Gift, HandHeart, Layers, Pencil, Plus, Scale, Sheet, TrendingDown, TrendingUp, Trophy, Users, Wallet,
 } from 'lucide-react';
 import { api, type Me } from '../../api';
@@ -259,34 +259,16 @@ function YearView({ me, year }: { me: Me; year: number }) {
   const categories = useMemo(() => (data ? [...data.categories].sort((a, b) => b.total - a.total) : []), [data]);
   const monthMax = data ? Math.max(...data.monthTotals, 1) : 1;
 
-  const exportCsv = () => {
-    if (!data) return;
-    const head = ['الصنف', ...MONTH_NAMES, 'المجموع', 'عدد المساعدات'];
-    const lines = categories.map((item) => [item.label, ...item.values, item.total, item.count].join(','));
-    lines.push(['المجموع', ...data.monthTotals, data.total, data.count].join(','));
-    const blob = new Blob(['﻿', [head.join(','), ...lines].join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `سجل-الصرفيات-${year}.csv`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  };
-
   return (
     <div className="yl">
       <div className="page-head exp-head yl-head">
         <span className="page-icon" aria-hidden><Sheet size={24} /></span>
         <div>
-          <Breadcrumbs items={[{ label: 'الحركات المالية', href: '#/expenses' }]} />
+          <Breadcrumbs items={[{ label: 'الحركات المالية', href: '#/expenses' }, { label: `السجل السنوي ${year}` }]} />
           <h1>السجل المالي السنوي</h1>
         </div>
         <div className="page-actions">
           <YearSwitch year={year} />
-          <button type="button" className="btn" aria-label="تصدير Excel" disabled={!data?.categories.length} onClick={exportCsv}>
-            <Download size={18} aria-hidden />
-            <span className="btn-label">تصدير Excel</span>
-          </button>
           <a className="btn" href="#/expenses" aria-label="رجوع إلى الحركات المالية">
             <ArrowRight size={18} aria-hidden />
             <span className="btn-label">الحركات المالية</span>
@@ -546,6 +528,7 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
           <Breadcrumbs items={[
             { label: 'الحركات المالية', href: '#/expenses' },
             { label: `السجل السنوي ${year}`, href: ledgerHref(year) },
+            { label: MONTH_NAMES[month] },
           ]} />
           <h1>{MONTH_NAMES[month]} <bdi>{year}</bdi></h1>
         </div>
