@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { useEffect, useRef, type ReactElement } from 'react';
 import { HandHeart, HeartPulse, MapPinned } from 'lucide-react';
 import type { Feature, Me } from '../api';
 import { hasFeature } from '../features';
@@ -67,6 +67,45 @@ export function startNewRequest() {
 }
 
 export function BottomNav({ me, route }: { me: Me; route: Route }) {
+  const navRef = useRef<HTMLElement>(null);
+
+  // Scrubbed directly by finger/scroll delta: fades 100% -> 0% on scroll down,
+  // and gradually reveals 10% -> 100% on scroll up in lockstep with hand motion.
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const RANGE = 110;
+    let progress = 0;
+    let lastY = Math.max(0, window.scrollY);
+    let raf = 0;
+
+    const apply = () => {
+      raf = 0;
+      el.style.setProperty('--bn-hide', progress.toFixed(3));
+      el.classList.toggle('is-gone', progress >= 0.96);
+    };
+    apply();
+
+    const onScroll = () => {
+      const maxY = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const y = Math.min(maxY, Math.max(0, window.scrollY));
+      const delta = y - lastY;
+      lastY = y;
+      if (y <= 16) {
+        progress = 0;
+      } else if (delta !== 0) {
+        progress = Math.min(1, Math.max(0, progress + delta / RANGE));
+      }
+      if (!raf) raf = window.requestAnimationFrame(apply);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [route]);
+
   const items = (ITEMS[me.role] ?? []).filter((i) => hasFeature(me, i.feature));
   if (items.length < 2) return null;
   const canRequest = hasFeature(me, 'requests');
@@ -82,7 +121,7 @@ export function BottomNav({ me, route }: { me: Me; route: Route }) {
     );
   };
   return (
-    <nav className="bottom-nav" aria-label="التنقل السريع">
+    <nav ref={navRef} className="bottom-nav" aria-label="التنقل السريع">
       {items.slice(0, half).map(link)}
       {canRequest && (
         <button type="button" className="bn-main" onClick={startNewRequest} aria-label="طلب مساعدة جديد">
