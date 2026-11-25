@@ -287,3 +287,222 @@ a.yl-month:hover { transform: translateY(-1px); }
 .yl-spark-tip-meta .good { color: var(--paid); font-weight: 700; }
 @keyframes yl-tip-in { from { opacity: 0; transform: translateY(3px); } }
 @media (prefers-reduced-motion: reduce) { .yl-spark-tip { animation: none; } }
+
+/* ── Month balance strip and entry editor ─────────────────────────────────────── */
+.yl-edit-btn.on { border-color: color-mix(in srgb, var(--yl-theme) 45%, var(--line)); background: var(--yl-soft); color: var(--yl-theme); }
+.yl-balance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface);
+}
+.yl-bal-step { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.yl-bal-step span { display: flex; align-items: center; gap: 5px; color: var(--ink-3); font-size: .74rem; font-weight: 500; white-space: nowrap; }
+.yl-bal-step b { color: var(--ink); font-size: 1.02rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.yl-bal-step b small { color: var(--ink-3); font-size: .7rem; font-weight: 500; }
+.yl-bal-step.in b { color: var(--paid); }
+.yl-bal-step.out b { color: var(--danger); }
+.yl-bal-step b.neg, .yl-bal-step.end.neg b { color: var(--danger); }
+.yl-bal-step.end { margin-inline-start: auto; padding: 8px 14px; border-radius: 12px; background: var(--yl-soft); }
+.yl-bal-step.end span { color: var(--yl-theme); font-weight: 600; }
+.yl-bal-step.end b { font-size: 1.15rem; }
+.yl-bal-op { color: var(--ink-3); font-size: 1.1rem; font-weight: 600; }
+.yl-bal-note { flex: 1 1 100%; margin: 2px 0 0; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--paid) 10%, transparent); color: var(--ink-2); font-size: .78rem; }
+
+.yl-entries { border-color: color-mix(in srgb, var(--yl-theme) 35%, var(--line)); scroll-margin-top: 80px; }
+.yl-entry-list { margin: 0; padding: 6px; list-style: none; max-height: 520px; overflow-y: auto; }
+.yl-entry {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+}
+.yl-entry:hover, .yl-entry:focus-visible { background: var(--yl-soft); }
+.yl-entry-list li + li { border-top: 1px solid var(--line); }
+.yl-entry-day { display: flex; flex-direction: column; align-items: center; min-width: 40px; color: var(--ink); font-size: 1rem; font-weight: 700; line-height: 1.1; }
+.yl-entry-day small { color: var(--ink-3); font-size: .6rem; font-weight: 500; white-space: nowrap; }
+.yl-entry-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.yl-entry-text b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .88rem; font-weight: 600; }
+.yl-entry-text small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-3); font-size: .74rem; }
+.yl-entry-amount { font-size: .92rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.yl-entry-edit { color: var(--ink-3); }
+.yl-entry:hover .yl-entry-edit { color: var(--yl-theme); }
+
+@media (max-width: 767.98px) {
+  .yl-balance { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px; border-radius: 15px; }
+  .yl-bal-op { display: none; }
+  .yl-bal-step b { font-size: .86rem; }
+  .yl-bal-step span { font-size: .66rem; }
+  .yl-bal-step.end { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; margin: 0; padding: 8px 12px; }
+  .yl-bal-step.end b { font-size: 1.02rem; }
+  .yl-entry-list { max-height: none; padding: 4px; }
+  .yl-entry { grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; padding: 10px 8px; }
+  .yl-entry .yl-cat-icon, .yl-entry-edit { display: none; }
+  .yl-entry-amount { font-size: .84rem; }
+}
+
+/* ── Month chart card: sliding switches, monthly columns, phone ring ─────────────── */
+.yl-chartcard { --tone-c: var(--yl-theme); }
+.yl-chartcard:has(.tone-income) { --tone-c: var(--yl-in); }
+.yl-chartcard:has(.yl-series.tone-boxes) { --tone-c: var(--yl-box); }
+
+.yl-slide {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+  isolation: isolate;
+}
+.yl-slide::-webkit-scrollbar { display: none; }
+.yl-slide-thumb {
+  position: absolute;
+  inset-block: 4px;
+  z-index: -1;
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 8%), 0 4px 12px rgb(0 0 0 / 8%), inset 0 0 0 1px color-mix(in srgb, var(--tone-c) 28%, transparent);
+  transition: left .32s cubic-bezier(.3, 1.3, .5, 1), width .32s cubic-bezier(.3, 1.3, .5, 1);
+}
+.yl-slide-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding-inline: 13px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color .2s;
+}
+.yl-slide-btn:hover { color: var(--ink); }
+.yl-slide-btn[aria-selected="true"] { color: var(--tone-c); }
+.yl-slide-btn[aria-selected="true"] span { color: var(--ink); }
+
+.yl-cat-slider { padding: 12px 20px 0; }
+.yl-cats-tabs { border-radius: 99px; }
+.yl-cats-tabs .yl-slide-btn { border-radius: 99px; min-height: 32px; font-size: .78rem; }
+.yl-cats-tabs .yl-slide-thumb { border-radius: 99px; background: var(--tone-c); box-shadow: 0 4px 14px color-mix(in srgb, var(--tone-c) 35%, transparent); }
+.yl-cats-tabs .yl-slide-btn[aria-selected="true"], .yl-cats-tabs .yl-slide-btn[aria-selected="true"] span { color: #fff; }
+
+/* Monthly columns. */
+.yl-mbars { --bar-c: var(--tone-c); position: relative; height: 300px; margin: 20px 20px 12px; padding-inline-start: 64px; }
+.yl-mbars .yl-chart-grid { inset-block-end: 30px; }
+.yl-mbars .yl-chart-grid::after { inset-inline-start: 64px; }
+.yl-avg { border-top: 1px dashed color-mix(in srgb, var(--bar-c) 55%, transparent) !important; }
+.yl-avg em { position: absolute; inset-inline-end: 0; translate: 0 -100%; padding: 1px 8px; border-radius: 99px; background: color-mix(in srgb, var(--bar-c) 12%, var(--surface)); color: var(--bar-c); font-size: .66rem; font-style: normal; font-weight: 600; }
+.yl-mbar-row { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 10px; height: 100%; margin: 0; padding: 0; list-style: none; }
+.yl-mbar-row li { display: flex; flex-direction: column; min-width: 0; }
+.yl-mbar { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; border-radius: 10px; color: inherit; text-decoration: none; }
+.yl-mbar[href]:hover, .yl-mbar.on { background: color-mix(in srgb, var(--bar-c) 6%, transparent); }
+.yl-mbar i {
+  display: block;
+  width: min(100%, 40px);
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bar-c) 42%, var(--surface)), color-mix(in srgb, var(--bar-c) 26%, var(--surface)));
+  transform-origin: bottom;
+  animation: yl-grow .6s cubic-bezier(.2, .9, .3, 1) backwards;
+  transition: background-color .2s;
+}
+@keyframes yl-grow { from { transform: scaleY(0); } }
+.yl-mbar.on i { background: color-mix(in srgb, var(--bar-c) 62%, var(--surface)); }
+.is-current .yl-mbar i { background: linear-gradient(180deg, color-mix(in srgb, var(--bar-c) 82%, #fff), var(--bar-c)); box-shadow: 0 6px 18px color-mix(in srgb, var(--bar-c) 35%, transparent); }
+.yl-mbar-value { margin-bottom: 6px; padding: 2px 8px; border-radius: 99px; background: var(--bar-c); color: #fff; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+.yl-mlabel { height: 30px; padding-top: 8px; overflow: hidden; color: var(--ink-3); font-size: .7rem; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.is-current .yl-mlabel { color: var(--bar-c); font-weight: 700; }
+.is-future .yl-mlabel { opacity: .45; }
+.yl-mbar .yl-tip { inset-block: auto calc(100% - 30px); inset-block-start: 6px; inset-block-end: auto; }
+.yl-tip-amount { color: var(--ink); font-weight: 700; }
+.yl-tip .good { color: var(--paid); font-weight: 600; }
+.yl-tip .bad { color: var(--danger); font-weight: 600; }
+.yl-mbar-row li:nth-child(-n+2) .yl-tip { translate: 0 0; inset-inline-start: 0; }
+.yl-mbar-row li:nth-last-child(-n+2) .yl-tip { translate: 0 0; inset-inline-start: auto; inset-inline-end: 0; }
+
+.yl-chart-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 48px 16px; color: var(--ink-3); text-align: center; }
+.yl-chart-empty > span { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; background: color-mix(in srgb, var(--tone-c) 12%, var(--surface)); color: var(--tone-c); }
+.yl-chart-empty b { color: var(--ink); font-size: .95rem; }
+.yl-chart-empty p { margin: 0; font-size: .8rem; }
+
+/* Phone ring. */
+.yl-donut-wrap { position: relative; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 18px 14px 16px; touch-action: pan-y; }
+.yl-donut { width: min(72vw, 250px); height: auto; overflow: visible; rotate: -90deg; }
+.yl-donut-track { fill: none; stroke: var(--surface-2); stroke-width: 22; }
+.yl-donut-arc {
+  fill: none;
+  stroke-width: 22;
+  stroke-linecap: butt;
+  cursor: pointer;
+  animation: yl-draw .9s cubic-bezier(.2, .9, .3, 1) backwards;
+  transition: stroke-width .3s ease, opacity .3s ease;
+}
+@keyframes yl-draw { from { stroke-dasharray: 0 440; } }
+.yl-donut-arc.on { stroke-width: 30; }
+.yl-donut-arc.dim { opacity: .28; }
+.yl-donut-arc.income { stroke: var(--yl-in) !important; stroke-linecap: round; }
+.yl-donut-centre {
+  position: absolute;
+  top: calc(18px + min(72vw, 250px) / 2);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  max-width: 44vw;
+  translate: -50% -50%;
+  text-align: center;
+  animation: yl-pop .35s cubic-bezier(.2, 1.2, .4, 1);
+}
+.yl-donut-centre small { max-width: 100%; overflow: hidden; color: var(--ink-3); font-size: .72rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.yl-donut-centre b { color: var(--ink); font-size: 1.2rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.yl-donut-centre span { color: var(--ink-3); font-size: .7rem; white-space: nowrap; }
+@keyframes yl-pop { from { opacity: 0; scale: .88; } }
+.yl-donut-nav { display: flex; align-items: center; gap: 12px; }
+.yl-donut-nav .icon-btn { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink-2); font-size: 1.2rem; line-height: 1; }
+.yl-donut-dots { display: flex; gap: 5px; }
+.yl-donut-dots i { width: 6px; height: 6px; border-radius: 99px; background: var(--line); transition: width .25s, background-color .25s; }
+.yl-donut-dots i.on { width: 18px; background: var(--tone-c); }
+.yl-ring-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin: 0; }
+.yl-ring-facts div { padding: 8px; border-radius: 12px; background: var(--surface-2); text-align: center; }
+.yl-ring-facts dt { color: var(--ink-3); font-size: .64rem; white-space: nowrap; }
+.yl-ring-facts dd { margin: 2px 0 0; color: var(--ink); font-size: .84rem; font-weight: 700; white-space: nowrap; }
+.yl-ring-facts dd.good { color: var(--paid); }
+.yl-ring-facts dd.bad { color: var(--danger); }
+
+@media (max-width: 1279.98px) {
+  .yl-mbar-row { gap: 6px; }
+  .yl-mlabel { font-size: .62rem; }
+}
+@media (max-width: 767.98px) {
+  .yl-chartcard .yl-panel-head { flex-direction: column; align-items: stretch; }
+  .yl-series { width: 100%; }
+  .yl-series .yl-slide-btn { flex: 1; justify-content: center; padding-inline: 6px; }
+  .yl-cat-slider { padding: 10px 12px 0; }
+  .yl-bal-note { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .yl-slide-thumb, .yl-mbar i, .yl-donut-arc { transition: none; animation: none; }
+  .yl-donut-centre { animation: none; }
+}
+.yl-donut { --donut-mix: #fff; }
+:root[data-theme="dark"] .yl-donut { --donut-mix: var(--ink-2); }

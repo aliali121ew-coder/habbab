@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   Archive, ArrowDown, ArrowRight, ArrowUp, CalendarDays, ChevronLeft, ChevronRight, Download,
-  Gift, HandHeart, Layers, Sheet, TrendingDown, TrendingUp, Trophy, Users, Wallet,
+  Gift, HandHeart, Layers, Pencil, Plus, Scale, Sheet, TrendingDown, TrendingUp, Trophy, Users, Wallet,
 } from 'lucide-react';
 import { api, type Me } from '../../api';
 import { Breadcrumbs } from '../../components/Breadcrumbs';
@@ -11,15 +11,16 @@ import { SAMPLE_DONATIONS } from '../../data/donations';
 import { MONTH_NAMES, formatNumber, formatPercent, monthIndex } from '../../format';
 import { ledgerFromHash, ledgerHref } from '../../route';
 import { CATEGORIES, CATEGORY_BY_ID, type ExpenseCategory } from './categories';
+import { ExpenseDialog } from './ExpenseDialog';
+import { LedgerMonthChart } from './LedgerMonthChart';
+import type { ExpenseItem } from './ExpensesPage';
 
 interface Ledger {
   year: number;
   cells: { month: number; category: ExpenseCategory; total: number; count: number }[];
 }
 interface Overview { months: { period: string; paid_amount: number }[] }
-interface MonthSheet {
-  items: { id: number; category: ExpenseCategory; amount: number; spent_on: string; beneficiary_name: string | null }[];
-}
+interface MonthSheet { items: ExpenseItem[] }
 
 const subscribe = (listener: () => void) => {
   window.addEventListener('hashchange', listener);
@@ -454,24 +455,37 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
   const [sheet, setSheet] = useState<MonthSheet | null>(null);
   const [ledger, setLedger] = useState<Ledger | null>(null);
   const [income, setIncome] = useState<number[] | null>(null);
+  const [lastYear, setLastYear] = useState<{ spent: number[]; income: number[] } | null>(null);
   const [error, setError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [dialog, setDialog] = useState<{ entry: ExpenseItem | null } | null>(null);
+  // The month-end balance before the last save, to show how far the change carried.
+  const [savedFrom, setSavedFrom] = useState<number | null>(null);
   const period = `${year}-${String(month + 1).padStart(2, '0')}`;
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [items, yearSheet, money] = await Promise.all([
+      const [items, yearSheet, money, lastSheet, lastMoney] = await Promise.all([
         api<MonthSheet>(`/expenses?month=${period}`),
         api<Ledger>(`/expenses/ledger?year=${year}`),
         incomeOf(year),
+        api<Ledger>(`/expenses/ledger?year=${year - 1}`).catch(() => null),
+        incomeOf(year - 1),
       ]);
       setSheet(items);
       setLedger(yearSheet);
       setIncome(money);
+      setLastYear({
+        spent: lastSheet ? shape(lastSheet).monthTotals : Array<number>(12).fill(0),
+        income: lastMoney ?? Array<number>(12).fill(0),
+      });
     } catch (failure) {
       setError((failure as Error).message);
     }
   }, [period, year]);
+
+  useEffect(() => { setEditing(false); setSavedFrom(null); }, [period]);
 
   useEffect(() => { setSheet(null); void load(); }, [load]);
 
@@ -499,13 +513,30 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
     const categories = [...byCat]
       .map(([id, row]) => ({ ...CATEGORY_BY_ID.get(id)!, ...row, before: prevOf(id) }))
       .sort((a, b) => b.total - a.total);
-    return { daily, dailyCount, days, total, count: sheet.items.length, people: people.size, previous, categories };
-  }, [sheet, ledger, year, month]);
+    // The balance runs from the start of last year, the same way the expenses page counts it, so
+    // any change to an earlier month carries through every month after it.
+    const thisIncome = income ?? Array<number>(12).fill(0);
+    const net = (inc: number[], out: number[], upTo: number) => inc.slice(0, upTo).reduce((acc, value, at) => acc + value - (out[at] ?? 0), 0);
+    const opening = lastYear ? net(lastYear.income, lastYear.spent, 12) + net(thisIncome, year12.monthTotals, month) : null;
+    const balance = opening === null ? null : { opening, income: thisIncome[month], spent: total, closing: opening + thisIncome[month] - total };
+    const entries = [...sheet.items].sort((a, b) => a.spent_on.localeCompare(b.spent_on) || a.id - b.id);
+    return { daily, dailyCount, days, total, count: sheet.items.length, people: people.size, previous, categories, balance, entries, year12 };
+  }, [sheet, ledger, income, lastYear, year, month]);
 
   const prevHref = month > 0 ? ledgerHref(year, month - 1) : ledgerHref(year - 1, 11);
   const nextFuture = isFuture(month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1);
   const nextHref = month < 11 ? ledgerHref(year, month + 1) : ledgerHref(year + 1, 0);
   const top = data?.categories[0];
+  const canEdit = !isFuture(year, month);
+  const openEditor = () => {
+    setEditing(true);
+    window.setTimeout(() => document.getElementById('yl-entries')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  };
+  const onSaved = async () => {
+    setDialog(null);
+    setSavedFrom(data?.balance?.closing ?? null);
+    await load();
+  };
 
   return (
     <div className="yl">
@@ -526,6 +557,12 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
               ? <span className="icon-btn" aria-hidden><ChevronLeft size={17} /></span>
               : <a className="icon-btn" aria-label="الشهر التالي" href={nextHref}><ChevronLeft size={17} aria-hidden /></a>}
           </div>
+          {canEdit && (
+            <button type="button" className={`btn yl-edit-btn${editing ? ' on' : ''}`} aria-label="تعديل قيود الشهر" aria-pressed={editing} onClick={() => (editing ? setEditing(false) : openEditor())}>
+              <Pencil size={17} aria-hidden />
+              <span className="btn-label">{editing ? 'إنهاء التعديل' : 'تعديل القيود'}</span>
+            </button>
+          )}
           <a className="btn" href={ledgerHref(year)} aria-label={`رجوع إلى سنة ${year}`}>
             <ArrowRight size={18} aria-hidden />
             <span className="btn-label">السنة <bdi>{year}</bdi></span>
@@ -565,23 +602,82 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
             />
           </section>
 
-          <section className="yl-panel" aria-labelledby="yl-days">
-            <header className="yl-panel-head">
-              <div>
-                <h2 id="yl-days"><TrendingDown size={18} aria-hidden /> الصرف اليومي</h2>
-                <p>مجموع ما صُرف في كل يوم من {MONTH_NAMES[month]} · بالـ{me.currency}</p>
+          {data.balance && (
+            <section className="yl-balance" aria-label="رصيد الشهر">
+              <div className="yl-bal-step">
+                <span>رصيد أول الشهر</span>
+                <b className={data.balance.opening < 0 ? 'neg' : undefined}><bdi dir="ltr">{formatNumber(data.balance.opening)}</bdi></b>
               </div>
-              {data.total > 0 && (
-                <dl className="yl-mini-facts">
-                  <div><dt>أيام فيها صرف</dt><dd><bdi>{formatNumber(data.daily.filter((value) => value > 0).length)}</bdi></dd></div>
-                  <div><dt>أعلى يوم</dt><dd><bdi>{formatNumber(data.daily.indexOf(Math.max(...data.daily)) + 1)}</bdi></dd></div>
-                </dl>
+              <span className="yl-bal-op" aria-hidden>+</span>
+              <div className="yl-bal-step in">
+                <span>الوارد</span>
+                <b><bdi>{formatNumber(data.balance.income)}</bdi></b>
+              </div>
+              <span className="yl-bal-op" aria-hidden>−</span>
+              <div className="yl-bal-step out">
+                <span>الصرف</span>
+                <b><bdi>{formatNumber(data.balance.spent)}</bdi></b>
+              </div>
+              <span className="yl-bal-op" aria-hidden>=</span>
+              <div className={`yl-bal-step end${data.balance.closing < 0 ? ' neg' : ''}`}>
+                <span><Scale size={14} aria-hidden /> رصيد آخر الشهر</span>
+                <b><bdi dir="ltr">{formatNumber(data.balance.closing)}</bdi> <small>{me.currency}</small></b>
+              </div>
+              {savedFrom !== null && savedFrom !== data.balance.closing && (
+                <p className="yl-bal-note" role="status">
+                  تم الحفظ · رصيد آخر الشهر تغيّر من <bdi dir="ltr">{formatNumber(savedFrom)}</bdi> إلى <bdi dir="ltr">{formatNumber(data.balance.closing)}</bdi>، ورصيد كل الأشهر التالية تحدّث معه.
+                </p>
               )}
-            </header>
-            {data.total === 0
-              ? <p className="exp-empty">لا صرفيات مسجلة في {MONTH_NAMES[month]} <bdi>{year}</bdi>.</p>
-              : <DailyChart values={data.daily} counts={data.dailyCount} currency={me.currency} />}
-          </section>
+            </section>
+          )}
+
+          {editing && (
+            <section className="yl-panel yl-entries" id="yl-entries" aria-labelledby="yl-entries-title">
+              <header className="yl-panel-head">
+                <div>
+                  <h2 id="yl-entries-title"><Pencil size={18} aria-hidden /> قيود {MONTH_NAMES[month]}</h2>
+                  <p>اضغط على أي قيد لتعديله · أي تعديل يغيّر رصيد هذا الشهر وكل الأشهر بعده</p>
+                </div>
+                <button type="button" className="btn btn-primary yl-link" onClick={() => setDialog({ entry: null })}>
+                  <Plus size={16} aria-hidden /> إضافة قيد
+                </button>
+              </header>
+              {data.entries.length === 0 ? (
+                <p className="exp-empty">لا قيود في هذا الشهر.</p>
+              ) : (
+                <ul className="yl-entry-list">
+                  {data.entries.map((entry) => {
+                    const category = CATEGORY_BY_ID.get(entry.category);
+                    const Icon = category?.icon ?? Wallet;
+                    return (
+                      <li key={entry.id}>
+                        <button type="button" className="yl-entry" onClick={() => setDialog({ entry })} aria-label={`تعديل قيد ${entry.beneficiary_name ?? ''} ${formatNumber(entry.amount)}`}>
+                          <span className="yl-entry-day"><bdi>{Number(entry.spent_on.slice(8, 10))}</bdi><small>{MONTH_NAMES[month]}</small></span>
+                          <span className="yl-cat-icon" aria-hidden><Icon size={16} /></span>
+                          <span className="yl-entry-text">
+                            <b>{entry.beneficiary_name ?? '—'}</b>
+                            <small>{category?.label}{entry.details ? ` · ${entry.details}` : ''}</small>
+                          </span>
+                          <span className="yl-entry-amount"><bdi>{formatNumber(entry.amount)}</bdi></span>
+                          <Pencil size={15} className="yl-entry-edit" aria-hidden />
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          )}
+
+          <LedgerMonthChart
+            year={year}
+            month={month}
+            categories={data.year12.categories}
+            monthTotals={data.year12.monthTotals}
+            income={income}
+            currency={me.currency}
+            isFuture={isFuture}
+          />
 
           <section className="yl-panel" aria-labelledby="yl-mcats">
             <header className="yl-panel-head">
@@ -606,45 +702,16 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
           </section>
         </>
       )}
-    </div>
-  );
-}
 
-// One column per day, day 1 on the right as the page reads; the tallest day sets the scale.
-function DailyChart({ values, counts, currency }: { values: number[]; counts: number[]; currency: string }) {
-  const [active, setActive] = useState<number | null>(null);
-  const max = Math.max(...values, 1);
-  // Three gridlines at round-ish steps of the top.
-  const ticks = [1, 0.5].map((part) => Math.round(max * part));
-  return (
-    <div className="yl-chart" onPointerLeave={() => setActive(null)}>
-      <div className="yl-chart-grid" aria-hidden>
-        {ticks.map((tick) => <span key={tick} style={{ insetBlockEnd: `${(tick / max) * 100}%` }}><bdi>{formatNumber(tick)}</bdi></span>)}
-      </div>
-      <ol className="yl-bars" style={{ gridTemplateColumns: `repeat(${values.length}, minmax(0, 1fr))` }}>
-        {values.map((value, day) => (
-          <li key={day}>
-            <button
-              type="button"
-              className={`yl-bar${active === day ? ' on' : ''}`}
-              aria-label={`يوم ${day + 1}: ${formatNumber(value)} ${currency}، ${counts[day]} مساعدة`}
-              onPointerEnter={() => setActive(day)}
-              onFocus={() => setActive(day)}
-              onBlur={() => setActive(null)}
-            >
-              <i style={{ blockSize: `${value > 0 ? Math.max((value / max) * 100, 2) : 0}%` }} />
-              {active === day && (
-                <span className="yl-tip" role="tooltip">
-                  <b>يوم <bdi>{day + 1}</bdi></b>
-                  <span><bdi>{formatNumber(value)}</bdi> {currency}</span>
-                  <span><bdi>{formatNumber(counts[day])}</bdi> مساعدة</span>
-                </span>
-              )}
-            </button>
-            <span className="yl-day">{(day + 1) % 5 === 0 || day === 0 ? <bdi>{day + 1}</bdi> : ''}</span>
-          </li>
-        ))}
-      </ol>
+      {dialog && (
+        <ExpenseDialog
+          entry={dialog.entry}
+          defaultDate={year === THIS_YEAR && month === THIS_MONTH ? new Date().toISOString().slice(0, 10) : `${period}-01`}
+          currency={me.currency}
+          onClose={() => setDialog(null)}
+          onSaved={() => { void onSaved(); }}
+        />
+      )}
     </div>
   );
 }
