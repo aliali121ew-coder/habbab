@@ -557,8 +557,9 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
   const [sheet, setSheet] = useState<MonthSheet | null>(null);
   const [ledger, setLedger] = useState<Ledger | null>(null);
   const [income, setIncome] = useState<number[] | null>(null);
-  const [lastYear, setLastYear] = useState<{ spent: number[]; income: number[]; boxes: number[] } | null>(null);
+  const [lastYear, setLastYear] = useState<{ spent: number[]; income: number[]; boxes: number[]; gifts: number[] } | null>(null);
   const [boxIncome, setBoxIncome] = useState<number[] | null>(null);
+  const [gifts, setGifts] = useState<number[] | null>(null);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
   const [dialog, setDialog] = useState<{ entry: ExpenseItem | null } | null>(null);
@@ -569,7 +570,7 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
   const load = useCallback(async () => {
     setError('');
     try {
-      const [items, yearSheet, money, lastSheet, lastMoney, boxMoney, lastBoxMoney] = await Promise.all([
+      const [items, yearSheet, money, lastSheet, lastMoney, boxMoney, lastBoxMoney, giftMoney, lastGiftMoney] = await Promise.all([
         api<MonthSheet>(`/expenses?month=${period}`),
         api<Ledger>(`/expenses/ledger?year=${year}`),
         incomeOf(year),
@@ -577,8 +578,11 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
         incomeOf(year - 1),
         boxesOf(year),
         boxesOf(year - 1),
+        donationsOf(year),
+        donationsOf(year - 1),
       ]);
       setBoxIncome(boxMoney);
+      setGifts(giftMoney?.months ?? null);
       setSheet(items);
       setLedger(yearSheet);
       setIncome(money);
@@ -586,6 +590,7 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
         spent: lastSheet ? shape(lastSheet).monthTotals : Array<number>(12).fill(0),
         income: lastMoney ?? Array<number>(12).fill(0),
         boxes: lastBoxMoney ?? Array<number>(12).fill(0),
+        gifts: lastGiftMoney?.months ?? Array<number>(12).fill(0),
       });
     } catch (failure) {
       setError((failure as Error).message);
@@ -622,24 +627,26 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
       .sort((a, b) => b.total - a.total);
     // The balance runs from the start of last year, the same way the expenses page counts it, so
     // any change to an earlier month carries through every month after it.
-    // Money in = subscribers' payments + charity boxes.
+    // Money in = subscribers' payments + charity boxes + cash donations.
     const thisIncome = income ?? Array<number>(12).fill(0);
     const thisBoxes = boxIncome ?? Array<number>(12).fill(0);
-    const moneyIn = (pay: number[], box: number[]) => pay.map((value, at) => value + (box[at] ?? 0));
+    const thisGifts = gifts ?? Array<number>(12).fill(0);
+    const moneyIn = (pay: number[], ...more: number[][]) => pay.map((value, at) => more.reduce((acc, list) => acc + (list[at] ?? 0), value));
     const net = (inc: number[], out: number[], upTo: number) => inc.slice(0, upTo).reduce((acc, value, at) => acc + value - (out[at] ?? 0), 0);
     const opening = lastYear
-      ? net(moneyIn(lastYear.income, lastYear.boxes), lastYear.spent, 12) + net(moneyIn(thisIncome, thisBoxes), year12.monthTotals, month)
+      ? net(moneyIn(lastYear.income, lastYear.boxes, lastYear.gifts), lastYear.spent, 12) + net(moneyIn(thisIncome, thisBoxes, thisGifts), year12.monthTotals, month)
       : null;
     const balance = opening === null ? null : {
       opening,
       income: thisIncome[month],
       boxes: thisBoxes[month],
+      gifts: thisGifts[month],
       spent: total,
-      closing: opening + thisIncome[month] + thisBoxes[month] - total,
+      closing: opening + thisIncome[month] + thisBoxes[month] + thisGifts[month] - total,
     };
     const entries = [...sheet.items].sort((a, b) => a.spent_on.localeCompare(b.spent_on) || a.id - b.id);
     return { daily, dailyCount, days, total, count: sheet.items.length, people: people.size, previous, categories, balance, entries, year12 };
-  }, [sheet, ledger, income, boxIncome, lastYear, year, month]);
+  }, [sheet, ledger, income, boxIncome, gifts, lastYear, year, month]);
 
   const prevHref = month > 0 ? ledgerHref(year, month - 1) : ledgerHref(year - 1, 11);
   const nextFuture = isFuture(month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1);
@@ -736,6 +743,11 @@ function MonthView({ me, year, month }: { me: Me; year: number; month: number })
               <div className="yl-bal-step boxes">
                 <span>الصناديق</span>
                 <b><bdi>{formatNumber(data.balance.boxes)}</bdi></b>
+              </div>
+              <span className="yl-bal-op" aria-hidden>+</span>
+              <div className="yl-bal-step gifts">
+                <span>التبرعات</span>
+                <b><bdi>{formatNumber(data.balance.gifts)}</bdi></b>
               </div>
               <span className="yl-bal-op" aria-hidden>−</span>
               <div className="yl-bal-step out">

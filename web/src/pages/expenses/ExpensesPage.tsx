@@ -156,7 +156,7 @@ interface Flow {
   income: number;
   // Charity boxes collected in the month (صناديق الصدقات); money in, like the subscribers' payments.
   boxes: number;
-  // Cash donations recorded on the «المساعدات» page (shown on their card; not in the balance).
+  // Cash donations recorded on the «المساعدات» page; money in, like the boxes.
   donations: number;
   prevDonations: number;
   spent: number;
@@ -175,7 +175,7 @@ function Signed({ value }: { value: number }) {
 // The month's money in five cards across both phone and desktop: spending, income (each with its
 // change on last month), charity boxes, cash donations, and the current balance.
 function BalanceCards({ flow, currency }: { flow: Flow | null; year?: number; month?: number; currency: string }) {
-  const closing = flow ? flow.opening + flow.income + flow.boxes - flow.spent : 0;
+  const closing = flow ? flow.opening + flow.income + flow.boxes + flow.donations - flow.spent : 0;
   // Change pill under the figure (green when it moved the good way).
   const pill = (value: number | null, goodUp: boolean) => {
     if (value === null) return <span className="bal-pill flat" title="مقارنة بالشهر السابق">— عن السابق</span>;
@@ -382,11 +382,13 @@ export function ExpensesPage({ me }: { me: Me }) {
       const lastSpent = lastSheet?.year.map((item) => item.total) ?? Array(12).fill(0);
       const boxes = thisBoxes?.months ?? Array<number>(12).fill(0);
       const lastBoxMonths = lastBoxes?.months ?? Array<number>(12).fill(0);
-      // Money in = subscribers' payments + charity boxes.
-      const moneyIn = (pay: number[], box: number[]) => pay.map((value, at) => value + (box[at] ?? 0));
+      const gifts = thisGifts?.months ?? Array<number>(12).fill(0);
+      const lastGiftMonths = lastGifts?.months ?? Array<number>(12).fill(0);
+      // Money in = subscribers' payments + charity boxes + cash donations.
+      const moneyIn = (pay: number[], ...more: number[][]) => pay.map((value, at) => more.reduce((total, list) => total + (list[at] ?? 0), value));
       const net = (inc: number[], out: number[], upTo: number) => inc.slice(0, upTo).reduce((sum, value, at) => sum + value - (out[at] ?? 0), 0);
       setFlow({
-        opening: net(moneyIn(lastIncome, lastBoxMonths), lastSpent, 12) + net(moneyIn(income, boxes), spent, month),
+        opening: net(moneyIn(lastIncome, lastBoxMonths, lastGiftMonths), lastSpent, 12) + net(moneyIn(income, boxes, gifts), spent, month),
         income: income[month],
         boxes: boxes[month] ?? 0,
         donations: thisGifts?.months[month] ?? 0,
