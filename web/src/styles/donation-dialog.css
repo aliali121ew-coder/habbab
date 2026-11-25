@@ -1,0 +1,126 @@
+/* The donation form (pages/aid/DonationDialog.tsx): a centred panel on a computer, a full-height
+   sheet on the phone. Three numbered steps — what was given, who gave it, the details — with the
+   amount large, choices as chips, and the actions in a fixed footer. Main colour follows the theme. */
+.dg {
+  --dg-a: var(--bar-active);
+  --dg-soft: color-mix(in srgb, var(--bar-active) 9%, var(--surface));
+  width: min(680px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(92dvh, 900px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 40px 80px -30px rgb(15 23 42 / 45%);
+  overflow: hidden;
+}
+.dg::backdrop { background: rgb(15 23 42 / 45%); backdrop-filter: blur(4px); }
+.dg[open] { animation: dg-in .28s cubic-bezier(.2, .9, .3, 1); }
+@keyframes dg-in { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+.dg-form { display: flex; flex-direction: column; max-height: inherit; }
+
+.dg-head { display: flex; align-items: center; gap: 14px; padding: 18px 22px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, var(--dg-soft), var(--surface)); }
+.dg-icon { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: 16px; background: linear-gradient(140deg, color-mix(in srgb, var(--dg-a) 75%, #fff), var(--dg-a)); color: #fff; box-shadow: 0 10px 22px -12px var(--dg-a); }
+.dg-titles { min-width: 0; flex: 1; }
+.dg-titles h2 { margin: 0; font-size: 1.15rem; font-weight: 800; }
+.dg-titles p { margin: 3px 0 0; overflow: hidden; color: var(--ink-3); font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
+.dg-close { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.dg-close:hover { background: var(--surface-2); color: var(--ink); }
+
+.dg-body { display: flex; flex-direction: column; gap: 22px; padding: 20px 22px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.dg-section { display: flex; flex-direction: column; gap: 12px; }
+.dg-section h3 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ink); font-size: .92rem; font-weight: 800; }
+.dg-section h3 span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--dg-soft); color: var(--dg-a); font-size: .72rem; }
+.dg-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dg-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.dg-label { color: var(--ink-2); font-size: .8rem; font-weight: 700; }
+.dg-label small { margin-inline-start: 4px; color: var(--ink-3); font-size: .7rem; font-weight: 500; }
+
+/* Inputs with a leading icon, all one height. */
+.dg-input { display: flex; align-items: center; gap: 8px; height: 48px; padding-inline: 14px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink-3); transition: border-color .15s, box-shadow .15s; }
+.dg-input:focus-within { border-color: var(--dg-a); box-shadow: 0 0 0 4px color-mix(in srgb, var(--dg-a) 14%, transparent); color: var(--dg-a); }
+.dg-input input, .dg-input textarea { flex: 1; min-width: 0; min-height: 0; height: 100%; padding: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: max(16px, .95rem); outline: none; box-shadow: none; }
+.dg-input em { color: var(--ink-3); font-size: .78rem; font-style: normal; font-weight: 600; }
+.dg-textarea { align-items: flex-start; height: auto; padding-block: 12px; }
+.dg-textarea textarea { resize: vertical; min-height: 44px; }
+
+/* Kind cards. */
+.dg-kinds { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.dg-kind { position: relative; display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); font: inherit; text-align: start; cursor: pointer; transition: border-color .15s, background-color .15s, box-shadow .15s; }
+.dg-kind:hover { border-color: color-mix(in srgb, var(--dg-a) 40%, var(--line)); }
+.dg-kind[aria-checked="true"] { border-color: var(--dg-a); background: var(--dg-soft); box-shadow: 0 0 0 4px color-mix(in srgb, var(--dg-a) 10%, transparent); }
+.dg-kind b { display: block; font-size: .95rem; font-weight: 800; }
+.dg-kind small { color: var(--ink-3); font-size: .74rem; }
+.dg-kind-icon { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 14px; }
+.dg-kind-icon.cash { background: color-mix(in srgb, #10b981 14%, var(--surface)); color: #059669; }
+.dg-kind-icon.goods { background: color-mix(in srgb, #8b5cf6 14%, var(--surface)); color: #7c3aed; }
+.dg-kind-check { margin-inline-start: auto; color: var(--dg-a); opacity: 0; transition: opacity .15s; }
+.dg-kind[aria-checked="true"] .dg-kind-check { opacity: 1; }
+
+/* The amount, large. */
+.dg-amount { display: flex; flex-direction: column; gap: 6px; }
+.dg-amount-box { display: flex; align-items: center; gap: 10px; height: 68px; padding-inline: 18px; border: 1.5px solid var(--line); border-radius: 18px; background: var(--surface); transition: border-color .15s, box-shadow .15s; }
+.dg-amount-box:focus-within { border-color: var(--dg-a); box-shadow: 0 0 0 4px color-mix(in srgb, var(--dg-a) 14%, transparent); }
+.dg-amount-box input { flex: 1; min-width: 0; min-height: 0; height: 100%; padding: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 1.9rem; font-weight: 800; letter-spacing: -.01em; text-align: start; outline: none; box-shadow: none; }
+.dg-amount-box em { padding: 5px 10px; border-radius: 10px; background: var(--surface-2); color: var(--ink-2); font-size: .82rem; font-style: normal; font-weight: 700; }
+.dg-quick { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Chips (quick amounts, units, purposes). */
+.dg-quick button, .dg-chips button { min-height: 38px; padding-inline: 14px; border: 1.5px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--ink-2); font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; transition: all .15s; }
+.dg-quick button:hover, .dg-chips button:hover { border-color: color-mix(in srgb, var(--dg-a) 40%, var(--line)); color: var(--ink); }
+.dg-quick button[aria-pressed="true"], .dg-chips button[aria-checked="true"] { border-color: var(--dg-a); background: var(--dg-a); color: #fff; }
+.dg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Stepper. */
+.dg-stepper { display: flex; align-items: center; height: 48px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
+.dg-stepper button { display: grid; place-items: center; width: 46px; height: 100%; border: 0; background: var(--surface-2); color: var(--ink-2); cursor: pointer; }
+.dg-stepper button:hover { color: var(--dg-a); }
+.dg-stepper input { flex: 1; min-width: 0; min-height: 0; height: 100%; padding: 0; border: 0; background: transparent; color: var(--ink); font: inherit; font-size: 1.05rem; font-weight: 800; text-align: center; outline: none; box-shadow: none; }
+
+/* Donor type switch, one row. */
+.dg-switch { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface-2); }
+.dg-switch button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; border: 0; border-radius: 11px; background: transparent; color: var(--ink-2); font: inherit; font-size: .84rem; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background-color .15s, color .15s, box-shadow .15s; }
+.dg-switch button[aria-checked="true"] { background: var(--surface); color: var(--dg-a); box-shadow: 0 1px 2px rgb(0 0 0 / 8%), 0 4px 12px rgb(0 0 0 / 6%); }
+
+.dg-error { margin: 0; padding: 10px 14px; border-radius: 12px; background: var(--danger-soft); color: var(--danger); font-size: .86rem; font-weight: 600; }
+
+/* Footer. */
+.dg-foot { display: flex; align-items: center; gap: 10px; padding: 14px 22px; border-top: 1px solid var(--line); background: var(--surface); }
+.dg-actions { display: flex; gap: 10px; margin-inline-start: auto; }
+.dg-save, .dg-ghost, .dg-danger { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; padding-inline: 20px; border-radius: 14px; font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer; }
+.dg-save { min-width: 170px; border: 0; background: linear-gradient(140deg, color-mix(in srgb, var(--dg-a) 80%, #fff), var(--dg-a)); color: #fff; box-shadow: 0 10px 22px -12px var(--dg-a); }
+.dg-save:disabled { opacity: .6; cursor: default; }
+.dg-ghost { border: 1.5px solid var(--line); background: var(--surface); color: var(--ink-2); }
+.dg-ghost:hover { background: var(--surface-2); }
+.dg-delete { display: grid; place-items: center; width: 46px; height: 46px; border: 1.5px solid color-mix(in srgb, var(--danger) 30%, var(--line)); border-radius: 14px; background: var(--surface); color: var(--danger); cursor: pointer; }
+.dg-delete:hover { background: var(--danger-soft); }
+.dg-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; width: 100%; }
+.dg-confirm span { flex: 1; color: var(--danger); font-size: .9rem; font-weight: 700; }
+.dg-danger { border: 0; background: var(--danger); color: #fff; }
+
+.dg :is(button, input, textarea):focus-visible { outline: 3px solid color-mix(in srgb, var(--dg-a) 50%, transparent); outline-offset: 2px; }
+
+/* Phone: a full-height sheet. */
+@media (max-width: 767.98px) {
+  .dg { width: 100vw; max-height: 100dvh; height: 100dvh; margin: 0; border-radius: 0; }
+  .dg[open] { animation: dg-up .3s cubic-bezier(.2, .9, .3, 1); }
+  @keyframes dg-up { from { transform: translateY(40px); opacity: 0; } }
+  .dg-head { padding: calc(12px + var(--safe-top, 0px)) 16px 12px; }
+  .dg-icon { width: 42px; height: 42px; border-radius: 13px; }
+  .dg-body { flex: 1; padding: 16px; gap: 20px; }
+  .dg-grid, .dg-kinds { grid-template-columns: 1fr; }
+  .dg-kind { min-height: 62px; }
+  .dg-foot { padding: 12px 16px calc(12px + var(--safe-bottom, 0px)); }
+  .dg-actions { flex: 1; }
+  .dg-actions .dg-save { flex: 1; min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .dg[open] { animation: none; } }
+@media (max-width: 767.98px) {
+  .dg-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .dg-kind { flex-direction: column; align-items: flex-start; gap: 8px; min-height: 0; padding: 12px; }
+  .dg-kind-icon { width: 38px; height: 38px; border-radius: 12px; }
+  .dg-kind-check { position: absolute; top: 12px; inset-inline-end: 12px; }
+  .dg-kind b { font-size: .9rem; }
+}

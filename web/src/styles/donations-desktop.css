@@ -227,3 +227,28 @@
 @media (prefers-reduced-motion: reduce) {
   .dd *, .dd *::before { animation: none !important; transition: none !important; }
 }
+
+/* Purposes as one sideways strip of compact cards: every purpose stays, the strip scrolls. */
+.dd-purposes {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(210px, 1fr);
+  grid-template-columns: none;
+  gap: 10px;
+  padding-bottom: 6px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.dd-purposes li {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "flag name status" "amount amount amount" "note note note";
+  gap: 4px 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  scroll-snap-align: start;
+}
+.dd-flag { width: 26px; height: 26px; font-size: .72rem; }
+.dd-purposes b { font-size: 1.02rem; }
+.dd-status { align-self: center; padding: 1px 8px; font-size: .64rem; }
+.dd-wallet { align-self: start; }

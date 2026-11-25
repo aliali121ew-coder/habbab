@@ -159,10 +159,11 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
             <button type="button" className="dd-outline" onClick={onAdd}><Plus size={15} aria-hidden /> إضافة</button>
           </header>
           {data.purposes.length === 0 ? <p className="dd-empty">لا تبرعات في {periodLabel}.</p> : (
-            <ul className="dd-purposes">
-              {data.purposes.slice(0, 4).map(([name, row], at) => (
+            // Every purpose in one sideways strip, so a new one never pushes an older one out.
+            <ul className="dd-purposes" aria-label="الأغراض">
+              {data.purposes.map(([name, row], at) => (
                 <li key={name}>
-                  <span className="dd-flag" style={{ background: PURPOSE_TONES[at] }} aria-hidden>{name.trim().charAt(0)}</span>
+                  <span className="dd-flag" style={{ background: PURPOSE_TONES[at % PURPOSE_TONES.length] }} aria-hidden>{name.trim().replace(/^ال/, '').charAt(0)}</span>
                   <span className="dd-purpose-name">{name}</span>
                   <b><bdi>{formatNumber(row.cash)}</bdi> <small>{currency}</small></b>
                   <small className="dd-purpose-note"><bdi>{formatNumber(row.count)}</bdi> تبرع · <bdi>{formatPercent((row.count / Math.max(data.inPeriod.length, 1)) * 100)}</bdi></small>
