@@ -22,7 +22,7 @@ export const CATEGORIES: { id: ExpenseCategory; label: string; icon: LucideIcon 
   { id: 'general_aid', label: 'مساعدات عامة', icon: HandCoins },
   { id: 'cattle', label: 'شراء بقر', icon: PawPrint },
   { id: 'foundation_costs', label: 'صرفيات المؤسسة', icon: Receipt },
-  { id: 'appliances', label: 'أجهزة كهربائية', icon: Refrigerator },
+  { id: 'appliances', label: 'شراء أجهزة كهربائية', icon: Refrigerator },
   { id: 'prayer_fasting', label: 'صلاة – صيام', icon: Sunrise },
   { id: 'religious_events', label: 'مناسبات دينية', icon: BookOpen },
   { id: 'appliance_repair', label: 'تصليح أجهزة كهربائية', icon: Wrench },
