@@ -5,7 +5,7 @@
 /* the register page only (not the details, the form or the map) */
 @media (min-width: 1024px) {
   .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) {
-    max-width: 1400px;
+    max-width: none;
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "head   head"
@@ -114,4 +114,18 @@
 @media (min-width: 2400px) {
   .rq.rq-detail { font-size: 1.12rem; column-gap: 28px; row-gap: 18px; }
   .rq-detail .rq-tag { height: 42px; font-size: .92rem; }
+}
+
+/* ── The requests map on a computer: full width of the screen and ~95% of viewport height ── */
+@media (min-width: 1024px) {
+  .rq.rq-map-page {
+    max-width: none;
+    width: 100%;
+    gap: 8px;
+  }
+  .rq.rq-map-page .rq-map-big {
+    width: 100%;
+    height: clamp(600px, calc(95dvh - 115px), 95dvh);
+    border-radius: 20px;
+  }
 }
