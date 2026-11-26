@@ -71,7 +71,7 @@
 /* Register and delegate panel */
 .workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 
-.register { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+.register { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
 .register-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding: 12px 14px; border-block-end: 1px solid var(--line); }
 .register-title { flex: 1 1 260px; display: grid; gap: 4px; }
 .register-title h2 { font-size: 1.15rem; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -266,6 +266,7 @@ a.whatsapp-row-btn { text-decoration: none; }
 }
 
 .reg-pager {
+  margin-block-start: auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
