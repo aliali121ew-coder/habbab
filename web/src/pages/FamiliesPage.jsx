@@ -31,6 +31,7 @@ import { KpiCards } from '../components/families/KpiCards';
 import { PageHeader } from '../components/families/PageHeader';
 import { totalEntitlement } from '../utils/format';
 import { FamiliesRoleContext } from '../components/families/role';
+import '../styles/pages/families.css';
 
 const DEFAULT_FILTERS = {
   query: '',

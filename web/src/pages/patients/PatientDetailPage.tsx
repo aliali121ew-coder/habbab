@@ -14,6 +14,7 @@ import type { Patient } from './sample';
 import { addAid, getPatient, removeAid, updateAid, updatePatient, type AidInput } from '../../data/patients';
 import { AidDialog } from './PatientDialogs';
 import { FollowFields } from './PatientFollow';
+import '../../styles/pages/patients.css';
 
 type Kind = 'cash' | 'medicine' | 'exams';
 

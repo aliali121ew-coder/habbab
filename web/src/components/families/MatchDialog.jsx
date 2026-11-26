@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Building2, Link2, MapPin, UserRoundSearch, X } from 'lucide-react';
+import '../../styles/pages/families.css';
 
 /**
  * Asked before a new family is saved when another foundation already holds a family under the

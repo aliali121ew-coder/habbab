@@ -16,8 +16,6 @@
 @import './donor.css' layer(base);
 @import './donations-desktop.css' layer(base);
 @import './donation-dialog.css' layer(base);
-@import './patients.css' layer(base);
-@import './families.css' layer(base);
 @import './family-profile.css' layer(base);
 @import './receipt.css' layer(base);
 @import './record.css' layer(base);
@@ -42,55 +40,15 @@
 @import './notifications.css' layer(base);
 @import './navigation.css' layer(base);
 @import './requests-desktop.css' layer(base);
-@import './patients-follow.css' layer(base);
 @import './phone-bars.css' layer(base);
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
-@import './families-dark.css';
 
-/* Families v2 font & control normalization inside @layer base so Tailwind utilities override freely. */
+/* The families (styles/pages/families.css) and patients (styles/pages/patients.css) sheets load
+   with their own pages instead of with the first screen. These two page-wide rules used to sit at
+   the top of families.css and stay here, since they apply on every page. */
 @layer base {
-  .fam-saas,
-  .fam-saas :is(h1, h2, h3, h4, button, input, select, textarea) {
-    font-family: "Noto Kufi Arabic Variable", "Noto Kufi Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
-  }
-
-  .fam-saas button {
-    border: 0;
-    background-color: transparent;
-  }
-
-  .fam-saas ul,
-  .fam-saas ol {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .fam-saas input:not([type="checkbox"]),
-  .fam-saas select {
-    min-height: 0;
-  }
-
-  .fam-saas input[type="checkbox"] {
-    width: 1rem;
-    height: 1rem;
-    min-height: 0;
-    padding: 0;
-    border-radius: 0.25rem;
-    accent-color: #2563EB;
-  }
-}
-
-/* Force zero-noise print for the official family print sheet */
-@media print {
-  body:has(.fam-v2-print) > *:not(.fam-v2-print),
-  body:has(.fam-v2-print) .rail,
-  body:has(.fam-v2-print) .topbar {
-    display: none !important;
-  }
-  .fam-v2-print {
-    display: block !important;
-  }
+  :root { view-transition-name: none; }
+  ::view-transition { pointer-events: none; }
 }

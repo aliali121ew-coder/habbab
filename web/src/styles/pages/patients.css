@@ -1,0 +1,4 @@
+/* The patients pages' styles (المرضى and a patient's file), loaded with those pages rather than with
+   the app's first screen. Both sheets stay in the base layer, in their old order. */
+@import '../patients.css' layer(base);
+@import '../patients-follow.css' layer(base);

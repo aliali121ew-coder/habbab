@@ -13,14 +13,6 @@
 }
 
 /* View transitions: keep page interactive and scope motion cleanly to cards & heroes. */
-:root {
-  view-transition-name: none;
-}
-
-::view-transition {
-  pointer-events: none;
-}
-
 ::view-transition-group(.fam-card) {
   animation-duration: .34s;
   animation-timing-function: cubic-bezier(.22, 1, .36, 1);
@@ -109,7 +101,6 @@
 .fam-hero-copy h1 {
   margin: 4px 0 4px;
   font-size: clamp(1.35rem, 2.2vw, 1.75rem);
-  font-weight: 800;
   color: var(--ink);
   letter-spacing: -.01em;
 }
@@ -528,7 +519,6 @@
 .fam-card-title h2 {
   margin: 0;
   font-size: 1.05rem;
-  font-weight: 700;
   color: var(--ink);
   line-height: 1.3;
 }
@@ -745,7 +735,6 @@
 .fam-insp-id h2 {
   margin: 3px 0 2px;
   font-size: 1.05rem;
-  font-weight: 700;
   color: var(--ink);
 }
 
@@ -817,7 +806,6 @@
 .fam-mix-head h3 {
   margin: 0;
   font-size: .82rem;
-  font-weight: 700;
   color: var(--ink);
 }
 
@@ -883,7 +871,6 @@
   gap: 6px;
   margin: 0;
   font-size: .84rem;
-  font-weight: 700;
   color: var(--ink);
 }
 
@@ -1113,7 +1100,6 @@
 .fam-dossier-info h1 {
   margin: 6px 0 4px;
   font-size: clamp(1.35rem, 2.3vw, 1.85rem);
-  font-weight: 800;
   color: var(--ink);
 }
 
@@ -1187,7 +1173,6 @@
 .fam-del-card-top h2 {
   margin: 2px 0 0;
   font-size: 1rem;
-  font-weight: 800;
   color: var(--ink);
 }
 
@@ -1277,7 +1262,6 @@
 .fam-mix-banner-head h2 {
   margin: 0;
   font-size: .92rem;
-  font-weight: 700;
   color: var(--ink);
 }
 
@@ -1487,7 +1471,7 @@
   gap: 10px;
 }
 
-.fam-ptl-head h3 { margin: 4px 0 2px; font-size: .98rem; font-weight: 700; color: var(--ink); }
+.fam-ptl-head h3 { margin: 4px 0 2px; font-size: .98rem; color: var(--ink); }
 .fam-ptl-head p { margin: 0; font-size: .78rem; color: var(--ink-2); }
 
 .fam-ptl-nums {
@@ -1721,7 +1705,7 @@ details.fam-acc:not([open])::details-content {
   color: var(--fam-accent);
 }
 
-.fam-dialog-title h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.fam-dialog-title h2 { margin: 0; font-size: 1.05rem; }
 .fam-dialog-title p { margin: 2px 0 0; font-size: .78rem; color: var(--ink-3); }
 
 .fam-dialog-body {
@@ -2077,7 +2061,7 @@ button.fam-kpi:focus-visible { outline: 2px solid var(--brand); outline-offset: 
 }
 @keyframes fam-cal-up { from { transform: translateY(24px); opacity: 0; } }
 .fam-cal-head { display: grid; grid-template-columns: 36px 1fr 36px 36px; align-items: center; gap: 6px; }
-.fam-cal-head h2 { margin: 0; text-align: center; color: #0f172a; font-size: 1rem; font-weight: 800; }
+.fam-cal-head h2 { margin: 0; text-align: center; color: #0f172a; font-size: 1rem; }
 .fam-cal-nav, .fam-cal-close {
   display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%;
   background: color-mix(in srgb, var(--bar-active) 10%, #fff); color: var(--bar-active); cursor: pointer;
@@ -2104,7 +2088,7 @@ button.fam-kpi:focus-visible { outline: 2px solid var(--brand); outline-offset: 
   content: ''; position: absolute; bottom: 4px; inset-inline: 0; width: 5px; height: 5px; margin: auto; border-radius: 50%; background: #fff;
 }
 .fam-cal-list { margin-top: 12px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
-.fam-cal-list h3 { margin: 0 0 6px; color: #64748b; font-size: .76rem; font-weight: 800; }
+.fam-cal-list h3 { margin: 0 0 6px; color: #64748b; font-size: .76rem; }
 .fam-cal-list ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .fam-cal-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #f8fafc; }
 .fam-cal-list li > i { flex: none; }
@@ -2128,7 +2112,7 @@ button.fam-kpi:focus-visible { outline: 2px solid var(--brand); outline-offset: 
 
 /* Family photo in the card's band: the circle is a button; a photo fills it, otherwise the
    initials show with a small camera badge to say a photo can be added. */
-button.fam-ref-initials { position: relative; padding: 0; color: inherit; font-family: inherit; cursor: pointer; }
+button.fam-ref-initials { position: relative; padding: 0; color: inherit; cursor: pointer; }
 button.fam-ref-initials:active { transform: scale(.96); }
 .fam-ref-initials img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
 .fam-ref-cam {

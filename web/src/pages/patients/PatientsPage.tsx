@@ -16,6 +16,7 @@ import { foundationsOf, type AidRecord, type Patient } from './sample';
 import { addAid, createPatient, matchPatient, uploadPatientPhoto, usePatients, type AidInput, type PatientInput } from '../../data/patients';
 import { MatchDialog } from '../../components/families/MatchDialog';
 import { AddPatientDialog, AidDialog } from './PatientDialogs';
+import '../../styles/pages/patients.css';
 
 const FOUNDATION_BRANDS: Record<string, { from: string; to: string; short: string }> = {
   'مؤسسة العين للرعاية': { from: '#0284c7', to: '#0369a1', short: 'العين' },

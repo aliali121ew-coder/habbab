@@ -17,6 +17,7 @@ import { toFamilyDetail, toInitials } from '../mock/family';
 import { familyIdFromHash } from '../route';
 import type { CaseOfficer, FamilyMember } from '../types/family';
 import { FamiliesRoleContext } from '../components/families/role';
+import '../styles/pages/families.css';
 
 // Member ids on the page are "mem-<family>-<member id on the server>".
 const memberIdOf = (member: FamilyMember) => Number(member.id.split('-').pop());
