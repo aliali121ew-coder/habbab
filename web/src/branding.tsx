@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from './api';
+import { scheduleAutoDownloadMap } from './maps/offline';
 
 /** The signed-in foundation's letterhead: printed sheets, the menu logo and messages use it. */
 export interface Branding {
@@ -38,7 +39,9 @@ export function BrandingProvider({ name, foundationId, children }: { name: strin
   });
   const reload = useCallback(async () => {
     try {
-      setData(await api<Omit<Branding, 'reload'>>('/branding'));
+      const next = await api<Omit<Branding, 'reload'>>('/branding');
+      setData(next);
+      scheduleAutoDownloadMap(`${next.address ?? ''} ${next.stamp_place ?? ''} ${next.name ?? ''}`);
     } catch {
       // Offline: the name from the session stays; images return with the connection.
     }

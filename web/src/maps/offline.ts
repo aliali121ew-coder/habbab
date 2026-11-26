@@ -115,3 +115,81 @@ export function nearestSaved(saved: Saved[], at?: [number, number] | null) {
   const d = (c: [number, number]) => (c[0] - at[0]) ** 2 + (c[1] - at[1]) ** 2;
   return [...saved].sort((a, b) => d(PROVINCES.find((p) => p.slug === a.slug)!.center) - d(PROVINCES.find((p) => p.slug === b.slug)!.center))[0].slug;
 }
+
+const AUTO_KEY = 'ahbab:auto-map-v1';
+let autoRunning = false;
+
+const normalizeAr = (s: string) => s.toLowerCase().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+
+/** Picks a province slug from Arabic text (foundation address/place) or defaults to 'babil'. */
+export function detectProvinceSlug(text?: string | null): string | null {
+  if (!text) return null;
+  const hay = normalizeAr(text);
+  for (const p of PROVINCES) {
+    if (hay.includes(normalizeAr(p.name))) return p.slug;
+  }
+  if (hay.includes('الهاشمي') || hay.includes('الحل') || hay.includes('المحاويل') || hay.includes('المسيب') || hay.includes('القاسم')) {
+    return 'babil';
+  }
+  return null;
+}
+
+function nearestProvinceSlug(at: [number, number]): string {
+  const d = (c: [number, number]) => (c[0] - at[0]) ** 2 + (c[1] - at[1]) ** 2;
+  return [...PROVINCES].sort((a, b) => d(a.center) - d(b.center))[0].slug;
+}
+
+/**
+ * Quietly downloads the user's province offline map once on first app open (defaults to Babil,
+ * or matches the foundation's province / already-granted GPS). Never prompts for GPS and skips
+ * on Save-Data / 2G connections.
+ */
+export function scheduleAutoDownloadMap(hintText?: string | null) {
+  if (autoRunning || !offlineSupported() || !navigator.onLine) return;
+  try { if (localStorage.getItem(AUTO_KEY)) return; } catch { /* ignore */ }
+  const conn = (navigator as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (conn?.saveData || /2g/.test(conn?.effectiveType ?? '')) return;
+
+  autoRunning = true;
+  window.setTimeout(() => {
+    void (async () => {
+      try {
+        const existing = await savedMaps();
+        if (existing.length > 0) {
+          try { localStorage.setItem(AUTO_KEY, existing[0].slug); } catch { /* ignore */ }
+          return;
+        }
+        const avail = await availableMaps();
+        if (!avail.length) return;
+
+        // 1) Try matching foundation address/stamp_place, 2) already-granted GPS, 3) Babil default.
+        let slug = detectProvinceSlug(hintText);
+        if (!slug && 'permissions' in navigator && navigator.geolocation) {
+          try {
+            const perm = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+            if (perm.state === 'granted') {
+              const pos = await new Promise<GeolocationPosition>((res, rej) =>
+                navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000, maximumAge: 600_000 }),
+              );
+              slug = nearestProvinceSlug([pos.coords.longitude, pos.coords.latitude]);
+            }
+          } catch { /* ignore */ }
+        }
+        slug ??= 'babil';
+
+        const chosen = avail.some((a) => a.slug === slug)
+          ? slug
+          : avail.some((a) => a.slug === 'babil')
+            ? 'babil'
+            : avail[0].slug;
+
+        await downloadMap(chosen, () => undefined);
+        try { localStorage.setItem(AUTO_KEY, chosen); } catch { /* ignore */ }
+      } catch {
+        // Silent retry on next open if network dropped mid-download.
+      } finally {
+        autoRunning = false;
+      }
+    })();
+  }, 4500);
+}
