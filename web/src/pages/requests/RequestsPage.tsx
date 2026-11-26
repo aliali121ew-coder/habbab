@@ -410,8 +410,12 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
   const [confirmDelete, setConfirmDelete] = useState(false);
   const admin = role === 'admin';
   const [handed, setHanded] = useState('');
+  // On wide screens the boxes stand in columns beside the map (requests-desktop.css); on a phone the
+  // column wrappers vanish (display: contents) and the boxes keep their order.
+  const handBox = admin && r.status !== 'delivered' && r.status !== 'rejected';
+  const side = admin || r.status === 'delivered';
   return (
-    <div dir="rtl" className="rq rq-detail">
+    <div dir="rtl" className={`rq rq-detail${side ? '' : ' no-side'}`}>
       <div className={`rq-hero kind-${r.kind}`}>
         <button type="button" className="rq-back" onClick={onBack} aria-label="رجوع"><ArrowRight size={22} /></button>
         <div className="rq-hero-row">
@@ -432,20 +436,22 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
         <span className="rq-tag"><Users size={14} /> {r.members} أفراد</span>
       </div>
 
-      <section className="rq-box">
+      <div className="rq-col rq-col-info">
+      <section className="rq-box rq-box-info">
         <h2>وصف الطلب</h2>
         <p>{r.details || '—'}</p>
       </section>
 
-      <section className="rq-box">
+      <section className="rq-box rq-box-info">
         <h2>بيانات مقدم الطلب</h2>
         <dl className="rq-dl">
           <dt>الاسم</dt><dd>{r.name}</dd>
           <dt>الهاتف</dt><dd dir="ltr">{r.phone}</dd>
         </dl>
       </section>
+      </div>
 
-      <section className="rq-box">
+      <section className="rq-box rq-box-place">
         <h2>الموقع</h2>
         {r.lat != null && r.lng != null && (
           <Suspense fallback={<div className="rq-map-still" />}><ShowMap lat={r.lat} lng={r.lng} /></Suspense>
@@ -461,8 +467,9 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
         )}
       </section>
 
+      {side && <div className="rq-col rq-col-side">
       {admin && (
-        <section className="rq-box">
+        <section className="rq-box rq-box-side">
           <h2>المندوب المسؤول</h2>
           <label className="rq-input">
             <UserCheck size={18} />
@@ -477,15 +484,15 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
       )}
 
       {r.status === 'delivered' && (
-        <section className="rq-box rq-delivered">
+        <section className="rq-box rq-box-side rq-delivered">
           <h2><PackageCheck size={18} /> تم تسليم المساعدة</h2>
           <p>{r.deliveredNote}</p>
           {r.deliveredAt && <small className="rq-help">{when(r.deliveredAt)}</small>}
         </section>
       )}
 
-      {admin && r.status !== 'delivered' && r.status !== 'rejected' && (
-        <section className="rq-box">
+      {handBox && (
+        <section className="rq-box rq-box-side">
           <h2>تسليم المساعدة</h2>
           <label className="rq-input">
             <PackageCheck size={18} />
@@ -500,9 +507,7 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
         </section>
       )}
 
-      {!admin && error && <p className="rq-error" role="alert">{error}</p>}
-      {admin && <>
-      <section className="rq-box">
+      {admin && <section className="rq-box rq-box-side">
         <h2>حالة الطلب</h2>
         <div className="rq-status-pick" role="radiogroup" aria-label="حالة الطلب">
           {PICKABLE.map((s) => (
@@ -512,9 +517,11 @@ function RequestDetail({ r, busy, error, role, delegates, onBack, onMap, onAssig
             </button>
           ))}
         </div>
-      </section>
+      </section>}
+      </div>}
 
       {error && <p className="rq-error" role="alert">{error}</p>}
+      {admin && <>
 
       <div className="rq-detail-actions">
         {canEdit(r) && <button type="button" className="rq-ghost" onClick={onEdit} disabled={busy}><Pencil size={16} /> تعديل الطلب</button>}

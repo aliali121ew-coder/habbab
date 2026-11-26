@@ -76,3 +76,42 @@
   }
   .rq-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ── A request's details on wide screens: the whole width, boxes in columns beside a tall map ──
+   1024–1599px: the request and the manager's boxes in one column, the map beside them. From 1600px
+   (large monitors and TVs): the request, the manager's boxes and the map in three columns. Each
+   column (.rq-col) stacks on its own, so a tall box never leaves a gap in the next column. */
+@media (min-width: 1024px) {
+  .rq.rq-detail {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    grid-template-rows: auto auto auto 1fr;
+    align-items: start;
+    column-gap: 18px;
+    row-gap: 14px;
+    padding-inline: clamp(0px, 1vw, 24px);
+  }
+  .rq-detail > .rq-hero, .rq-detail > .rq-tags, .rq-detail > .rq-detail-actions, .rq-detail > .rq-error { grid-column: 1 / -1; }
+  .rq-detail > .rq-col { display: grid; gap: 14px; align-content: start; grid-column: 1; }
+  .rq-detail > .rq-col-info { grid-row: 3; }
+  .rq-detail > .rq-col-side { grid-row: 4; }
+  .rq-detail > .rq-box-place { grid-column: 2; grid-row: 3 / span 2; }
+  .rq-detail.no-side > .rq-box-place { grid-row: 3; }
+  .rq-detail > .rq-box-place:has(.rq-map-still) { align-self: stretch; display: flex; flex-direction: column; }
+  .rq-detail > .rq-box-place .rq-map-still { flex: 1; height: auto; min-height: clamp(320px, 52vh, 760px); }
+  .rq-detail .rq-hero { margin-inline: 0; border-radius: 24px; padding-inline: 24px; }
+  .rq-detail .rq-hero h1 { font-size: clamp(1.3rem, 1.1rem + .5vw, 1.9rem); }
+  .rq-detail .rq-box { padding: 18px 22px; }
+}
+@media (min-width: 1600px) {
+  .rq.rq-detail:not(.no-side) { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.4fr); grid-template-rows: auto auto auto; column-gap: 22px; }
+  .rq-detail:not(.no-side) > .rq-col-info { grid-column: 1; grid-row: 3; }
+  .rq-detail:not(.no-side) > .rq-col-side { grid-column: 2; grid-row: 3; }
+  .rq-detail:not(.no-side) > .rq-box-place { grid-column: 3; grid-row: 3; }
+  .rq-detail .rq-box h2 { font-size: 1.08rem; }
+  .rq-detail .rq-box p, .rq-detail .rq-dl { font-size: 1.05rem; }
+}
+@media (min-width: 2400px) {
+  .rq.rq-detail { font-size: 1.12rem; column-gap: 28px; row-gap: 18px; }
+  .rq-detail .rq-tag { height: 42px; font-size: .92rem; }
+}
