@@ -178,3 +178,18 @@
 
 /* Holds the phone chart's place while its file arrives (first visit only), so nothing jumps. */
 .home-chart-slot { min-height: 640px; border-radius: 24px; background: color-mix(in srgb, var(--surface) 55%, transparent); }
+
+/* The phone home page's income and spending bars (PhoneMoneyOverview.tsx MiniBars). The first period
+   sits on the right; the amounts' scale is on the right edge. */
+.pmo-chart { position: relative; margin-top: 12px; padding-right: 40px; }
+.pmo-plot { position: relative; height: 150px; }
+.pmo-line { position: absolute; inset-inline: 0 -40px; height: 0; border-top: 1px dashed var(--fp-border); }
+.pmo-line em { position: absolute; right: 0; bottom: 2px; width: 36px; color: var(--fp-ink-3); font-size: 11px; font-style: normal; text-align: right; }
+.pmo-cols { position: absolute; inset: 0; display: flex; flex-direction: row-reverse; }
+.pmo-col { display: flex; flex: 1; align-items: flex-end; justify-content: center; min-width: 0; padding: 0 2px; border: 0; border-radius: 8px; background: none; cursor: pointer; }
+.pmo-col.is-on { background: var(--fp-muted); }
+.pmo-pair { display: flex; align-items: flex-end; justify-content: center; gap: 3px; width: 100%; max-width: 34px; height: 100%; }
+.pmo-pair i { display: block; flex: 1; max-width: 14px; min-height: 2px; border-radius: 5px 5px 0 0; }
+.pmo-names { display: flex; flex-direction: row-reverse; margin-top: 6px; }
+.pmo-names span { flex: 1; min-width: 0; overflow: visible; color: var(--fp-ink-3); font-size: 12px; text-align: center; white-space: nowrap; }
+.pmo-tip { position: absolute; bottom: calc(100% - 10px); z-index: 5; pointer-events: none; }

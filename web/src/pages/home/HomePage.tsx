@@ -7,7 +7,6 @@ import {
 import { api, type Feature, type Me, type Overview } from '../../api';
 import { StateMessage } from '../../components/StateMessage';
 import { AidHeroBanner } from '../../components/shared/AidHeroBanner';
-import { useFamilies } from '../../data/families';
 import { formatNumber, MONTH_NAMES, monthIndex } from '../../format';
 import { AidDisbursementsTable } from './AidDisbursementsTable';
 // The phone's money overview draws a chart (recharts, the heaviest library): its own file, so the
@@ -15,7 +14,6 @@ import { AidDisbursementsTable } from './AidDisbursementsTable';
 const PhoneMoneyOverview = lazy(() => import('./PhoneMoneyOverview').then((m) => ({ default: m.PhoneMoneyOverview })));
 import { WORK_ICONS, WorkSummaryCard, type WorkRow } from './WorkSummaryCard';
 import type { ExpenseItem } from '../expenses/ExpensesPage';
-import { usePatients } from '../../data/patients';
 
 interface MonthSheet {
   items: ExpenseItem[];
@@ -87,6 +85,8 @@ interface GiftSheet {
   previous_december_cash: number;
 }
 
+interface FamilySummary { month: string; total: number; arrears: number; visits: number; visited: number; aid_count: number; aid_amount: number }
+
 export function HomePage({ me }: { me: Me }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [sheet, setSheet] = useState<MonthSheet | null>(null);
@@ -115,13 +115,23 @@ export function HomePage({ me }: { me: Me }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  // This month's families figures (payments and visits) come with the list from the server.
-  const patientCount = usePatients(me.features.includes('patients') && (me.role === 'admin' || me.role === 'health')).patients.length;
-  const families = useFamilies(me.features.includes('families')).families as {
-    arrears: number;
-    visits?: { date: string }[];
-    payments?: { date: string; amount: number }[];
-  }[];
+  // This month's families figures and the patients count, counted on the server (families/summary,
+  // patients/count) so the home page never downloads the whole families or patients lists.
+  const [familyFigures, setFamilyFigures] = useState<FamilySummary | null>(null);
+  const [patientCount, setPatientCount] = useState(0);
+  useEffect(() => {
+    let live = true;
+    if (me.features.includes('families')) {
+      api<FamilySummary>('/families/summary').then((value) => { if (live) setFamilyFigures(value); }).catch(() => undefined);
+    }
+    if (me.features.includes('patients') && (me.role === 'admin' || me.role === 'health')) {
+      api<{ total: number }>('/patients/count').then((value) => { if (live) setPatientCount(value.total); }).catch(() => undefined);
+    }
+    return () => { live = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const familyTotal = familyFigures?.total ?? 0;
+  const familyArrears = familyFigures?.arrears ?? 0;
 
   if (error && !overview) return <StateMessage kind="error" title="تعذّر تحميل الصفحة الرئيسية" hint={error} onRetry={load} />;
   if (!overview) {
@@ -191,8 +201,8 @@ export function HomePage({ me }: { me: Me }) {
   const sections: { href: string; icon: LucideIcon; label: string; value: string; note: string; alert?: boolean }[] = [
     { href: '#/delegates', icon: UsersRound, label: 'المندوبون', value: formatNumber(overview.delegate_count), note: `${formatNumber(overview.alive)} مشترك` },
     {
-      href: '#/families', icon: HeartHandshake, label: 'العوائل', value: formatNumber(families.length),
-      note: `${formatNumber(families.filter((f) => f.arrears > 0).length)} متأخرات`, alert: families.some((f) => f.arrears > 0),
+      href: '#/families', icon: HeartHandshake, label: 'العوائل', value: formatNumber(familyTotal),
+      note: `${formatNumber(familyArrears)} متأخرات`, alert: familyArrears > 0,
     },
     { href: '#/patients', icon: HeartPulse, label: 'المرضى', value: formatNumber(patientCount), note: 'ملف مريض' },
     { href: '#/expenses', icon: Receipt, label: 'الحركات المالية', value: sheet ? formatNumber(sheet.items.length) : '—', note: 'هذا الشهر' },
@@ -221,14 +231,14 @@ export function HomePage({ me }: { me: Me }) {
 
   // This month's work across the foundation, for the phone summary card.
   const monthKey = overview.focus.slice(0, 7);
-  const familyVisits = families.flatMap((f) => (f.visits ?? []).filter((v) => v.date.startsWith(monthKey)));
-  const visitedFamilies = families.filter((f) => (f.visits ?? []).some((v) => v.date.startsWith(monthKey))).length;
-  const familyAid = families.flatMap((f) => (f.payments ?? []).filter((p) => p.date.startsWith(monthKey)));
+  const thisMonth = familyFigures?.month === monthKey ? familyFigures : null;
+  const familyVisits = thisMonth?.visits ?? 0;
+  const visitedFamilies = thisMonth?.visited ?? 0;
+  const familyAidCount = thisMonth?.aid_count ?? 0;
+  const familyAidAmount = thisMonth?.aid_amount ?? 0;
   // Last month's expense entries and aid payments, for the comparison in the summary card.
   const prevKey = month > 0 ? `${monthKey.slice(0, 4)}-${pad(month)}` : null;
-  const previousTotal = prevKey === null ? null
-    : (sheet?.year[month - 1]?.count ?? 0)
-      + families.reduce((n, f) => n + (f.payments ?? []).filter((p) => p.date.startsWith(prevKey)).length, 0);
+  const previousTotal = prevKey === null ? null : (sheet?.year[month - 1]?.count ?? 0);
   const workRows: WorkRow[] = [
     {
       key: 'income', label: 'تسديد المشتركين', icon: WORK_ICONS.income, tone: 'var(--fp-primary)', soft: 'var(--fp-primary-soft)',
@@ -236,7 +246,7 @@ export function HomePage({ me }: { me: Me }) {
     },
     {
       key: 'aid', label: 'المساعدات', icon: WORK_ICONS.aid, tone: 'var(--fp-emerald)', soft: 'var(--fp-emerald-soft)',
-      count: familyAid.length, countUnit: 'دفعة', amount: familyAid.reduce((sum, p) => sum + p.amount, 0),
+      count: familyAidCount, countUnit: 'دفعة', amount: familyAidAmount,
       note: 'للعوائل المتعففة', href: '#/families',
     },
     {
@@ -246,7 +256,7 @@ export function HomePage({ me }: { me: Me }) {
     },
     {
       key: 'visits', label: 'الزيارات', icon: WORK_ICONS.visits, tone: 'var(--fp-rose)', soft: 'var(--fp-rose-soft)',
-      count: familyVisits.length, countUnit: 'زيارة', note: `شملت ${formatNumber(visitedFamilies)} من ${formatNumber(families.length)} عائلة`, href: '#/families',
+      count: familyVisits, countUnit: 'زيارة', note: `شملت ${formatNumber(visitedFamilies)} من ${formatNumber(familyTotal)} عائلة`, href: '#/families',
     },
   ];
 

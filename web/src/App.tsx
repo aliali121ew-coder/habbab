@@ -68,10 +68,23 @@ const PatientDetailPage = lazy(() => pages.patient().then((m) => ({ default: m.P
 const PatientsPage = lazy(() => pages.patients().then((m) => ({ default: m.PatientsPage })));
 const SubscribersPage = lazy(() => pages.subscribers().then((m) => ({ default: m.SubscribersPage })));
 
+// The other pages come onto the device one at a time, each in a quiet moment after the first screen
+// has settled, so a tap never waits behind a pile of code being run (loading them all at once froze
+// taps for seconds on weak phones). Skipped when the phone asks to save data or is on 2G.
 function prefetchPages() {
-  const run = () => { for (const load of Object.values(pages)) void load().catch(() => undefined); };
-  const idle = (window as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback;
-  if (idle) idle(run); else setTimeout(run, 1500);
+  const connection = (navigator as { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (connection?.saveData || /2g/.test(connection?.effectiveType ?? '')) return;
+  const queue = Object.values(pages);
+  const quiet = (run: () => void) => {
+    if ('requestIdleCallback' in window) window.requestIdleCallback(run, { timeout: 5000 });
+    else setTimeout(run, 400);
+  };
+  const next = () => {
+    const load = queue.shift();
+    if (!load) return;
+    quiet(() => { void load().catch(() => undefined).finally(() => setTimeout(next, 300)); });
+  };
+  setTimeout(next, 3000);
 }
 import { clearLocalRecords } from './localRecords';
 

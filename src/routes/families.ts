@@ -79,6 +79,41 @@ async function loadFamily(c: Ctx, id: number) {
 
 // Every family of the foundation (a delegate: their own), with members, this month's payments
 // and visits, and its last visit. Hundreds of families at most per foundation.
+// This month's families figures for the home page, counted in the database instead of sending
+// every family with its members, payments and visits: how many families, how many still owe
+// this month, the visits and the families they covered, and the aid paid out.
+families.get('/summary', async (c) => {
+  const month = currentMonth();
+  const scope = isDelegate(c) ? c.get('user').id : null;
+  const byDelegate = scope === null ? '' : ' AND f.delegate_id = ?';
+  const scopeParams = scope === null ? [] : [scope];
+  const [counts, visits, aid] = await Promise.all([
+    first<{ total: number; arrears: number | null }>(c, `SELECT COUNT(*) AS total,
+        SUM(CASE WHEN f.ent_salary + f.ent_aid + f.ent_medicine + f.ent_checkups > COALESCE(p.paid, 0) THEN 1 ELSE 0 END) AS arrears
+      FROM families f
+      LEFT JOIN (SELECT family_id, SUM(amount) AS paid FROM family_payments
+        WHERE foundation_id = ? AND month = ? AND deleted_at IS NULL GROUP BY family_id) p ON p.family_id = f.id
+      WHERE f.foundation_id = ? AND f.deleted_at IS NULL${byDelegate}`, fid(c), month, fid(c), ...scopeParams),
+    first<{ visits: number; visited: number }>(c, `SELECT COUNT(*) AS visits, COUNT(DISTINCT v.family_id) AS visited
+      FROM family_visits v JOIN families f ON f.id = v.family_id
+      WHERE v.foundation_id = ? AND v.visited_on >= ? AND v.deleted_at IS NULL AND f.deleted_at IS NULL${byDelegate}`,
+      fid(c), `${month}-01`, ...scopeParams),
+    first<{ count: number; amount: number }>(c, `SELECT COUNT(*) AS count, COALESCE(SUM(p.amount), 0) AS amount
+      FROM family_payments p JOIN families f ON f.id = p.family_id
+      WHERE p.foundation_id = ? AND p.month = ? AND p.deleted_at IS NULL AND f.deleted_at IS NULL${byDelegate}`,
+      fid(c), month, ...scopeParams),
+  ]);
+  return c.json({
+    month,
+    total: counts?.total ?? 0,
+    arrears: counts?.arrears ?? 0,
+    visits: visits?.visits ?? 0,
+    visited: visits?.visited ?? 0,
+    aid_count: aid?.count ?? 0,
+    aid_amount: aid?.amount ?? 0,
+  });
+});
+
 families.get('/', async (c) => {
   const month = currentMonth();
   const scope = isDelegate(c) ? c.get('user').id : null;

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import { ArrowDownRight, ArrowUpRight, ChevronLeft, Gift, Receipt, Wallet, type LucideIcon } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { formatNumber, MONTH_NAMES } from '../../format';
 
 // Short month names so six fit under the bars on a phone.
@@ -50,6 +49,59 @@ function Delta({ value, goodWhenUp }: { value: number | null; goodWhenUp: boolea
 }
 
 /** Bar tooltip: the period, income and spending with their colours, and what is left over. */
+// A round top for the y-axis: 4 equal steps of 1, 2, 2.5 or 5 × a power of ten.
+function niceTop(max: number) {
+  const raw = Math.max(max, 1) / 4;
+  const power = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 2.5, 5, 10].map((k) => k * power).find((k) => k >= raw) ?? raw;
+  return step * 4;
+}
+
+// The income and spending bars, drawn with plain elements instead of a chart library (recharts was
+// 370 KB of code on the phone's home page). Same look: dashed lines, amounts on the right, the
+// first period on the right, a tip on hover or tap.
+function MiniBars({ rows, spent, currency }: { rows: { name: string; full?: string; in: number; out: number }[]; spent: boolean; currency: string }) {
+  const [tip, setTip] = useState<number | null>(null);
+  const top = niceTop(Math.max(0, ...rows.flatMap((row) => [row.in, spent ? row.out : 0])));
+  const pct = (value: number) => `${Math.min(100, (value / top) * 100)}%`;
+  const shown = tip === null ? null : rows[tip];
+  return (
+    <div className="pmo-chart" dir="ltr" onMouseLeave={() => setTip(null)}>
+      <div className="pmo-plot">
+        {[1, 0.75, 0.5, 0.25, 0].map((f) => (
+          <span key={f} className="pmo-line" style={{ bottom: `${f * 100}%` }}><em>{compact(top * f)}</em></span>
+        ))}
+        <div className="pmo-cols">
+          {rows.map((row, at) => (
+            <button
+              key={row.name + at}
+              type="button"
+              className={`pmo-col${tip === at ? ' is-on' : ''}`}
+              onMouseEnter={() => setTip(at)}
+              onFocus={() => setTip(at)}
+              onClick={() => setTip(tip === at ? null : at)}
+              aria-label={`${row.full ?? row.name}: الوارد ${formatNumber(row.in)}${spent ? `، المصروف ${formatNumber(row.out)}` : ''}`}
+            >
+              <span className="pmo-pair">
+                <i style={{ height: pct(row.in), background: INCOME }} />
+                {spent && <i style={{ height: pct(row.out), background: SPEND }} />}
+              </span>
+            </button>
+          ))}
+        </div>
+        {shown && tip !== null && (
+          <div className="pmo-tip" style={{ right: `clamp(-40px, calc(${((tip + 0.5) / rows.length) * 100}% - 110px), calc(100% - 210px))` }}>
+            <ChartTip label={shown.full ?? shown.name} income={shown.in} spend={spent ? shown.out : null} currency={currency} />
+          </div>
+        )}
+      </div>
+      <div className="pmo-names">
+        {rows.map((row, at) => <span key={row.name + at}>{rows.length > 7 && at % 2 === 1 ? '' : row.name}</span>)}
+      </div>
+    </div>
+  );
+}
+
 function ChartTip({ label, income, spend, currency }: { label: string; income: number; spend: number | null; currency: string }) {
   const net = spend === null ? null : income - spend;
   const line = (name: string, colour: string, value: number) => (
@@ -206,25 +258,7 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
             {range === 'week' ? 'لا وارد ولا صرف في آخر 7 أيام' : 'لا وارد ولا صرف هذا الشهر'}
           </p>
         ) : (
-        <div className="mt-3 h-44" dir="ltr">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chart} barGap={3} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="var(--fp-border)" strokeDasharray="3 3" />
-              <XAxis dataKey="name" reversed tick={{ fontSize: 12, fill: 'var(--fp-ink-3)' }} axisLine={false} tickLine={false} />
-              <YAxis orientation="right" width={40} tickFormatter={compact} tick={{ fontSize: 11, fill: 'var(--fp-ink-3)' }} axisLine={false} tickLine={false} />
-              <Tooltip
-                cursor={{ fill: 'var(--fp-muted)', radius: 8 }}
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
-                  const row = payload[0].payload as { in: number; out: number; full?: string };
-                  return <ChartTip label={row.full ?? String(label)} income={row.in} spend={spent ? row.out : null} currency={currency} />;
-                }}
-              />
-              <Bar dataKey="in" isAnimationActive={false} fill={INCOME} radius={[5, 5, 0, 0]} maxBarSize={16} />
-              {spent && <Bar dataKey="out" isAnimationActive={false} fill={SPEND} radius={[5, 5, 0, 0]} maxBarSize={16} />}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <MiniBars rows={chart} spent={Boolean(spent)} currency={currency} />
         )}
         <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold" style={{ color: 'var(--fp-ink-2)' }}>
           <span className="inline-flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: INCOME }} aria-hidden />الوارد</span>

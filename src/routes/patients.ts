@@ -111,6 +111,16 @@ patients.get('/links', async (c) => {
   });
 });
 
+// How many patients there are (for the home page), without sending the list and its aid records.
+patients.get('/count', async (c) => {
+  const row = c.get('user').role === 'delegate'
+    ? await first<{ n: number }>(c, `SELECT COUNT(*) AS n FROM patients p
+        LEFT JOIN families f ON f.id = p.family_id AND f.foundation_id = p.foundation_id AND f.deleted_at IS NULL
+        WHERE p.foundation_id = ? AND p.deleted_at IS NULL AND COALESCE(p.delegate_id, f.delegate_id) = ?`, fid(c), c.get('user').id)
+    : await first<{ n: number }>(c, 'SELECT COUNT(*) AS n FROM patients WHERE foundation_id = ? AND deleted_at IS NULL', fid(c));
+  return c.json({ total: row?.n ?? 0 });
+});
+
 patients.get('/', async (c) => {
   const [rows, aids, foundation] = await Promise.all([
     c.get('user').role === 'delegate'
