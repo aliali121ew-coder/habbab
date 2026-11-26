@@ -340,6 +340,36 @@ function DownloadMaps({ onClose, onSaved }: { onClose: () => void; onSaved: () =
   );
 }
 
+function PushpinIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
+      <defs>
+        <radialGradient id="rq-pp-top" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#ff7b7b" />
+          <stop offset="55%" stopColor="#ef233c" />
+          <stop offset="100%" stopColor="#9d0208" />
+        </radialGradient>
+        <radialGradient id="rq-pp-body" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#ff6b6b" />
+          <stop offset="55%" stopColor="#d90429" />
+          <stop offset="100%" stopColor="#800f2f" />
+        </radialGradient>
+      </defs>
+      {/* Needle */}
+      <path d="M12.5 19.5 L5.5 27.5" stroke="#475569" strokeWidth="2.6" strokeLinecap="round" />
+      <path d="M12.5 19.5 L5.5 27.5" stroke="#cbd5e1" strokeWidth="1" strokeLinecap="round" />
+      {/* Base disc */}
+      <circle cx="14.5" cy="17.5" r="7.4" fill="url(#rq-pp-body)" />
+      <ellipse cx="12.2" cy="14.4" rx="2.6" ry="1.4" transform="rotate(-35 12.2 14.4)" fill="#ffffff" opacity="0.32" />
+      {/* Neck */}
+      <path d="M14.5 15.5 L19.5 10.5" stroke="#b5172a" strokeWidth="4.6" strokeLinecap="round" />
+      {/* Top head */}
+      <circle cx="21.2" cy="10.2" r="6.2" fill="url(#rq-pp-top)" />
+      <ellipse cx="19.2" cy="7.8" rx="2.3" ry="1.2" transform="rotate(-35 19.2 7.8)" fill="#ffffff" opacity="0.42" />
+    </svg>
+  );
+}
+
 interface NavTarget {
   name: string;
   lat: number;
@@ -367,6 +397,7 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<MapPlace | null>(null);
   const [pickingPlace, setPickingPlace] = useState(false);
+  const [mapMoving, setMapMoving] = useState(false);
   const pickingRef = useRef(false);
   pickingRef.current = pickingPlace;
   const [draftCoord, setDraftCoord] = useState<{ lat: number; lng: number } | null>(null);
@@ -463,6 +494,8 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
     });
     // A finger on the map while driving: stop following until «إعادة التمركز».
     m.on('dragstart', () => { if (nav.current) setFollowing(false); });
+    m.on('movestart', () => { if (pickingRef.current) setMapMoving(true); });
+    m.on('moveend', () => { if (pickingRef.current) setMapMoving(false); });
     map.current = m;
     puck.current = new MePuck(m);
     placed.current = false;
@@ -911,13 +944,31 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
         </div>
       )}
 
+      {/* ── Live moving GPS pin in the center of the map while aiming ── */}
+      {!driving && pickingPlace && !draftCoord && (
+        <div className={`rq-center-gps${mapMoving ? ' is-moving' : ''}`} aria-hidden="true">
+          <span className="rq-center-gps-pin" dangerouslySetInnerHTML={{ __html: PIN_SVG }} />
+          <span className="rq-center-gps-dot" />
+        </div>
+      )}
+
       {/* ── Pick-location banner when adding a new saved place ── */}
       {!driving && pickingPlace && !draftCoord && (
         <div className="rq-pick-banner" role="status">
-          <span>اضغط على الموقع في الخريطة لتثبيت النقطة</span>
+          <span>حرّك الخريطة لوضع علامة GPS في المكان المطلوب ثم اضغط «تثبيت هنا»</span>
           <div className="rq-pick-banner-act">
-            <button type="button" className="rq-primary" onClick={useCurrentPosForPlace} disabled={busy}>
-              {busy ? <LoaderCircle size={15} className="rq-spin" /> : <LocateFixed size={15} />} موقعي الحالي
+            <button
+              type="button"
+              className="rq-primary rq-go"
+              onClick={() => {
+                const c = map.current?.getCenter();
+                if (c) { setDraftCoord({ lat: c.lat, lng: c.lng }); setPlaceErr(''); }
+              }}
+            >
+              <Check size={16} /> تثبيت هنا
+            </button>
+            <button type="button" className="rq-ghost" onClick={useCurrentPosForPlace} disabled={busy}>
+              {busy ? <LoaderCircle size={15} className="rq-spin" /> : <LocateFixed size={15} />} موقعي
             </button>
             <button type="button" className="rq-ghost" onClick={cancelPickPlace}>إلغاء</button>
           </div>
@@ -941,9 +992,9 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
             onClick={() => (pickingPlace ? cancelPickPlace() : startPickPlace())}
             aria-label="إضافة نقطة أو عائلة على الخريطة"
             title="إضافة نقطة أو عائلة على الخريطة"
-            className={pickingPlace ? 'on' : ''}
+            className={`rq-tool-pin${pickingPlace ? ' on' : ''}`}
           >
-            <BookmarkPlus size={20} />
+            <PushpinIcon size={24} />
           </button>
           <button
             type="button"
