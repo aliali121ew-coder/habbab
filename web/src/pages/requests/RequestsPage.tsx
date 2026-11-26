@@ -246,7 +246,7 @@ function RequestList({ requests, role, mode, setMode, focus, onOpen, onNew }: {
         </div>
         <p className="rq-map-count">{pins.length} طلب مفتوح على الخريطة{role === 'delegate' ? ' مسند إليك' : ''}</p>
         <Suspense fallback={<div className="rq-map-big" />}>
-          <RequestsMap items={pins} onOpen={onOpen} focus={focus} />
+          <RequestsMap items={pins} onOpen={onOpen} focus={focus} role={role} />
         </Suspense>
       </div>
     );

@@ -9,6 +9,7 @@ import { formatDistance, straightDistance } from '../../maps/mapbox';
 import { bearing } from '../../maps/navigation';
 import { cachedAsset, openMap, PROVINCES } from '../../maps/offline';
 import type { MapRequest } from './RequestMap';
+import { createPlaceMarkerEl, loadCachedPlaces, PLACE_CATEGORIES, PLACE_META, type MapPlace } from './mapPlaces';
 
 /* The requests map with no internet: the delegate's saved province (OpenStreetMap, Protomaps)
    drawn by MapLibre, the same pins, my position, and — since road routes need the internet —
@@ -45,6 +46,7 @@ export function OfflineRequestsMap({ slug, items, onOpen }: { slug: string; item
   const [me, setMe] = useState<[number, number] | null>(null);
   const [mapBearing, setMapBearing] = useState(0);
   const [selected, setSelected] = useState<MapRequest | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -75,7 +77,7 @@ export function OfflineRequestsMap({ slug, items, onOpen }: { slug: string; item
         },
       });
       m.on('rotate', () => setMapBearing(m!.getBearing()));
-      m.on('click', () => setSelected(null));
+      m.on('click', () => { setSelected(null); setSelectedPlace(null); });
       map.current = m;
       for (const r of items) {
         const el = document.createElement('button');
@@ -83,8 +85,12 @@ export function OfflineRequestsMap({ slug, items, onOpen }: { slug: string; item
         el.className = `rq-gps rq-gps-${pinState(r)}`;
         el.innerHTML = PIN_SVG;
         el.setAttribute('aria-label', `${r.name} — ${r.kindTitle}`);
-        el.addEventListener('click', (ev) => { ev.stopPropagation(); setSelected(r); });
+        el.addEventListener('click', (ev) => { ev.stopPropagation(); setSelectedPlace(null); setSelected(r); });
         new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([r.lng, r.lat]).addTo(m);
+      }
+      for (const p of loadCachedPlaces().filter((x) => x.status === 'approved')) {
+        const el = createPlaceMarkerEl(p, () => { setSelected(null); setSelectedPlace(p); });
+        new maplibregl.Marker({ element: el, anchor: 'top' }).setLngLat([p.lng, p.lat]).addTo(m);
       }
       if (items.length) {
         const b = new maplibregl.LngLatBounds();
@@ -112,8 +118,13 @@ export function OfflineRequestsMap({ slug, items, onOpen }: { slug: string; item
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
-  const toward = selected && me ? bearing(me, [selected.lng, selected.lat]) : null;
-  const distance = selected && me ? straightDistance(me, [selected.lng, selected.lat]) : null;
+  const targetCoord: [number, number] | null = selected
+    ? [selected.lng, selected.lat]
+    : selectedPlace
+      ? [selectedPlace.lng, selectedPlace.lat]
+      : null;
+  const toward = targetCoord && me ? bearing(me, targetCoord) : null;
+  const distance = targetCoord && me ? straightDistance(me, targetCoord) : null;
 
   return (
     <div className="rq-map-big rq-offline">
@@ -149,6 +160,33 @@ export function OfflineRequestsMap({ slug, items, onOpen }: { slug: string; item
           </div>
         </div>
       )}
+      {selectedPlace && (() => {
+        const meta = PLACE_META.get(selectedPlace.category) ?? PLACE_CATEGORIES[1];
+        return (
+          <div className="rq-route-card" role="dialog" aria-label={selectedPlace.name}>
+            <button type="button" className="rq-route-x" onClick={() => setSelectedPlace(null)} aria-label="إغلاق"><X size={18} /></button>
+            <div className="rq-route-who">
+              <span className="rq-route-dot" style={{ ['--pin' as string]: meta.color }} />
+              <div><strong>{selectedPlace.name}</strong><small>{meta.label} · نقطة معتمدة</small></div>
+            </div>
+            {selectedPlace.note && <p className="rq-route-note">{selectedPlace.note}</p>}
+            {toward !== null && distance !== null ? (
+              <div className="rq-compass">
+                <span className="rq-compass-arrow" style={{ transform: `rotate(${toward - mapBearing}deg)` }}><ArrowUp size={30} /></span>
+                <div>
+                  <b>{formatDistance(distance)}</b>
+                  <small>باتجاه {COMPASS[Math.round(toward / 45) % 8]} — مسافة مباشرة بدون إنترنت</small>
+                </div>
+              </div>
+            ) : <p className="rq-route-note">شغّل الموقع (GPS) لمعرفة المسافة والاتجاه إلى النقطة.</p>}
+            {selectedPlace.phone && (
+              <div className="rq-route-actions">
+                <a className="rq-ghost" href={`tel:${selectedPlace.phone}`}><Phone size={18} /> اتصال</a>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

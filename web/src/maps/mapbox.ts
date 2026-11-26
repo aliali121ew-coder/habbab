@@ -176,3 +176,33 @@ export function precisePosition(waitMs = 9000, goodMetres = 12): Promise<Fix> {
 export async function myPosition(): Promise<[number, number]> {
   return (await precisePosition(4000, 30)).at;
 }
+
+export interface GeocodeHit {
+  id: string;
+  name: string;
+  placeName: string;
+  lng: number;
+  lat: number;
+}
+
+/** Searches places, neighborhoods, streets and landmarks in Iraq via Mapbox Geocoding API. */
+export async function geocodeIraq(query: string, signal?: AbortSignal): Promise<GeocodeHit[]> {
+  const q = query.trim();
+  const token = mapboxgl.accessToken;
+  if (!q || !token || !navigator.onLine) return [];
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?country=iq&language=ar&limit=6&access_token=${encodeURIComponent(token)}`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) return [];
+  const data = (await res.json()) as {
+    features?: { id: string; text?: string; place_name?: string; center?: [number, number] }[];
+  };
+  return (data.features ?? [])
+    .filter((f) => Array.isArray(f.center) && f.center.length === 2)
+    .map((f) => ({
+      id: f.id,
+      name: f.text || f.place_name || q,
+      placeName: f.place_name || f.text || q,
+      lng: f.center![0],
+      lat: f.center![1],
+    }));
+}
