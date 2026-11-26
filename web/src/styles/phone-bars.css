@@ -6,8 +6,64 @@
 
 .topbar-title { display: none; }
 .bottom-nav { display: none; }
+.install-bar { display: none; }
 
 @media (max-width: 767px) {
+  /* ── Persistent top install banner on phone browsers (hidden once installed) ── */
+  .install-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: calc(8px + var(--safe-top, 0px)) 12px 9px;
+    background: linear-gradient(110deg, var(--bar-active), color-mix(in srgb, var(--bar-active) 76%, #000));
+    color: #fff;
+    box-shadow: 0 6px 18px -12px rgb(15 23 42 / 55%);
+    position: relative; z-index: 35;
+  }
+  .install-bar + .topbar { padding-top: 8px !important; }
+  .install-bar-logo {
+    width: 36px; height: 36px; flex: none; border-radius: 50%; overflow: hidden;
+    border: 2px solid rgb(255 255 255 / 45%); background: #fff;
+  }
+  .install-bar-logo img { width: 108%; height: 108%; object-fit: cover; display: block; }
+  .install-bar-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .install-bar-text strong { font-size: .84rem; font-weight: 800; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .install-bar-text small { font-size: .72rem; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .install-bar-btn {
+    flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 13px;
+    border: 0; border-radius: 999px; background: #fff; color: var(--bar-active);
+    font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; white-space: nowrap;
+    box-shadow: 0 4px 12px -6px rgb(0 0 0 / 45%);
+  }
+  .install-bar-btn:active { transform: scale(.96); }
+
+  .install-guide-scrim {
+    position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px;
+    background: rgb(15 23 42 / 55%);
+  }
+  .install-guide {
+    position: relative; width: min(100%, 380px); display: grid; gap: 14px; padding: 18px;
+    border-radius: 22px; background: var(--surface); color: var(--ink);
+    box-shadow: 0 22px 50px -18px rgb(0 0 0 / 50%);
+  }
+  .install-guide-x {
+    position: absolute; top: 12px; left: 12px; width: 32px; height: 32px; display: grid; place-items: center;
+    border: 0; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink-2); cursor: pointer;
+  }
+  .install-guide-head { display: flex; align-items: center; gap: 10px; padding-left: 34px; }
+  .install-guide-ic {
+    width: 42px; height: 42px; flex: none; display: grid; place-items: center; border-radius: 13px;
+    background: color-mix(in srgb, var(--bar-active) 12%, var(--surface)); color: var(--bar-active);
+  }
+  .install-guide-head > div { display: grid; gap: 2px; }
+  .install-guide-head strong { font-size: .96rem; font-weight: 800; }
+  .install-guide-head small { font-size: .78rem; color: var(--ink-3); }
+  .install-guide-steps { margin: 0; padding-inline-start: 20px; display: grid; gap: 10px; font-size: .86rem; line-height: 1.65; color: var(--ink-2); }
+  .install-guide-steps b { color: var(--ink); }
+  .install-inline-ic { display: inline-block; vertical-align: -3px; color: var(--bar-active); }
+  .install-guide-ok {
+    height: 44px; border: 0; border-radius: 14px; background: var(--bar-active); color: #fff;
+    font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer;
+  }
+
   /* ── top bar (gesture-scrubbed fade 0–100% & slide with scroll, matching bottom bar) ── */
   .topbar {
     position: sticky !important; top: 0; z-index: 30; pointer-events: auto !important;

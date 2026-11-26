@@ -6,6 +6,7 @@ import { api, type Feature, type Me, type Role } from '../api';
 import { hasFeature, SOON_FEATURE } from '../features';
 import { NotificationBell } from './NotificationBell';
 import { BottomNav } from './BottomNav';
+import { InstallBanner } from './InstallBanner';
 import { useBranding } from '../branding';
 import { initialOf } from '../format';
 import { useRoute } from '../route';
@@ -434,6 +435,7 @@ export function Shell({ me, onSignedOut, children }: Props) {
       {pwOpen && <PasswordModal name={me.full_name} onClose={() => setPwOpen(false)} />}
 
       <div className="stage">
+        <InstallBanner />
         <header ref={topbarRef} className="topbar">
           <button type="button" className="icon-btn menu-btn" aria-label="فتح القائمة" onClick={() => setOpen(true)}>
             <Menu size={22} aria-hidden />

@@ -3,6 +3,7 @@ import { api, ApiError, setSessionLostHandler, type Me } from './api';
 import { Shell } from './components/Shell';
 import { StateMessage } from './components/StateMessage';
 import { OfflineBar } from './components/OfflineBar';
+import { InstallBanner } from './components/InstallBanner';
 import { queuedPayments, syncPayments } from './paymentQueue';
 import { Login } from './pages/Login';
 import { ChangePassword } from './pages/ChangePassword';
@@ -139,7 +140,7 @@ export function App() {
   }
   if (status === 'loading') return <div className="boot" aria-busy="true"><span className="boot-star" /></div>;
   if (status === 'error') return <StateMessage kind="error" title="تعذّر تحميل التطبيق" onRetry={load} />;
-  if (status === 'login' || !me) return <Login onDone={load} />;
+  if (status === 'login' || !me) return <><InstallBanner /><Login onDone={load} /></>;
   if (me.must_change_password) {
     return (
       <ChangePassword
