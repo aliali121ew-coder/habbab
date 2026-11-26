@@ -458,13 +458,57 @@ function formatCompactAr(value: number) {
   return String(value);
 }
 
-// The ring's colours, in a fixed order (largest kind first).
-const RING_TONES = ['#16a34a', '#f59e0b', '#2563eb', '#db2777', '#7c3aed', '#0891b2', '#ea580c', '#64748b'];
+// The ring's colours as gradients (deep → light), in a fixed order (largest kind first).
+const RING_TONES: [string, string][] = [
+  ['#0f9f6e', '#34d3a0'], ['#2459e0', '#5b9cf6'], ['#6d35d9', '#a07cf5'], ['#d97706', '#fbbf24'],
+  ['#be185d', '#f472b6'], ['#0e7490', '#22d3ee'], ['#c2410c', '#fb923c'], ['#475569', '#94a3b8'],
+];
+const toneOf = (at: number) => RING_TONES[at % RING_TONES.length];
+
+// A filled ring segment between two angles (radians, clockwise from the top).
+function sector(r0: number, r1: number, a0: number, a1: number) {
+  const sweep = Math.min(a1 - a0, Math.PI * 2 - 0.0001);
+  const end = a0 + sweep;
+  const at = (r: number, a: number) => `${(80 + r * Math.sin(a)).toFixed(2)} ${(80 - r * Math.cos(a)).toFixed(2)}`;
+  const large = sweep > Math.PI ? 1 : 0;
+  return `M${at(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${at(r1, end)}L${at(r0, end)}A${r0} ${r0} 0 ${large} 0 ${at(r0, a0)}Z`;
+}
+
+// 0 → 1 over `ms` once `on` turns true (eased); straight to 1 for people who ask for less motion.
+function useGrow(on: boolean, ms = 1200) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!on) return undefined;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) { setValue(1); return undefined; }
+    let frame = 0;
+    const begin = performance.now();
+    const step = (time: number) => {
+      const t = Math.min((time - begin) / ms, 1);
+      setValue(1 - (1 - t) ** 3);
+      if (t < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [on, ms]);
+  return value;
+}
 
 // The period's donations as a ring: each kind (money, food basket, flour, clothes …) its own colour and
-// its share of the donations' count. The middle shows the totals, or the kind tapped in the legend.
+// its share of the donations' count. It fills from nothing the first time it scrolls into view; the
+// raised disc in the middle shows the total, or the kind tapped (whose segment steps out of the ring).
 function KindRing({ items, label, currency }: { items: Donation[]; label: string; currency: string }) {
   const [active, setActive] = useState<string | null>(null);
+  const [seen, setSeen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const node = box.current;
+    if (!node || seen) return undefined;
+    const watch = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setSeen(true); }, { threshold: 0.7, rootMargin: '0px 0px -90px 0px' });
+    watch.observe(node);
+    return () => watch.disconnect();
+  }, [seen, items.length]);
+  const grow = useGrow(seen);
+
   const kinds = new Map<string, { count: number; cash: number }>();
   items.forEach((item) => {
     const key = donationIcon(item).label;
@@ -479,11 +523,7 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
   const chosenAt = rows.findIndex(([name]) => name === active);
   const chosen = chosenAt >= 0 ? rows[chosenAt] : null;
   const toggle = (name: string) => setActive(active === name ? null : name);
-  const R = 64;
-  const W = 13;
-  const C = 2 * Math.PI * R;
-  // Round caps reach W/2 past each end, so each arc is drawn short by a cap and a small gap.
-  const gap = rows.length > 1 ? W + 5 : 0;
+  const full = Math.PI * 2 * grow;
   let start = 0;
   return (
     <section className="dd-card dd-ring-card" aria-labelledby="dd-ring-title">
@@ -493,39 +533,45 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
       </header>
       {total === 0 ? <p className="dd-empty">لا تبرعات في {label}.</p> : (
         <div className="dd-ring-body">
-          <div className="dd-ring">
-            <svg viewBox="0 0 160 160" role="img" aria-label={`تبرعات ${label} حسب النوع`}>
-              <circle cx="80" cy="80" r={R} className="dd-ring-track" />
-              <circle cx="80" cy="80" r={R - 17} className="dd-ring-inner" />
+          <div className="dd-ring" ref={box}>
+            <svg viewBox="-10 -10 180 180" role="img" aria-label={`تبرعات ${label} حسب النوع`}>
+              <defs>
+                {rows.map(([name], at) => (
+                  <linearGradient key={name} id={`dd-ring-g${at}`} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor={toneOf(at)[1]} />
+                    <stop offset="1" stopColor={toneOf(at)[0]} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <circle cx="80" cy="80" r="66" className="dd-ring-track" />
               {rows.map(([name, row], at) => {
-                const length = (row.count / total) * C;
-                const dash = rows.length > 1 ? Math.max(length - gap, 0.5) : C;
-                const arc = (
-                  <circle
+                const sweep = (row.count / total) * full;
+                const a0 = start;
+                start += sweep;
+                if (sweep <= 0.001) return null;
+                const mid = a0 + sweep / 2;
+                const pop = active === name ? 7 : 0;
+                return (
+                  <path
                     key={name}
-                    cx="80"
-                    cy="80"
-                    r={R}
+                    d={sector(52, 80, a0, a0 + sweep)}
+                    fill={`url(#dd-ring-g${at})`}
                     className={`dd-ring-arc${active === name ? ' is-on' : ''}${active && active !== name ? ' is-off' : ''}`}
-                    style={{ stroke: RING_TONES[at % RING_TONES.length], strokeDasharray: `${dash} ${C}`, strokeDashoffset: -(start + gap / 2) }}
+                    transform={pop ? `translate(${(Math.sin(mid) * pop).toFixed(2)} ${(-Math.cos(mid) * pop).toFixed(2)})` : undefined}
                     onClick={() => toggle(name)}
                   />
                 );
-                start += length;
-                return arc;
               })}
             </svg>
-            <span className="dd-ring-centre" aria-live="polite">
+            <span className="dd-ring-disc" aria-live="polite">
               {chosen ? (
                 <>
-                  <small className="dd-ring-kicker" style={{ color: RING_TONES[chosenAt % RING_TONES.length] }}>{chosen[0]}</small>
-                  <b><bdi>{formatPercent((chosen[1].count / total) * 100)}</bdi></b>
-                  <small><bdi>{formatNumber(chosen[1].count)}</bdi> من <bdi>{formatNumber(total)}</bdi></small>
+                  <b style={{ color: toneOf(chosenAt)[0] }}><bdi>{formatPercent((chosen[1].count / total) * 100)}</bdi></b>
+                  <small>{chosen[0]}</small>
                 </>
               ) : (
                 <>
-                  <small className="dd-ring-kicker">المجموع</small>
-                  <b><bdi>{formatNumber(total)}</bdi></b>
+                  <b><bdi>{formatNumber(Math.round(total * grow))}</bdi></b>
                   <small>{total === 1 ? 'تبرع' : 'تبرعات'}</small>
                 </>
               )}
@@ -535,7 +581,7 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
             <p className="dd-ring-cash">
               <Wallet size={15} aria-hidden />
               <span>{chosen ? `نقداً في ${chosen[0]}` : 'مجموع المبالغ'}</span>
-              <b><bdi>{formatNumber(chosen ? chosen[1].cash : cashTotal)}</bdi> <small>{currency}</small></b>
+              <b><bdi>{formatNumber(Math.round((chosen ? chosen[1].cash : cashTotal) * grow))}</bdi> <small>{currency}</small></b>
             </p>
           )}
           <ul className="dd-ring-legend">
@@ -543,13 +589,13 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
               const share = (row.count / total) * 100;
               return (
                 <li key={name}>
-                  <button type="button" aria-pressed={active === name} onClick={() => toggle(name)} style={{ ['--tone' as string]: RING_TONES[at % RING_TONES.length] }}>
+                  <button type="button" aria-pressed={active === name} onClick={() => toggle(name)} style={{ ['--tone' as string]: toneOf(at)[0], ['--tone-2' as string]: toneOf(at)[1] }}>
                     <span className="dd-ring-line">
                       <i aria-hidden />
                       <span className="dd-ring-name">{name}</span>
                       <bdi className="dd-ring-share">{formatPercent(share)}</bdi>
                     </span>
-                    <span className="dd-ring-bar" aria-hidden><span style={{ width: `${Math.max(share, 3)}%` }} /></span>
+                    <span className="dd-ring-bar" aria-hidden><span style={{ width: `${Math.max(share, 3) * grow}%` }} /></span>
                     <span className="dd-ring-meta">
                       <span><bdi>{formatNumber(row.count)}</bdi> {row.count === 1 ? 'تبرع' : 'تبرعات'}</span>
                       {row.cash > 0 && <span><bdi>{formatNumber(row.cash)}</bdi> {currency}</span>}

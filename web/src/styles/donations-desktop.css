@@ -442,17 +442,23 @@ a.dd-ghost { text-decoration: none; }
 .dd-ring-card { display: none; }
 .dd-ring-pill { align-self: flex-start; padding: 4px 10px; border-radius: 99px; background: var(--dd-mint); color: var(--dd-green); font-size: .72rem; font-weight: 800; white-space: nowrap; }
 .dd-ring-body { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-.dd-ring { position: relative; width: min(58vw, 210px); aspect-ratio: 1; margin-top: 4px; }
-.dd-ring svg { width: 100%; height: 100%; overflow: visible; rotate: -90deg; }
-.dd-ring-track { fill: none; stroke: var(--dd-soft); stroke-width: 13; }
-.dd-ring-inner { fill: none; stroke: var(--dd-line); stroke-width: 1; stroke-dasharray: 2 4; }
-.dd-ring-arc { fill: none; stroke-width: 13; stroke-linecap: round; cursor: pointer; transition: stroke-width .2s ease; }
-.dd-ring-arc.is-on { stroke-width: 17; }
-.dd-ring-arc.is-off { opacity: .25; }
-.dd-ring-centre { position: absolute; inset: 24%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; }
-.dd-ring-centre b { color: var(--dd-ink); font-size: 2.1rem; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.dd-ring-centre small { color: var(--dd-ink-3); font-size: .72rem; font-weight: 600; }
-.dd-ring-centre .dd-ring-kicker { max-width: 100%; overflow: hidden; color: var(--dd-ink-2); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.dd-ring { position: relative; width: min(66vw, 240px); aspect-ratio: 1; }
+.dd-ring svg { width: 100%; height: 100%; overflow: visible; }
+.dd-ring-track { fill: none; stroke: var(--dd-soft); stroke-width: 28; }
+.dd-ring-arc { stroke: var(--dd-card); stroke-width: 1.5; stroke-linejoin: round; cursor: pointer; transition: transform .25s ease; }
+.dd-ring-arc.is-on { filter: drop-shadow(0 4px 6px rgb(15 23 42 / .22)); }
+.dd-ring-arc.is-off { opacity: .45; }
+/* The raised white disc in the middle of the ring, as in the approved picture. */
+.dd-ring-disc {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 52%; aspect-ratio: 1; margin: auto; border-radius: 50%; background: var(--dd-card); text-align: center;
+  box-shadow: 0 10px 22px -8px rgb(30 41 82 / .28), 0 2px 5px rgb(30 41 82 / .08), inset 0 -3px 6px rgb(30 41 82 / .05);
+}
+:root[data-theme="dark"] .dd-ring-disc { background: #1c2a25; box-shadow: 0 10px 22px -8px rgb(0 0 0 / .6), inset 0 1px 0 rgb(255 255 255 / .06); }
+.dd-ring-disc b { color: #1e2a4f; font-size: 1.75rem; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+:root[data-theme="dark"] .dd-ring-disc b { color: var(--dd-ink); }
+.dd-ring-disc small { max-width: 84%; overflow: hidden; color: #5b5f8a; font-size: .74rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="dark"] .dd-ring-disc small { color: var(--dd-ink-2); }
 .dd-ring-cash { display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--dd-mint); color: var(--dd-green); font-size: .78rem; font-weight: 700; }
 .dd-ring-cash svg { flex: none; }
 .dd-ring-cash span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -463,12 +469,12 @@ a.dd-ghost { text-decoration: none; }
 .dd-ring-legend button { display: grid; gap: 7px; width: 100%; padding: 11px 4px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
 .dd-ring-legend button[aria-pressed="true"] { padding-inline: 10px; background: var(--dd-soft); }
 .dd-ring-line { display: flex; align-items: center; gap: 9px; }
-.dd-ring-line i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 20%, transparent); }
+.dd-ring-line i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: linear-gradient(135deg, var(--tone-2), var(--tone)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tone) 20%, transparent); }
 .dd-ring-name { flex: 1; min-width: 0; overflow: hidden; color: var(--dd-ink); font-size: .86rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .dd-ring-share { color: var(--dd-ink); font-size: .86rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 .dd-ring-bar { display: block; height: 6px; overflow: hidden; border-radius: 99px; background: var(--dd-soft); }
 .dd-ring-legend button[aria-pressed="true"] .dd-ring-bar { background: var(--dd-card); }
-.dd-ring-bar span { display: block; height: 100%; border-radius: inherit; background: var(--tone); }
+.dd-ring-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--tone), var(--tone-2)); }
 .dd-ring-meta { display: flex; justify-content: space-between; gap: 8px; color: var(--dd-ink-3); font-size: .72rem; font-weight: 600; }
 
 /* ── Donations as cards (phone only; the table is for the computer) ─────────── */
