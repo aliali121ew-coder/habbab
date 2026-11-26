@@ -65,7 +65,7 @@
 
 .rq-route-card {
   position: absolute; z-index: 600; left: 10px; right: 10px; bottom: calc(12px + env(safe-area-inset-bottom));
-  display: grid; gap: 12px; max-height: 62%; overflow: auto; padding: 16px; border-radius: 22px;
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; max-height: 62%; overflow: auto; padding: 16px; border-radius: 22px;
   background: var(--surface); color: var(--ink); box-shadow: 0 18px 40px -16px rgb(15 23 42 / 55%);
 }
 @media (min-width: 641px) { .rq-route-card { left: auto; width: 380px; } }

@@ -304,7 +304,7 @@ function DownloadMaps({ onClose, onSaved }: { onClose: () => void; onSaved: () =
 
   if (!offlineSupported()) return null;
   return (
-    <div className="rq-route-card rq-dl" role="dialog" aria-label="تنزيل الخريطة">
+    <div className="rq-route-card rq-offline-dl" role="dialog" aria-label="تنزيل الخريطة">
       <button type="button" className="rq-route-x" onClick={onClose} aria-label="إغلاق"><X size={18} /></button>
       <strong className="rq-near-title"><CloudDownload size={18} /> تنزيل الخريطة للعمل بدون إنترنت</strong>
       <p className="rq-dl-note">نزّل خريطة محافظتك مرة واحدة على شبكة واي فاي. عند انقطاع الإنترنت تظهر وحدها مع الطلبات وموقعك.</p>
