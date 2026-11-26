@@ -474,8 +474,8 @@ function sector(r0: number, r1: number, a0: number, a1: number) {
   return `M${at(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${at(r1, end)}L${at(r0, end)}A${r0} ${r0} 0 ${large} 0 ${at(r0, a0)}Z`;
 }
 
-// 0 → 1 over `ms` once `on` turns true (eased); straight to 1 for people who ask for less motion.
-function useGrow(on: boolean, ms = 1200) {
+// 0 → 1 over `ms` once `on` turns true (eased in and out, unhurried); straight to 1 for people who ask for less motion.
+function useGrow(on: boolean, ms = 2400) {
   const [value, setValue] = useState(0);
   useEffect(() => {
     if (!on) return undefined;
@@ -484,7 +484,7 @@ function useGrow(on: boolean, ms = 1200) {
     const begin = performance.now();
     const step = (time: number) => {
       const t = Math.min((time - begin) / ms, 1);
-      setValue(1 - (1 - t) ** 3);
+      setValue(t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
       if (t < 1) frame = requestAnimationFrame(step);
     };
     frame = requestAnimationFrame(step);
@@ -509,10 +509,10 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
   }, [seen, items.length]);
   const grow = useGrow(seen);
 
-  const kinds = new Map<string, { count: number; cash: number }>();
+  const kinds = new Map<string, { count: number; cash: number; icon: ReturnType<typeof donationIcon>['icon'] }>();
   items.forEach((item) => {
-    const key = donationIcon(item).label;
-    const row = kinds.get(key) ?? { count: 0, cash: 0 };
+    const { label: key, icon } = donationIcon(item);
+    const row = kinds.get(key) ?? { count: 0, cash: 0, icon };
     row.count += 1;
     row.cash += item.amount ?? 0;
     kinds.set(key, row);
@@ -587,11 +587,12 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
           <ul className="dd-ring-legend">
             {rows.map(([name, row], at) => {
               const share = (row.count / total) * 100;
+              const Icon = row.icon;
               return (
                 <li key={name}>
                   <button type="button" aria-pressed={active === name} onClick={() => toggle(name)} style={{ ['--tone' as string]: toneOf(at)[0], ['--tone-2' as string]: toneOf(at)[1] }}>
                     <span className="dd-ring-line">
-                      <i aria-hidden />
+                      <span className="dd-ring-tile" aria-hidden><Icon size={19} /></span>
                       <span className="dd-ring-name">{name}</span>
                       <bdi className="dd-ring-share">{formatPercent(share)}</bdi>
                     </span>
