@@ -351,8 +351,12 @@
   .rail-account-btn .rail-user-info strong { font-size: .94rem; }
   .rail-account-btn .rail-user-info small { color: var(--ink-2); opacity: 1; font-size: .76rem; }
 
-  .scrim { background: rgb(15 23 42 / 45%); backdrop-filter: blur(3px); }
-  .rail { transition: transform .28s cubic-bezier(.22, 1, .36, 1), visibility .28s; }
+  /* A plain dim, no backdrop blur: blurring the whole screen while the page behind it moves (the
+     home banner, loading placeholders) made the open drawer flicker on many phones. The drawer
+     sits on its own layer so it is not repainted with the page behind it. */
+  .scrim { background: rgb(15 23 42 / 52%); }
+  .rail { transition: transform .28s cubic-bezier(.22, 1, .36, 1), visibility .28s; will-change: transform; contain: layout; }
+  .drawer-close { backdrop-filter: none; background: rgb(15 23 42 / 55%); }
 }
 @media (prefers-reduced-motion: reduce) { .rail { transition: none; } }
 

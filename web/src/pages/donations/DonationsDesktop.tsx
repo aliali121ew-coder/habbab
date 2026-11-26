@@ -469,6 +469,9 @@ function sector(r0: number, r1: number, a0: number, a1: number) {
   return `M${at(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${at(r1, end)}L${at(r0, end)}A${r0} ${r0} 0 ${large} 0 ${at(r0, a0)}Z`;
 }
 
+// Shorter names for the ring's key, where a cell is narrow.
+const KEY_NAMES: Record<string, string> = { 'أجهزة كهربائية': 'كهربائية' };
+
 // 0 → 1 over `ms` once `on` turns true (eased in and out, unhurried); straight to 1 for people who ask for less motion.
 function useGrow(on: boolean, ms = 2400) {
   const [value, setValue] = useState(0);
@@ -585,7 +588,7 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
               return (
                 <li key={name}>
                   <button type="button" aria-pressed={active === name} onClick={() => toggle(name)} style={{ ['--tone' as string]: deep, ['--tone-2' as string]: light }}>
-                    <span className="dd-key-name"><i aria-hidden />{name}</span>
+                    <span className="dd-key-name" title={name}><i aria-hidden />{KEY_NAMES[name] ?? name}</span>
                     <bdi className="dd-key-share">{formatPercent((row.count / total) * 100)}</bdi>
                   </button>
                 </li>
