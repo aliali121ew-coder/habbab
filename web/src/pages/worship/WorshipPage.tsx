@@ -1,4 +1,6 @@
-import { BookOpen, Compass, Hand, Sparkles, type LucideIcon } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowRight, BookOpen, Compass, Hand, Sparkles, type LucideIcon } from 'lucide-react';
+import { AmalSection, IstikharaSection, QiblaSection, QuranSection, ReaderSection } from './WorshipSections';
 
 /** A small mosque, since the icon set has none. Drawn on the same 24px grid as the others. */
 function Mosque({ size = 24 }: { size?: number }) {
@@ -11,7 +13,8 @@ function Mosque({ size = 24 }: { size?: number }) {
   );
 }
 
-type Tile = { slug: string; title: string; hint: string; tone: string; icon: LucideIcon | typeof Mosque };
+type SectionSlug = 'quran' | 'duas' | 'ziyarat' | 'amal' | 'qibla' | 'istikhara';
+type Tile = { slug: SectionSlug; title: string; hint: string; tone: string; icon: LucideIcon | typeof Mosque };
 
 // The order follows the reference: right column first on an Arabic screen.
 const TILES: Tile[] = [
@@ -23,27 +26,55 @@ const TILES: Tile[] = [
   { slug: 'istikhara', title: 'الاستخارة', hint: 'بالقرآن والسبحة', tone: 'indigo', icon: Sparkles },
 ];
 
-/** العبادات: a header and six section tiles. Each section's content is programmed later. */
+/** العبادات: full-width hub with six working sections (Quran, Duas, Ziyarat, Amal, Qibla, Istikhara). */
 export function WorshipPage() {
+  const [section, setSection] = useState<SectionSlug | null>(null);
+  const current = section ? TILES.find((t) => t.slug === section) ?? null : null;
+
   return (
     <div dir="rtl" className="wsp">
       <header className="wsp-hero">
-        <span className="wsp-hero-icon"><Mosque size={34} /></span>
-        <div>
-          <h1>العبادات</h1>
-          <p>زادك الروحي في مكان واحد</p>
+        <div className="wsp-hero-main">
+          <span className="wsp-hero-icon"><Mosque size={34} /></span>
+          <div>
+            <h1>{current ? current.title : 'العبادات'}</h1>
+            <p>{current ? current.hint : 'زادك الروحي في مكان واحد'}</p>
+          </div>
         </div>
+        {current && (
+          <button type="button" className="wsp-back" onClick={() => setSection(null)}>
+            <ArrowRight size={17} /> جميع الأقسام
+          </button>
+        )}
       </header>
 
-      <div className="wsp-grid">
-        {TILES.map(({ slug, title, hint, tone, icon: Icon }) => (
-          <button key={slug} type="button" className={`wsp-tile tone-${tone}`}>
-            <span className="wsp-tile-icon"><Icon size={34} /></span>
-            <strong>{title}</strong>
-            <small>{hint}</small>
-          </button>
-        ))}
-      </div>
+      {!section ? (
+        <div className="wsp-grid">
+          {TILES.map(({ slug, title, hint, tone, icon: Icon }) => (
+            <button key={slug} type="button" className={`wsp-tile tone-${tone}`} onClick={() => setSection(slug)}>
+              <span className="wsp-tile-icon"><Icon size={34} /></span>
+              <strong>{title}</strong>
+              <small>{hint}</small>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          <nav className="wsp-tabs" aria-label="أقسام العبادات">
+            {TILES.map(({ slug, title, icon: Icon }) => (
+              <button key={slug} type="button" className={section === slug ? 'on' : ''} onClick={() => setSection(slug)}>
+                <Icon size={15} /> {title}
+              </button>
+            ))}
+          </nav>
+          {section === 'quran' && <QuranSection />}
+          {section === 'duas' && <ReaderSection kind="duas" />}
+          {section === 'ziyarat' && <ReaderSection kind="ziyarat" />}
+          {section === 'amal' && <AmalSection />}
+          {section === 'qibla' && <QiblaSection />}
+          {section === 'istikhara' && <IstikharaSection />}
+        </>
+      )}
     </div>
   );
 }
