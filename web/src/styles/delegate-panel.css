@@ -137,6 +137,66 @@
 .panel.dpn .donut-label { white-space: normal; overflow: visible; line-height: 1.3; }
 .panel.dpn .panel-donut li small { min-width: 0; padding: 1px 4px; }
 
+/* 3 · Subscribers breakdown ring (matches the donations KindRing design) */
+.panel.dpn .panel-donut.sub-ring-card { margin: 12px 12px 0; padding: 14px; border-radius: 16px; }
+.panel.dpn .sub-ring-card figcaption.sub-ring-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line);
+}
+.sub-ring-head > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sub-ring-head span { color: var(--ink); font-size: .98rem; font-weight: 800; line-height: 1.25; }
+.sub-ring-head small { color: var(--ink-3); font-size: .74rem; font-weight: 600; }
+.sub-ring-head em {
+  flex: none; padding: 3px 10px; border-radius: 99px; font-style: normal;
+  background: color-mix(in srgb, #146c43 12%, var(--surface)); color: #146c43;
+  font-size: .72rem; font-weight: 800; white-space: nowrap;
+}
+:root[data-theme="dark"] .sub-ring-head em { background: #163327; color: #34c27e; }
+.sub-ring-body { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.sub-ring { position: relative; width: min(100%, 196px); aspect-ratio: 1; }
+.panel.dpn .sub-ring svg { width: 100%; height: 100%; overflow: visible; display: block; }
+.sub-ring-track { fill: none; stroke: var(--surface-2); stroke-width: 28; }
+.sub-ring-arc { stroke: var(--surface); stroke-width: 1.5; stroke-linejoin: round; cursor: pointer; transition: transform .25s ease, opacity .2s ease; }
+.sub-ring-arc.is-on { filter: drop-shadow(0 4px 6px rgb(15 23 42 / .22)); }
+.sub-ring-arc.is-off { opacity: .45; }
+.sub-ring-disc {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  width: 52%; aspect-ratio: 1; margin: auto; border-radius: 50%; background: var(--surface); text-align: center;
+  box-shadow: 0 10px 22px -8px rgb(30 41 82 / .28), 0 2px 5px rgb(30 41 82 / .08), inset 0 -3px 6px rgb(30 41 82 / .05);
+  pointer-events: none;
+}
+:root[data-theme="dark"] .sub-ring-disc { background: #1c2a25; box-shadow: 0 10px 22px -8px rgb(0 0 0 / .6), inset 0 1px 0 rgb(255 255 255 / .06); }
+.sub-ring-disc b { color: #1e2a4f; font-size: 1.6rem; font-weight: 900; line-height: 1.05; font-variant-numeric: tabular-nums; }
+:root[data-theme="dark"] .sub-ring-disc b { color: var(--ink); }
+.sub-ring-disc small { max-width: 86%; overflow: hidden; color: #5b5f8a; font-size: .72rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-theme="dark"] .sub-ring-disc small { color: var(--ink-2); }
+.sub-ring-summary {
+  display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 9px 12px; border-radius: 12px;
+  background: color-mix(in srgb, #146c43 10%, var(--surface)); color: #146c43; font-size: .76rem; font-weight: 700;
+}
+:root[data-theme="dark"] .sub-ring-summary { background: #163327; color: #34c27e; }
+.sub-ring-summary svg { flex: none; }
+.sub-ring-summary span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-ring-summary b { color: var(--ink); font-size: .92rem; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.sub-ring-summary b small { color: var(--ink-3); font-size: .68rem; font-weight: 600; }
+.panel.dpn .sub-ring-keys {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px;
+  width: 100%; margin: 0; padding: 0; list-style: none;
+}
+.panel.dpn .sub-ring-keys li { display: block; padding: 0; border: 0; }
+.panel.dpn .sub-ring-keys button {
+  display: flex; flex-direction: column; justify-content: center; gap: 4px; width: 100%; height: 100%; min-height: 54px; padding: 6px 8px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: inherit; font: inherit; text-align: start; cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+.panel.dpn .sub-ring-keys button[aria-pressed="true"] { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 9%, var(--surface)); }
+.sub-key-name { display: flex; align-items: center; gap: 5px; min-width: 0; overflow: hidden; color: var(--ink-2); font-size: .7rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.sub-key-name i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg, var(--tone-2), var(--tone)); }
+.sub-key-nums { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+.sub-key-share { color: var(--tone); font-size: .92rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+:root[data-theme="dark"] .sub-key-share { color: var(--tone-2); }
+.panel.dpn .sub-ring-keys li small { min-width: 0; padding: 0; background: none; color: var(--ink-3); font-size: .7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+
 /* Phone: the delegate's page keeps the photo card and figures only; the two charts are desktop-only. */
 @media (max-width: 767.98px) {
   .dpn-stack > .dpn-charts { display: none; }

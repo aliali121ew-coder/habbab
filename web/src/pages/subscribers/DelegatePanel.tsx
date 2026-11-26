@@ -20,15 +20,31 @@ function Figure({ icon, label, value, note }: { icon: ReactNode; label: string; 
 }
 
 interface Slice {
-  key: string;
+  key: 'paid' | 'unpaid' | 'deceased';
   label: string;
+  shortLabel: string;
   value: number;
 }
 
-const DURATION = 1100;
+const SLICE_TONES: Record<Slice['key'], [string, string]> = {
+  paid: ['#0f9f6e', '#22c58b'],
+  unpaid: ['#d97706', '#f59e0b'],
+  deceased: ['#2563eb', '#4f8df9'],
+};
 
-// 0 → 1 over DURATION with an ease-out, restarted whenever `key` changes; jumps straight to 1
-// for readers who asked the system for less motion.
+const DURATION = 1600;
+
+// A filled ring segment between two angles (radians, clockwise from the top).
+function sector(r0: number, r1: number, a0: number, a1: number) {
+  const sweep = Math.min(a1 - a0, Math.PI * 2 - 0.0001);
+  const end = a0 + sweep;
+  const at = (r: number, a: number) => `${(80 + r * Math.sin(a)).toFixed(2)} ${(80 - r * Math.cos(a)).toFixed(2)}`;
+  const large = sweep > Math.PI ? 1 : 0;
+  return `M${at(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${at(r1, end)}L${at(r0, end)}A${r0} ${r0} 0 ${large} 0 ${at(r0, a0)}Z`;
+}
+
+// 0 → 1 over DURATION with a smooth cubic ease-in-out, restarted whenever `key` changes;
+// jumps straight to 1 for readers who asked the system for less motion.
 function useGrow(key: string) {
   const [progress, setProgress] = useState(0);
   useEffect(() => {
@@ -40,7 +56,7 @@ function useGrow(key: string) {
     const started = performance.now();
     const step = (now: number) => {
       const t = Math.min((now - started) / DURATION, 1);
-      setProgress(1 - (1 - t) ** 3);
+      setProgress(t < 0.5 ? 4 * t ** 3 : 1 - (-2 * t + 2) ** 3 / 2);
       if (t < 1) frame = requestAnimationFrame(step);
     };
     setProgress(0);
@@ -50,82 +66,110 @@ function useGrow(key: string) {
   return progress;
 }
 
-// Subscribers split by state for the chosen month, drawn as raised, rounded segments that
-// sweep in from zero. The gaps and the legend's labels keep the slices apart for readers who
-// can't tell the colours apart.
+// Subscribers split by state for the chosen month, using the same interactive gradient ring,
+// raised centre disc and 3-card legend as the donations chart.
 function Breakdown({ slices, title, tag }: { slices: Slice[]; title: string; tag: string }) {
   const uid = useId().replace(/:/g, '');
-  const caption = `${title} · ${tag}`;
+  const [active, setActive] = useState<Slice['key'] | null>(null);
   const total = slices.reduce((sum, slice) => sum + slice.value, 0);
-  const progress = useGrow(`${tag}:${slices.map((slice) => slice.value).join(',')}`);
-  const radius = 46;
-  const stroke = 14;
-  const length = 2 * Math.PI * radius;
-  const shown = slices.filter((slice) => slice.value > 0);
-  const swept = length * progress;
-  let offset = 0;
-  const arcs = shown.map((slice) => {
-    const share = (slice.value / total) * length;
-    const start = offset;
-    offset += share;
-    // Round caps reach half a stroke past each end, so a rounded slice leaves room for both;
-    // a slice too short for that gets flat ends and a plain 3px gap instead.
-    const round = share > stroke + 8;
-    const gap = shown.length > 1 ? (round ? stroke + 3 : 3) : 0;
-    const visible = Math.max(Math.min(share, swept - start) - gap, 0);
-    return { ...slice, dash: `${visible} ${length}`, offset: -(start + gap / 2), round, hidden: visible <= 0 };
-  });
+  const grow = useGrow(`${tag}:${slices.map((slice) => slice.value).join(',')}`);
+  const chosen = active ? slices.find((s) => s.key === active) ?? null : null;
+  const toggle = (key: Slice['key']) => setActive((prev) => (prev === key ? null : key));
   const percent = (value: number) => (total ? formatPercent((value / total) * 100) : '0%');
 
+  const paidSlice = slices.find((s) => s.key === 'paid');
+  const full = Math.PI * 2 * grow;
+  let start = 0;
+
   return (
-    <figure className="panel-donut">
-      <figcaption><span>{title}</span><em>{tag}</em></figcaption>
-      <div className="panel-donut-body">
-        <svg viewBox="0 0 120 120" role="img" aria-label={`${caption}: ${slices.map((s) => `${s.label} ${formatNumber(s.value)}`).join('، ')}`}>
-          <defs>
-            {shown.map((slice) => (
-              <linearGradient key={slice.key} id={`${uid}-${slice.key}`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" className={`slice-light ${slice.key}`} />
-                <stop offset="1" className={`slice-deep ${slice.key}`} />
-              </linearGradient>
-            ))}
-            <radialGradient id={`${uid}-face`} cx="50%" cy="38%" r="62%">
-              <stop offset="0" className="face-light" />
-              <stop offset="1" className="face-deep" />
-            </radialGradient>
-          </defs>
-          <circle cx="60" cy="60" r={radius} className="donut-track" strokeWidth={stroke} />
-          <g className="donut-ring" transform="rotate(-90 60 60)">
-            {arcs.map((arc) => !arc.hidden && (
-              <circle
-                key={arc.key}
-                cx="60"
-                cy="60"
-                r={radius}
-                className={`donut-slice ${arc.key}`}
-                stroke={`url(#${uid}-${arc.key})`}
-                strokeWidth={stroke}
-                strokeLinecap={arc.round ? 'round' : 'butt'}
-                strokeDasharray={arc.dash}
-                strokeDashoffset={arc.offset}
-              >
-                <title>{`${arc.label}: ${formatNumber(arc.value)} (${percent(arc.value)})`}</title>
-              </circle>
-            ))}
-          </g>
-          <circle cx="60" cy="60" r={radius - stroke / 2 - 4} className="donut-face" fill={`url(#${uid}-face)`} />
-          <text x="60" y="60" textAnchor="middle" className="donut-total">{formatNumber(Math.round(total * progress))}</text>
-          <text x="60" y="76" textAnchor="middle" className="donut-unit">مشترك</text>
-        </svg>
-        <ul>
-          {slices.map((slice) => (
-            <li key={slice.key}>
-              <span className={`donut-key ${slice.key}`} aria-hidden />
-              <span className="donut-label">{slice.label}</span>
-              <b><bdi>{formatNumber(slice.value)}</bdi></b>
-              <small><bdi>{percent(slice.value)}</bdi></small>
-            </li>
-          ))}
+    <figure className="panel-donut sub-ring-card">
+      <figcaption className="sub-ring-head">
+        <div>
+          <span>{title}</span>
+          <small>{tag} · حسب الحالة</small>
+        </div>
+        <em>{tag}</em>
+      </figcaption>
+      <div className="sub-ring-body">
+        <div className="sub-ring">
+          <svg viewBox="-10 -10 180 180" role="img" aria-label={`${title} · ${tag}: ${slices.map((s) => `${s.label} ${formatNumber(s.value)}`).join('، ')}`}>
+            <defs>
+              {slices.map((slice) => {
+                const [deep, light] = SLICE_TONES[slice.key];
+                return (
+                  <linearGradient key={slice.key} id={`${uid}-${slice.key}`} x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0" stopColor={light} />
+                    <stop offset="1" stopColor={deep} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
+            <circle cx="80" cy="80" r="66" className="sub-ring-track" />
+            {total > 0 && slices.map((slice) => {
+              const sweep = (slice.value / total) * full;
+              const a0 = start;
+              start += sweep;
+              if (sweep <= 0.001) return null;
+              const mid = a0 + sweep / 2;
+              const pop = active === slice.key ? 7 : 0;
+              return (
+                <path
+                  key={slice.key}
+                  d={sector(52, 80, a0, a0 + sweep)}
+                  fill={`url(#${uid}-${slice.key})`}
+                  className={`sub-ring-arc${active === slice.key ? ' is-on' : ''}${active && active !== slice.key ? ' is-off' : ''}`}
+                  transform={pop ? `translate(${(Math.sin(mid) * pop).toFixed(2)} ${(-Math.cos(mid) * pop).toFixed(2)})` : undefined}
+                  onClick={() => toggle(slice.key)}
+                >
+                  <title>{`${slice.label}: ${formatNumber(slice.value)} (${percent(slice.value)})`}</title>
+                </path>
+              );
+            })}
+          </svg>
+          <span className="sub-ring-disc" aria-live="polite">
+            {chosen ? (
+              <>
+                <b style={{ color: SLICE_TONES[chosen.key][0] }}><bdi>{percent(chosen.value)}</bdi></b>
+                <small>{chosen.shortLabel}</small>
+              </>
+            ) : (
+              <>
+                <b><bdi>{formatNumber(Math.round(total * grow))}</bdi></b>
+                <small>مشترك</small>
+              </>
+            )}
+          </span>
+        </div>
+
+        <p className="sub-ring-summary">
+          <UsersRound size={15} aria-hidden />
+          <span>{chosen ? chosen.label : 'المسددون هذا الشهر'}</span>
+          <b>
+            <bdi>{formatNumber(chosen ? chosen.value : (paidSlice?.value ?? 0))}</bdi>
+            {' '}<small>مشترك</small>
+          </b>
+        </p>
+
+        <ul className="sub-ring-keys" aria-label="حالات المشتركين ونسبها">
+          {slices.map((slice) => {
+            const [deep, light] = SLICE_TONES[slice.key];
+            return (
+              <li key={slice.key}>
+                <button
+                  type="button"
+                  aria-pressed={active === slice.key}
+                  onClick={() => toggle(slice.key)}
+                  style={{ ['--tone' as string]: deep, ['--tone-2' as string]: light }}
+                >
+                  <span className="sub-key-name" title={slice.label}><i aria-hidden />{slice.shortLabel}</span>
+                  <span className="sub-key-nums">
+                    <bdi className="sub-key-share">{percent(slice.value)}</bdi>
+                    <small><bdi>{formatNumber(slice.value)}</bdi></small>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     </figure>
@@ -232,9 +276,9 @@ export function DelegatePanel({ me, overview, selectedMonth, onSelectMonth, onPh
         title="توزيع المشتركين"
         tag={MONTH_NAMES[selectedMonth]}
         slices={[
-          { key: 'paid', label: 'أحياء مسددون', value: paid },
-          { key: 'unpaid', label: 'أحياء لم يسددوا', value: overview.alive - paid },
-          { key: 'deceased', label: 'أموات', value: overview.deceased },
+          { key: 'paid', label: 'أحياء مسددون', shortLabel: 'مسددون', value: paid },
+          { key: 'unpaid', label: 'أحياء لم يسددوا', shortLabel: 'لم يسددوا', value: overview.alive - paid },
+          { key: 'deceased', label: 'أموات', shortLabel: 'أموات', value: overview.deceased },
         ]}
       />
 
