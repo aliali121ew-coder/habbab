@@ -1,0 +1,61 @@
+/* سجل المساعدات (pages/aid/AidPage.tsx): the donations page's green dashboard (dd-*), plus the row of
+   pages the aid came from and the aid as rows (computer) or cards (phone), each in its page's colour. */
+
+/* the pages the aid came from: one button each, its share, filters the list */
+.ar-sources { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.ar-source {
+  display: flex; align-items: center; gap: 10px; min-width: 0; padding: 10px 12px;
+  border: 1px solid var(--dd-line); border-radius: 16px; background: var(--dd-card);
+  color: inherit; font: inherit; text-align: start; cursor: pointer;
+}
+.ar-source[aria-pressed="true"] { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 8%, var(--dd-card)); box-shadow: 0 0 0 1px var(--tone) inset; }
+.ar-source-tile {
+  display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: #fff;
+  background: linear-gradient(135deg, var(--tone-2), var(--tone));
+}
+.ar-source-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ar-source-text b { overflow: hidden; color: var(--dd-ink); font-size: .84rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.ar-source-text small { overflow: hidden; color: var(--dd-ink-3); font-size: .7rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+
+/* the table (computer) */
+.ar-person { color: var(--dd-ink); font-weight: 700; text-decoration: none; }
+a.ar-person:hover { color: var(--dd-green); text-decoration: underline; }
+.ar-what { display: block; color: var(--dd-ink); font-weight: 600; }
+.ar-detail { display: block; max-width: 320px; overflow: hidden; color: var(--dd-ink-3); font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.ar-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; white-space: nowrap;
+  background: color-mix(in srgb, var(--tone) 12%, var(--dd-card)); color: var(--tone); font-size: .74rem; font-weight: 700;
+}
+:root[data-theme="dark"] .ar-chip { color: var(--tone-2); }
+
+/* the cards (phone) */
+.ar-item { overflow: hidden; border: 1px solid var(--dd-line); border-radius: 16px; background: var(--dd-card); }
+.ar-item-link { display: grid; align-items: start; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px 12px 10px; color: inherit; text-decoration: none; }
+.ar-item-tile {
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: #fff;
+  background: linear-gradient(135deg, var(--tone-2), var(--tone)); box-shadow: 0 8px 14px -10px var(--tone);
+}
+:root[data-theme="dark"] .ar-item-tile { box-shadow: none; }
+.ar-item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ar-item-main b { display: -webkit-box; overflow: hidden; color: var(--dd-ink); font-size: .88rem; font-weight: 800; line-height: 1.4; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.ar-item-main small { overflow: hidden; color: var(--dd-ink-2); font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
+.ar-item-value { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.ar-item-value b { color: var(--dd-ink); font-size: .92rem; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ar-item-value b small { color: var(--dd-ink-3); font-size: .64rem; font-weight: 600; }
+.ar-item-main .ar-item-date { display: inline-flex; align-items: center; gap: 3px; color: var(--dd-ink-3); font-size: .7rem; }
+.ar-item-source {
+  display: block; padding: 6px 12px; border-top: 1px dashed var(--dd-line);
+  background: color-mix(in srgb, var(--tone) 7%, var(--dd-card)); color: var(--tone); font-size: .72rem; font-weight: 700;
+}
+:root[data-theme="dark"] .ar-item-source { color: var(--tone-2); }
+
+@media (max-width: 1279.98px) { .ar-sources { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 767.98px) {
+  .ar-tools { grid-template-columns: minmax(0, 1fr) !important; }
+  /* the pages: a row that slides sideways */
+  .ar-sources { display: flex; gap: 8px; margin-inline: -14px; padding: 2px 14px; overflow-x: auto; scrollbar-width: none; }
+  .ar-sources::-webkit-scrollbar { display: none; }
+  .ar-source { flex: none; width: 168px; padding: 9px 10px; border-radius: 14px; }
+  .ar-source-tile { width: 32px; height: 32px; border-radius: 10px; }
+  .ar-table-tools { grid-template-columns: minmax(0, 1fr) !important; }
+}

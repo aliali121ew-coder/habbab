@@ -123,7 +123,7 @@ const RULES: { words: string[]; icon: DonationIcon }[] = [
 ];
 
 const CASH: DonationIcon = { icon: Money, label: 'مبلغ مالي' };
-const OTHER: DonationIcon = { icon: Gift, label: 'مساعدة عينية' };
+const OTHER: DonationIcon = { icon: Gift, label: 'مساعدة مادية' };
 const BOX: DonationIcon = { icon: Package, label: 'مواد' };
 
 // Each kind's colour (deep, light), the same in the ring, its key and the pictures in the table

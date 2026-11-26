@@ -284,7 +284,7 @@ export function PhoneMoneyOverview({ currency, month, collected, spent, donation
               </span>
             ))}
             {donations && donations.food.length === 0 && (
-              <span className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>لا مواد عينية هذا الشهر</span>
+              <span className="text-[11px] font-semibold" style={{ color: 'var(--fp-ink-3)' }}>لا مساعدات مادية هذا الشهر</span>
             )}
           </span>
         </span>

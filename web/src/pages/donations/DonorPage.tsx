@@ -152,7 +152,7 @@ export function DonorPage({ me, name }: { me: Me; name: string }) {
                   <small>انتظام العطاء في {THIS_YEAR}</small>
                   <span className="dp-pill striped" style={{ '--fill': `${Math.max(data.regularity, 8)}%` } as React.CSSProperties}><bdi>{formatPercent(data.regularity)}</bdi></span>
                 </li>
-                <li className="w-kind"><small>مساعدات عينية</small><span className="dp-pill outline"><bdi>{formatPercent(data.kindShare)}</bdi></span></li>
+                <li className="w-kind"><small>مساعدات مادية</small><span className="dp-pill outline"><bdi>{formatPercent(data.kindShare)}</bdi></span></li>
               </ul>
             </div>
             <dl className="dp-stats">
@@ -264,7 +264,7 @@ export function DonorPage({ me, name }: { me: Me; name: string }) {
               </ul>
             </Fold>
             <Fold title="ما قدّمه من مواد">
-              {data.goods.length === 0 ? <p className="dp-muted">لم يقدّم مواد عينية.</p> : (
+              {data.goods.length === 0 ? <p className="dp-muted">لم يقدّم مساعدات مادية.</p> : (
                 <ul className="dp-goods">
                   {data.goods.map(([item, row]) => (
                     <li key={item}><Package size={15} aria-hidden /><span>{item}</span><bdi>{row.qty ? `${formatNumber(row.qty)} ${row.unit ?? ''}` : `${formatNumber(row.times)} مرة`}</bdi></li>
@@ -411,7 +411,7 @@ function Calendar({ items, at, onMove, currency, onOpen }: {
               {gifts.slice(0, 2).map((gift, index) => (
                 <button key={gift.id} type="button" className={`dp-event ${gift.kind} t${index % 2}`} onClick={() => onOpen(gift)}>
                   <b>{gift.kind === 'cash' ? <><bdi className="dp-full">{formatNumber(gift.amount ?? 0)}</bdi><bdi className="dp-short">{formatCompact(gift.amount ?? 0)}</bdi></> : gift.item}</b>
-                  <small>{gift.kind === 'cash' ? currency : gift.quantity ? `${formatNumber(gift.quantity)} ${gift.unit ?? ''}` : 'عيني'}</small>
+                  <small>{gift.kind === 'cash' ? currency : gift.quantity ? `${formatNumber(gift.quantity)} ${gift.unit ?? ''}` : 'مادية'}</small>
                 </button>
               ))}
               {gifts.length > 2 && <span className="dp-more">+<bdi>{gifts.length - 2}</bdi></span>}

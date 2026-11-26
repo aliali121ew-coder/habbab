@@ -140,7 +140,7 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
   const title = donation ? 'تعديل التبرع' : 'تسجيل تبرع';
   const summary = kind === 'cash'
     ? (value ? `${formatNumber(value)} ${currency}` : 'مبلغ مالي')
-    : (item ? `${item}${qty ? ` · ${formatNumber(qty)} ${unit}` : ''}` : 'مساعدة عينية');
+    : (item ? `${item}${qty ? ` · ${formatNumber(qty)} ${unit}` : ''}` : 'مساعدة مادية');
 
   return (
     <dialog ref={ref} className="dg" aria-labelledby="dg-title">
@@ -161,12 +161,12 @@ export function DonationDialog({ donation, donors, currency, onClose, onSaved }:
             <div className="dg-kinds" role="radiogroup" aria-label="نوع التبرع">
               <button type="button" role="radio" aria-checked={kind === 'cash'} className="dg-kind" onClick={() => setKind('cash')}>
                 <span className="dg-kind-icon cash" aria-hidden><Banknote size={22} /></span>
-                <span><b>مبلغ مالي</b><small>نقداً أو تحويل</small></span>
+                <span><b>مساعدة مالية</b><small>نقداً أو تحويل</small></span>
                 <Check size={18} className="dg-kind-check" aria-hidden />
               </button>
               <button type="button" role="radio" aria-checked={kind === 'in_kind'} className="dg-kind" onClick={() => setKind('in_kind')}>
                 <span className="dg-kind-icon goods" aria-hidden><Package size={22} /></span>
-                <span><b>مساعدة عينية</b><small>مواد وأغراض</small></span>
+                <span><b>مساعدة مادية</b><small>مواد وأغراض</small></span>
                 <Check size={18} className="dg-kind-check" aria-hidden />
               </button>
             </div>

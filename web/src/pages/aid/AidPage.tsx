@@ -1,285 +1,232 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Banknote, ChevronLeft, ChevronRight, Crown, HandHeart, Package, Pencil, Plus, Search, Users, Wallet,
+  CalendarDays, HandCoins, HandHeart, HeartHandshake, HeartPulse, Receipt, Search, UserRound, Users, type LucideIcon,
 } from 'lucide-react';
 import { api, type Me } from '../../api';
+import { DatePicker, monthRange, periodLabel, type DateRange } from '../../components/DatePicker';
 import { StateMessage } from '../../components/StateMessage';
-import { MONTH_NAMES, formatNumber } from '../../format';
-import { SlideTabs } from '../expenses/LedgerMonthChart';
-import { Card, DeltaPill, showDate } from '../boxes/BoxesPage';
-import { donorHref } from '../../route';
-import { DonationDialog, type Donation } from './DonationDialog';
+import { formatNumber } from '../../format';
+import { familyHref } from '../../route';
+import { CATEGORY_BY_ID, type ExpenseCategory } from '../expenses/categories';
+import '../../styles/pages/aid.css';
 
-interface Sheet { year: number; items: Donation[]; previous_december_cash: number }
+type Source = 'families' | 'patients' | 'expenses' | 'subscribers' | 'requests';
+interface AidItem {
+  source: Source;
+  id: number;
+  date: string;
+  person: string;
+  what: string;
+  amount: number | null;
+  detail: string | null;
+  ref: number | null;
+}
 
-const now = new Date();
-const THIS_YEAR = now.getUTCFullYear();
-const THIS_MONTH = now.getUTCMonth();
-const isFuture = (year: number, month: number) => year > THIS_YEAR || (year === THIS_YEAR && month > THIS_MONTH);
-const change = (before: number, after: number) => (before > 0 ? ((after - before) / before) * 100 : null);
-const monthOf = (item: Donation) => Number(item.received_on.slice(5, 7)) - 1;
-const sum = (values: number[]) => values.reduce((total, value) => total + value, 0);
+// Where each aid was recorded: its name here, its picture, its colour (deep, light) and the page it opens.
+const SOURCES: { id: Source; label: string; icon: LucideIcon; tone: [string, string]; href: (item: AidItem) => string | null }[] = [
+  { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, tone: ['#0f9f6e', '#34d3a0'], href: (item) => (item.ref ? familyHref(item.ref) : '#/families') },
+  { id: 'patients', label: 'المرضى', icon: HeartPulse, tone: ['#dc2626', '#f87171'], href: (item) => (item.ref ? `#/patients/${item.ref}` : '#/patients') },
+  { id: 'expenses', label: 'الحركات المالية', icon: Receipt, tone: ['#d97706', '#fbbf24'], href: () => '#/expenses' },
+  { id: 'subscribers', label: 'المشتركون', icon: Users, tone: ['#2459e0', '#5b9cf6'], href: () => null },
+  { id: 'requests', label: 'طلبات المساعدة', icon: HandHeart, tone: ['#6d35d9', '#a07cf5'], href: () => '#/soon/requests' },
+];
+const SOURCE = new Map(SOURCES.map((source) => [source.id, source]));
 
-type Kind = 'all' | 'cash' | 'in_kind';
-type DonorType = 'all' | 'internal' | 'external';
+const today = new Date();
+const showDate = (iso: string) => iso.slice(0, 10).replace(/-/g, '/');
+const whatOf = (item: AidItem) => (item.source === 'expenses' ? CATEGORY_BY_ID.get(item.what as ExpenseCategory)?.label ?? item.what : item.what);
+const toneStyle = (tone: [string, string]) => ({ ['--tone' as string]: tone[0], ['--tone-2' as string]: tone[1] });
 
-// المساعدات: the register of what donors give the foundation — people inside it or outside —
-// money or goods. Cards sum up the month and the year, the months strip picks a month, and the
-// table lists every donation in detail. Cash donations are the «التبرعات المالية» figure on the
-// money pages.
+// سجل المساعدات: everything the foundation gave to people, gathered from the pages that record it —
+// the needy families' payments, the patients' aid, the money ledger's aid entries, aid to subscribers
+// and delivered help requests. Nothing is added here (each page records its own aid); this page reads
+// them all for the chosen dates: totals, the share of each page, and every aid in detail.
 export function AidPage({ me }: { me: Me }) {
-  const [year, setYear] = useState(THIS_YEAR);
-  const [sheet, setSheet] = useState<Sheet | null>(null);
+  const [range, setRange] = useState<DateRange>(() => monthRange(today.getFullYear(), today.getMonth()));
+  const [items, setItems] = useState<AidItem[] | null>(null);
   const [error, setError] = useState('');
-  const [month, setMonth] = useState<number | null>(null);
-  const [kind, setKind] = useState<Kind>('all');
-  const [donorType, setDonorType] = useState<DonorType>('all');
+  const [source, setSource] = useState<Source | 'all'>('all');
   const [query, setQuery] = useState('');
-  const [dialog, setDialog] = useState<{ donation: Donation | null } | null>(null);
+  const [limit, setLimit] = useState(40);
 
   const load = useCallback(async () => {
     setError('');
     try {
-      setSheet(await api<Sheet>(`/donations?year=${year}`));
+      setItems((await api<{ items: AidItem[] }>(`/aid/register?from=${range.from}&to=${range.to}`)).items);
     } catch (failure) {
       setError((failure as Error).message);
     }
-  }, [year]);
-  useEffect(() => { setSheet(null); setMonth(null); void load(); }, [load]);
+  }, [range]);
+  useEffect(() => { setItems(null); setLimit(40); void load(); }, [load]);
 
-  const focus = year === THIS_YEAR ? THIS_MONTH : 11;
+  const label = periodLabel(range);
   const figures = useMemo(() => {
-    if (!sheet) return null;
-    const cash = Array<number>(12).fill(0);
-    const goods = Array<number>(12).fill(0);
-    const byDonor = new Map<string, { cash: number; count: number; type: Donation['donor_type'] }>();
-    const items = new Map<string, number>();
-    sheet.items.forEach((item) => {
-      const at = monthOf(item);
-      if (item.kind === 'cash') cash[at] += item.amount ?? 0;
-      else {
-        goods[at] += 1;
-        items.set(item.item ?? '', (items.get(item.item ?? '') ?? 0) + 1);
-      }
-      const donor = byDonor.get(item.donor_name) ?? { cash: 0, count: 0, type: item.donor_type };
-      donor.cash += item.kind === 'cash' ? item.amount ?? 0 : 0;
-      donor.count += 1;
-      byDonor.set(item.donor_name, donor);
+    const list = items ?? [];
+    const bySource = new Map<Source, { count: number; amount: number }>();
+    list.forEach((item) => {
+      const row = bySource.get(item.source) ?? { count: 0, amount: 0 };
+      row.count += 1;
+      row.amount += item.amount ?? 0;
+      bySource.set(item.source, row);
     });
-    const top = [...byDonor].sort((a, b) => b[1].cash - a[1].cash || b[1].count - a[1].count)[0] ?? null;
-    const topItem = [...items].sort((a, b) => b[1] - a[1])[0] ?? null;
-    const internal = [...byDonor.values()].filter((donor) => donor.type === 'internal').length;
     return {
-      cash, goods, top, topItem,
-      donors: byDonor.size, internal,
-      prevCash: focus > 0 ? cash[focus - 1] : sheet.previous_december_cash,
-      yearCash: sum(cash),
-      yearGoods: sum(goods),
+      amount: list.reduce((total, item) => total + (item.amount ?? 0), 0),
+      count: list.length,
+      people: new Set(list.map((item) => item.person.trim()).filter(Boolean)).size,
+      bySource,
+      days: new Set(list.map((item) => item.date.slice(0, 10))) as ReadonlySet<string>,
     };
-  }, [sheet, focus]);
+  }, [items]);
 
   const rows = useMemo(() => {
-    if (!sheet) return [];
     const needle = query.trim();
-    return sheet.items
-      .filter((item) => month === null || monthOf(item) === month)
-      .filter((item) => kind === 'all' || item.kind === kind)
-      .filter((item) => donorType === 'all' || item.donor_type === donorType)
-      .filter((item) => !needle || [item.donor_name, item.item, item.purpose, item.note, item.receipt_no].some((value) => value?.includes(needle)));
-  }, [sheet, month, kind, donorType, query]);
-
-  const donorNames = useMemo(() => [...new Set(sheet?.items.map((item) => item.donor_name) ?? [])], [sheet]);
-  const stripMax = figures ? Math.max(...figures.cash, 1) : 1;
+    return (items ?? [])
+      .filter((item) => source === 'all' || item.source === source)
+      .filter((item) => !needle || [item.person, whatOf(item), item.detail ?? ''].some((text) => text.includes(needle)));
+  }, [items, source, query]);
 
   return (
-    <div className="yl bx aid">
-      <div className="page-head exp-head yl-head">
-        <span className="page-icon" aria-hidden><HandHeart size={24} /></span>
-        <div><h1>المساعدات والتبرعات</h1></div>
-        <div className="page-actions">
-          <div className="yl-switch" role="group" aria-label="السنة">
-            <button type="button" className="icon-btn" aria-label="السنة السابقة" onClick={() => setYear(year - 1)}><ChevronRight size={17} aria-hidden /></button>
-            <strong><bdi>{year}</bdi></strong>
-            <button type="button" className="icon-btn" aria-label="السنة التالية" disabled={year >= THIS_YEAR} onClick={() => setYear(year + 1)}><ChevronLeft size={17} aria-hidden /></button>
-          </div>
-          <button type="button" className="btn primary" aria-label="تسجيل تبرع" onClick={() => setDialog({ donation: null })} disabled={!sheet}>
-            <Plus size={18} aria-hidden />
-            <span className="btn-label">تسجيل تبرع</span>
-          </button>
+    <div className="dd ar">
+      <header className="dd-head">
+        <div>
+          <h1>سجل المساعدات</h1>
+          <p>كل ما قدّمته المؤسسة للمستفيدين · {label}</p>
         </div>
-      </div>
+        <div className="dd-head-tools ar-tools">
+          <DatePicker mode="range" presets label="مدة المساعدات" value={range} onChange={setRange} marked={figures.days} />
+        </div>
+      </header>
 
-      {error && !sheet && <StateMessage kind="error" title="تعذّر تحميل التبرعات" hint={error} onRetry={load} />}
-      {!sheet && !error && (
-        <>
-          <div className="yl-kpis" aria-busy="true">{[0, 1, 2, 3, 4].map((key) => <div key={key} className="yl-kpi skeleton" />)}</div>
-          <div className="yl-panel skeleton yl-skel-panel" />
-        </>
-      )}
+      {error && !items && <StateMessage kind="error" title="تعذّر تحميل المساعدات" hint={error} onRetry={load} />}
+      {!items && !error && <div className="dd-card skeleton dd-skel" aria-busy="true" />}
 
-      {sheet && figures && (
+      {items && (
         <>
-          <section className="yl-kpis" aria-label="خلاصة التبرعات">
-            <Card label="التبرعات المالية" icon={Banknote} tone="gift" value={formatNumber(figures.cash[focus])} unit={me.currency}
-              foot={<><span className="yl-foot-label">{MONTH_NAMES[focus]}</span><DeltaPill value={change(figures.prevCash, figures.cash[focus])} /></>} />
-            <Card label={`مجموع ${year}`} icon={Wallet} tone="in" value={formatNumber(figures.yearCash)} unit={me.currency}
-              foot={<span className="yl-foot-label">تبرعات مالية فقط</span>} />
-            <Card label="المساعدات العينية" icon={Package} tone="box" value={formatNumber(figures.yearGoods)}
-              foot={<span className="yl-foot-label">{figures.topItem ? <>أكثرها: <b>{figures.topItem[0]}</b></> : `لا مساعدات عينية في ${year}`}</span>} />
-            <Card label="المتبرعون" icon={Users} value={formatNumber(figures.donors)}
-              foot={<span className="yl-foot-label"><bdi>{formatNumber(figures.internal)}</bdi> من داخل المؤسسة · <bdi>{formatNumber(figures.donors - figures.internal)}</bdi> من خارجها</span>} />
-            <Card label="أكبر متبرع" icon={Crown} tone="gift" value={figures.top ? figures.top[0] : '—'}
-              foot={<span className="yl-foot-label">{figures.top ? <><b><bdi>{formatNumber(figures.top[1].cash)}</bdi></b> {me.currency} · <bdi>{formatNumber(figures.top[1].count)}</bdi> تبرع</> : 'لا تبرعات بعد'}</span>} />
+          <section className="dd-cards" aria-label="خلاصة المساعدات">
+            <article className="dd-card dd-card-hero">
+              <header>
+                <span className="dd-tile" aria-hidden><HandCoins size={20} /></span>
+                <div><h2>مجموع المساعدات</h2><small>ما قدّمته المؤسسة في {label}</small></div>
+              </header>
+              <p className="dd-amount"><bdi>{formatNumber(figures.amount)}</bdi> <small>{me.currency}</small></p>
+            </article>
+            <article className="dd-card">
+              <header>
+                <span className="dd-tile" aria-hidden><HandHeart size={20} /></span>
+                <div><h2>عدد المساعدات</h2><small>من كل الصفحات</small></div>
+              </header>
+              <p className="dd-amount"><bdi>{formatNumber(figures.count)}</bdi> <small>مساعدة</small></p>
+            </article>
+            <article className="dd-card">
+              <header>
+                <span className="dd-tile" aria-hidden><UserRound size={20} /></span>
+                <div><h2>المستفيدون</h2><small>أشخاص وعوائل</small></div>
+              </header>
+              <p className="dd-amount"><bdi>{formatNumber(figures.people)}</bdi> <small>مستفيد</small></p>
+            </article>
           </section>
 
-          <section className="yl-panel" aria-labelledby="aid-months">
-            <header className="yl-panel-head">
-              <div>
-                <h2 id="aid-months"><Banknote size={18} aria-hidden /> التبرعات المالية خلال <bdi>{year}</bdi></h2>
-                <p>{month === null ? 'اضغط على شهر لعرض تبرعاته فقط' : <>يعرض الجدول {MONTH_NAMES[month]} فقط · <button type="button" className="aid-clear" onClick={() => setMonth(null)}>عرض السنة كلها</button></>}</p>
-              </div>
-            </header>
-            <ol className="yl-months yl-strip aid-strip">
-              {MONTH_NAMES.map((name, at) => {
-                const future = isFuture(year, at);
-                const body = (
-                  <>
-                    <span className="yl-month-name">{name}</span>
-                    <span className="yl-month-sum">{future ? '—' : <bdi>{formatNumber(figures.cash[at])}</bdi>}</span>
-                    <span className="yl-month-fill" aria-hidden><i style={{ inlineSize: `${future ? 0 : (figures.cash[at] / stripMax) * 100}%` }} /></span>
-                  </>
-                );
-                return (
-                  <li key={name}>
-                    {future
-                      ? <span className="yl-month is-future" aria-disabled="true">{body}</span>
-                      : (
-                        <button
-                          type="button"
-                          className={`yl-month${month === at ? ' is-now' : ''}`}
-                          aria-pressed={month === at}
-                          title={`${name}: ${formatNumber(figures.cash[at])} ${me.currency} · ${formatNumber(figures.goods[at])} مساعدة عينية`}
-                          onClick={() => setMonth(month === at ? null : at)}
-                        >
-                          {body}
-                        </button>
-                      )}
-                  </li>
-                );
-              })}
-            </ol>
+          <section className="ar-sources" aria-label="المساعدات حسب الصفحة">
+            <button type="button" className="ar-source" aria-pressed={source === 'all'} onClick={() => setSource('all')} style={toneStyle(['#146c43', '#1f8f5a'])}>
+              <span className="ar-source-tile" aria-hidden><HandCoins size={18} /></span>
+              <span className="ar-source-text"><b>الكل</b><small><bdi>{formatNumber(figures.count)}</bdi> مساعدة</small></span>
+            </button>
+            {SOURCES.map((meta) => {
+              const row = figures.bySource.get(meta.id);
+              const Icon = meta.icon;
+              return (
+                <button key={meta.id} type="button" className="ar-source" aria-pressed={source === meta.id} onClick={() => setSource(source === meta.id ? 'all' : meta.id)} style={toneStyle(meta.tone)}>
+                  <span className="ar-source-tile" aria-hidden><Icon size={18} /></span>
+                  <span className="ar-source-text">
+                    <b>{meta.label}</b>
+                    <small><bdi>{formatNumber(row?.count ?? 0)}</bdi> · <bdi>{formatNumber(row?.amount ?? 0)}</bdi> {me.currency}</small>
+                  </span>
+                </button>
+              );
+            })}
           </section>
 
-          <section className="yl-panel" aria-labelledby="aid-table">
-            <header className="yl-panel-head">
+          <section className="dd-card dd-table-card" aria-labelledby="ar-table-title">
+            <header className="dd-section-head">
               <div>
-                <h2 id="aid-table"><HandHeart size={18} aria-hidden /> سجل التبرعات {month !== null && <>— {MONTH_NAMES[month]}</>}</h2>
-                <p><bdi>{formatNumber(rows.length)}</bdi> تبرع · اضغط على التبرع لتعديله</p>
+                <h2 id="ar-table-title">{source === 'all' ? 'كل المساعدات' : SOURCE.get(source)?.label}</h2>
+                <small>{label} · <bdi>{formatNumber(rows.length)}</bdi> مساعدة</small>
               </div>
-              <div className="bx-tools">
-                <label className="bx-search">
+              <div className="dd-table-tools ar-table-tools">
+                <label className="dd-search">
                   <Search size={16} aria-hidden />
-                  <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="بحث بالمتبرع أو المادة" aria-label="بحث" />
+                  <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث بالاسم أو المساعدة" aria-label="بحث في المساعدات" />
                 </label>
-                <SlideTabs<Kind>
-                  items={[{ id: 'all', label: 'الكل' }, { id: 'cash', label: 'مالية', icon: Banknote }, { id: 'in_kind', label: 'عينية', icon: Package }]}
-                  value={kind}
-                  onChange={setKind}
-                  label="نوع التبرع"
-                />
-                <SlideTabs<DonorType>
-                  items={[{ id: 'all', label: 'كل المتبرعين' }, { id: 'internal', label: 'من الداخل' }, { id: 'external', label: 'من الخارج' }]}
-                  value={donorType}
-                  onChange={setDonorType}
-                  label="صفة المتبرع"
-                />
               </div>
             </header>
 
-            {sheet.items.length === 0 ? (
-              <div className="yl-chart-empty">
-                <span aria-hidden><HandHeart size={26} /></span>
-                <b>لا تبرعات مسجلة في <bdi>{year}</bdi></b>
-                <p>سجّل أول تبرع مالي أو عيني وسيظهر هنا وفي كارت التبرعات.</p>
-                <button type="button" className="btn primary" onClick={() => setDialog({ donation: null })}><Plus size={16} aria-hidden /> تسجيل تبرع</button>
-              </div>
-            ) : rows.length === 0 ? (
-              <p className="exp-empty">لا تبرعات تطابق الاختيار.</p>
+            {rows.length === 0 ? (
+              <p className="dd-empty">{items.length ? 'لا مساعدات تطابق الاختيار.' : `لا مساعدات مسجّلة في ${label}.`}</p>
             ) : (
-              <div className="yl-table-wrap">
-                <table className="bx-table aid-table">
+              <>
+                <table className="dd-table ar-table">
                   <thead>
                     <tr>
-                      <th scope="col" className="bx-c-holder">المتبرع</th>
-                      <th scope="col">النوع</th>
-                      <th scope="col">التبرع</th>
-                      <th scope="col" className="bx-c-amount">المبلغ / القيمة</th>
-                      <th scope="col">الغرض</th>
+                      <th scope="col">المستفيد</th>
+                      <th scope="col">المساعدة</th>
+                      <th scope="col">الصفحة</th>
+                      <th scope="col">المبلغ</th>
                       <th scope="col">التاريخ</th>
-                      <th scope="col">رقم الوصل</th>
-                      <th scope="col" className="bx-c-actions">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => (
-                      <tr key={row.id} onClick={() => setDialog({ donation: row })}>
-                        <th scope="row" className="bx-c-holder">
-                          <span className="bx-holder">
-                            <span className={`bx-avatar${row.donor_type === 'internal' ? ' is-delegate' : ''}`} aria-hidden>{row.donor_name.trim().charAt(0)}</span>
-                            <span className="bx-holder-text">
-                              <a className="aid-donor" href={donorHref(row.donor_name)} onClick={(event) => event.stopPropagation()}>{row.donor_name}</a>
-                              <small>
-                                <span className={`bx-badge${row.donor_type === 'internal' ? '' : ' muted'}`}>{row.donor_type === 'internal' ? 'من داخل المؤسسة' : 'من خارج المؤسسة'}</span>
-                                {row.donor_phone && <bdi dir="ltr">{row.donor_phone}</bdi>}
-                              </small>
-                            </span>
-                          </span>
-                        </th>
-                        <td data-label="النوع"><span className={`aid-kind ${row.kind}`}>{row.kind === 'cash' ? <><Banknote size={13} aria-hidden /> مالي</> : <><Package size={13} aria-hidden /> عيني</>}</span></td>
-                        <td data-label="التبرع" className="bx-c-work">
-                          {row.kind === 'cash' ? 'مبلغ نقدي' : <>{row.item}{row.quantity ? <> · <bdi>{formatNumber(row.quantity)}</bdi> {row.unit}</> : null}</>}
-                        </td>
-                        <td data-label="المبلغ" className="bx-c-amount">{row.amount ? <bdi>{formatNumber(row.amount)}</bdi> : <span className="bx-none">—</span>}</td>
-                        <td data-label="الغرض">{row.purpose ?? '—'}</td>
-                        <td data-label="التاريخ"><bdi>{showDate(row.received_on)}</bdi></td>
-                        <td data-label="رقم الوصل"><bdi>{row.receipt_no ?? '—'}</bdi></td>
-                        <td className="bx-c-actions" onClick={(event) => event.stopPropagation()}>
-                          <div className="bx-actions">
-                            <button type="button" className="icon-btn" aria-label={`تعديل تبرع ${row.donor_name}`} onClick={() => setDialog({ donation: row })}>
-                              <Pencil size={15} aria-hidden />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {rows.slice(0, limit).map((item) => {
+                      const meta = SOURCE.get(item.source)!;
+                      const href = meta.href(item);
+                      const Icon = meta.icon;
+                      return (
+                        <tr key={`${item.source}-${item.id}`}>
+                          <td>
+                            {href
+                              ? <a className="ar-person" href={href}>{item.person || '—'}</a>
+                              : <span className="ar-person">{item.person || '—'}</span>}
+                          </td>
+                          <td><span className="ar-what">{whatOf(item)}</span>{item.detail && <small className="ar-detail">{item.detail}</small>}</td>
+                          <td><span className="ar-chip" style={toneStyle(meta.tone)}><Icon size={13} aria-hidden />{meta.label}</span></td>
+                          <td className="dd-money">{item.amount ? <><bdi>{formatNumber(item.amount)}</bdi> <small>{me.currency}</small></> : '—'}</td>
+                          <td><bdi>{showDate(item.date)}</bdi></td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <th scope="row" className="bx-c-holder">المجموع · <bdi>{formatNumber(rows.length)}</bdi> تبرع</th>
-                      <td />
-                      <td data-label="عينية"><bdi>{formatNumber(rows.filter((row) => row.kind === 'in_kind').length)}</bdi> عينية</td>
-                      <td className="bx-c-amount" data-label="المبلغ"><bdi>{formatNumber(sum(rows.filter((row) => row.kind === 'cash').map((row) => row.amount ?? 0)))}</bdi></td>
-                      <td />
-                      <td />
-                      <td />
-                      <td />
-                    </tr>
-                  </tfoot>
                 </table>
-              </div>
+
+                <ul className="dd-mlist ar-list">
+                  {rows.slice(0, limit).map((item) => {
+                    const meta = SOURCE.get(item.source)!;
+                    const href = meta.href(item);
+                    const Icon = meta.icon;
+                    const body = (
+                      <>
+                        <span className="ar-item-tile" aria-hidden style={toneStyle(meta.tone)}><Icon size={20} /></span>
+                        <span className="ar-item-main">
+                          <b>{item.person || whatOf(item)}</b>
+                          <small>{item.person ? whatOf(item) : item.detail ?? meta.label}</small>
+                          <small className="ar-item-date"><CalendarDays size={12} aria-hidden /> <bdi>{showDate(item.date)}</bdi></small>
+                        </span>
+                        <span className="ar-item-value">
+                          <b>{item.amount ? <><bdi>{formatNumber(item.amount)}</bdi> <small>{me.currency}</small></> : 'تم التسليم'}</b>
+                        </span>
+                      </>
+                    );
+                    return (
+                      <li key={`${item.source}-${item.id}`} className="ar-item" style={toneStyle(meta.tone)}>
+                        {href ? <a href={href} className="ar-item-link">{body}</a> : <div className="ar-item-link">{body}</div>}
+                        <span className="ar-item-source">{meta.label}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
             )}
+            {rows.length > limit && <button type="button" className="dd-load" onClick={() => setLimit(limit + 40)}>عرض المزيد · <bdi>{formatNumber(rows.length - limit)}</bdi></button>}
           </section>
         </>
-      )}
-
-      {dialog && (
-        <DonationDialog
-          donation={dialog.donation}
-          donors={donorNames}
-          currency={me.currency}
-          onClose={() => setDialog(null)}
-          onSaved={() => { setDialog(null); void load(); }}
-        />
       )}
     </div>
   );

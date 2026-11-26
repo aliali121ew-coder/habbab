@@ -144,12 +144,12 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
             <MoreHorizontal size={18} aria-hidden className="dd-more" />
           </header>
           <p className="dd-amount"><bdi>{formatNumber(data.cashNow)}</bdi> <small>{currency}</small><Delta value={data.cashDelta} /></p>
-          <a className="dd-card-foot" href="#/soon/aid">عرض السجل التفصيلي <ArrowLeft size={16} aria-hidden /></a>
+          <button type="button" className="dd-card-foot" onClick={() => document.getElementById('dd-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>عرض التبرعات <ArrowLeft size={16} aria-hidden /></button>
         </article>
         <article className="dd-card">
           <header>
             <span className="dd-tile" aria-hidden><Package size={20} /></span>
-            <div><h2>المساعدات العينية</h2><small>مواد وصلت للمؤسسة</small></div>
+            <div><h2>المساعدات المادية</h2><small>مواد وصلت للمؤسسة</small></div>
             <MoreHorizontal size={18} aria-hidden className="dd-more" />
           </header>
           <p className="dd-amount"><bdi>{formatNumber(data.goodsNow)}</bdi> <small>مساعدة</small><Delta value={data.goodsDelta} /></p>
@@ -183,7 +183,7 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                   <span className="dd-purpose-name">{name}</span>
                   <b><bdi>{formatNumber(row.cash)}</bdi> <small>{currency}</small></b>
                   <small className="dd-purpose-note"><bdi>{formatNumber(row.count)}</bdi> تبرع · <bdi>{formatPercent((row.count / Math.max(data.inPeriod.length, 1)) * 100)}</bdi></small>
-                  <span className={`dd-status${row.cash > 0 ? ' on' : ''}`}>{row.cash > 0 ? 'مالي' : 'عيني'}</span>
+                  <span className={`dd-status${row.cash > 0 ? ' on' : ''}`}>{row.cash > 0 ? 'مالية' : 'مادية'}</span>
                 </li>
               ))}
             </ul>
@@ -195,11 +195,11 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
           <header className="dd-section-head">
             <div>
               <h2 id="dd-flow-title">تدفق التبرعات</h2>
-              <p className="dd-flow-total"><bdi>{formatNumber(flow === 'cash' ? data.cash.reduce((s, v) => s + v, 0) : data.goods.reduce((s, v) => s + v, 0))}</bdi> <small>{flow === 'cash' ? currency : 'مساعدة عينية'}</small></p>
+              <p className="dd-flow-total"><bdi>{formatNumber(flow === 'cash' ? data.cash.reduce((s, v) => s + v, 0) : data.goods.reduce((s, v) => s + v, 0))}</bdi> <small>{flow === 'cash' ? currency : 'مساعدة مادية'}</small></p>
             </div>
             <div className={`dd-toggle${flow === 'in_kind' ? ' is-goods' : ''}`} role="group" aria-label="نوع التدفق">
-              <button type="button" aria-pressed={flow === 'cash'} onClick={() => setFlow('cash')}>مالية</button>
-              <button type="button" aria-pressed={flow === 'in_kind'} onClick={() => setFlow('in_kind')}>عينية</button>
+              <button type="button" aria-pressed={flow === 'cash'} onClick={() => setFlow('cash')}>مساعدة مالية</button>
+              <button type="button" aria-pressed={flow === 'in_kind'} onClick={() => setFlow('in_kind')}>مساعدة مادية</button>
             </div>
           </header>
           <div className={`dd-bars${flow === 'in_kind' ? ' is-goods' : ''}`} onPointerLeave={() => setHover(null)}>
@@ -228,8 +228,8 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                     {at === shownBar && !future && (
                       <span className="dd-tip" role="tooltip">
                         <small>{MONTH_NAMES[at]} <bdi>{year}</bdi></small>
-                        <span className="dd-tip-row cash"><em aria-hidden />تبرعات مالية <b><bdi>{formatNumber(data.cash[at])}</bdi> <small>{currency}</small></b></span>
-                        <span className="dd-tip-row goods"><em aria-hidden />مساعدات عينية <b><bdi>{formatNumber(data.goods[at])}</bdi></b></span>
+                        <span className="dd-tip-row cash"><em aria-hidden />مساعدة مالية <b><bdi>{formatNumber(data.cash[at])}</bdi> <small>{currency}</small></b></span>
+                        <span className="dd-tip-row goods"><em aria-hidden />مساعدة مادية <b><bdi>{formatNumber(data.goods[at])}</bdi></b></span>
                       </span>
                     )}
                     <small className="dd-month" title={MONTH_NAMES[at]}>{SHORT_MONTHS[at]}</small>
@@ -254,8 +254,8 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
               <Filter size={15} aria-hidden />
               <select value={kind} onChange={(event) => setKind(event.target.value as Kind)} aria-label="تصفية حسب النوع">
                 <option value="all">كل الأنواع</option>
-                <option value="cash">مالية</option>
-                <option value="in_kind">عينية</option>
+                <option value="cash">مساعدة مالية</option>
+                <option value="in_kind">مساعدة مادية</option>
               </select>
             </label>
           </div>
@@ -310,12 +310,12 @@ export function DonationsDesktop({ items, previousDecemberCash, year, onYear, cu
                     <DonationIconTile donation={item} size={46} />
                     <span className="dd-mcard-what">
                       <b>{cash ? 'تبرع مالي' : item.item ?? 'مواد'}</b>
-                      <small>{cash ? item.purpose || 'عامة' : donationIcon(item).label !== item.item ? donationIcon(item).label : 'تبرع عيني'}</small>
+                      <small>{cash ? item.purpose || 'عامة' : donationIcon(item).label !== item.item ? donationIcon(item).label : 'مساعدة مادية'}</small>
                     </span>
                     <span className="dd-mcard-value">
                       {cash
                         ? <b><bdi>{formatNumber(item.amount ?? 0)}</bdi> <small>{currency}</small></b>
-                        : <b><bdi>{item.quantity ? formatNumber(item.quantity) : '—'}</bdi> <small>{item.unit || 'عيني'}</small></b>}
+                        : <b><bdi>{item.quantity ? formatNumber(item.quantity) : '—'}</bdi> <small>{item.unit || 'مادية'}</small></b>}
                       <bdi className="dd-mcard-code">{item.receipt_no ?? `TB-${String(item.id).padStart(5, '0')}`}</bdi>
                     </span>
                   </button>
@@ -423,7 +423,7 @@ function DatePicker({ items, year, month, period, day, label, currency, onYear, 
                   type="button"
                   className={`dd-cal-day${row ? ' has' : ''}${chosen ? ' chosen' : ''}${iso === TODAY ? ' today' : ''}`}
                   disabled={future}
-                  title={row ? `${formatNumber(row.count)} تبرع · ${formatNumber(row.cash)} ${currency}${row.goods ? ` · ${row.goods} عيني` : ''}` : undefined}
+                  title={row ? `${formatNumber(row.count)} تبرع · ${formatNumber(row.cash)} ${currency}${row.goods ? ` · ${row.goods} مادية` : ''}` : undefined}
                   onClick={() => { onPick({ period: 'day', month: view, day: iso }); setOpen(false); }}
                 >
                   <span className="dd-cal-num"><bdi>{d}</bdi></span>
@@ -439,7 +439,7 @@ function DatePicker({ items, year, month, period, day, label, currency, onYear, 
             })}
           </div>
           <footer className="dd-cal-foot">
-            <span className="dd-cal-legend"><i className="cash" /> مالي <i className="goods" /> عيني</span>
+            <span className="dd-cal-legend"><i className="cash" /> مالية <i className="goods" /> مادية</span>
             <div>
               <button type="button" className={period === 'month' && month === view ? 'on' : undefined} onClick={() => { onPick({ period: 'month', month: view }); setOpen(false); }}>الشهر كله</button>
               <button type="button" className={period === 'year' ? 'on' : undefined} onClick={() => { onPick({ period: 'year' }); setOpen(false); }}>السنة كلها</button>
