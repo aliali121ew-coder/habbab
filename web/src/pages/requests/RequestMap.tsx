@@ -365,6 +365,7 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
   const [places, setPlaces] = useState<MapPlace[]>(() => loadCachedPlaces());
   const [showPlaces, setShowPlaces] = useState(true);
   const [selectedPlace, setSelectedPlace] = useState<MapPlace | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<MapPlace | null>(null);
   const [pickingPlace, setPickingPlace] = useState(false);
   const pickingRef = useRef(false);
   pickingRef.current = pickingPlace;
@@ -621,13 +622,14 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
   }
 
   async function handleDeletePlace(p: MapPlace) {
-    if (!window.confirm(`حذف «${p.name}» من الخريطة؟`)) return;
     setBusy(true); setError('');
     try {
       await deleteMapPlace(p.id);
       setPlaces((prev) => prev.filter((x) => x.id !== p.id));
       clearTrip();
       setSelectedPlace(null);
+      setConfirmDelete(null);
+      setHint(`تم حذف «${p.name}» من الخريطة`);
     } catch (e) { setError((e as Error).message); }
     setBusy(false);
   }
@@ -1088,7 +1090,7 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
                 </button>
               )}
               {(isAdmin || selectedPlace.status === 'pending') && (
-                <button type="button" className="rq-ghost rq-del" onClick={() => handleDeletePlace(selectedPlace)} disabled={busy} aria-label="حذف النقطة">
+                <button type="button" className="rq-ghost rq-del" onClick={() => setConfirmDelete(selectedPlace)} disabled={busy} aria-label="حذف النقطة">
                   <Trash2 size={17} />
                 </button>
               )}
@@ -1096,6 +1098,24 @@ function OnlineRequestsMap({ items, onOpen, focus, role, onSaved }: { items: Map
           </div>
         );
       })()}
+
+      {/* ── Centered confirmation modal for deleting a saved place ── */}
+      {confirmDelete && (
+        <div className="rq-confirm-scrim" role="dialog" aria-modal="true" aria-label="تأكيد حذف النقطة" onClick={() => !busy && setConfirmDelete(null)}>
+          <div className="rq-confirm-card" onClick={(e) => e.stopPropagation()}>
+            <span className="rq-confirm-ic" aria-hidden><Trash2 size={24} /></span>
+            <h3>حذف النقطة من الخريطة؟</h3>
+            <p>سيتم إزالة <b>«{confirmDelete.name}»</b> ({PLACE_META.get(confirmDelete.category)?.label ?? 'نقطة'}) نهائياً من الخريطة.</p>
+            {error && <p className="rq-route-err" role="alert">{error}</p>}
+            <div className="rq-confirm-actions">
+              <button type="button" className="rq-confirm-del" disabled={busy} onClick={() => void handleDeletePlace(confirmDelete)}>
+                {busy ? <LoaderCircle size={16} className="rq-spin" /> : <Trash2 size={16} />} نعم، حذف
+              </button>
+              <button type="button" className="rq-ghost" disabled={busy} onClick={() => setConfirmDelete(null)}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── the nearest requests to me ── */}
       {near && !driving && (
