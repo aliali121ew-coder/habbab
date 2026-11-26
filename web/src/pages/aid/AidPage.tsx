@@ -22,13 +22,14 @@ interface AidItem {
   ref: number | null;
 }
 
-// Where each aid was recorded: its name here, its picture, its colour (deep, light) and the page it opens.
+// Where each aid was recorded: its name here, its picture, a quiet colour (deep, light) in the app's
+// green family, and the page it opens.
 const SOURCES: { id: Source; label: string; icon: LucideIcon; tone: [string, string]; href: (item: AidItem) => string | null }[] = [
-  { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, tone: ['#0f9f6e', '#34d3a0'], href: (item) => (item.ref ? familyHref(item.ref) : '#/families') },
-  { id: 'patients', label: 'المرضى', icon: HeartPulse, tone: ['#dc2626', '#f87171'], href: (item) => (item.ref ? `#/patients/${item.ref}` : '#/patients') },
-  { id: 'expenses', label: 'الحركات المالية', icon: Receipt, tone: ['#d97706', '#fbbf24'], href: () => '#/expenses' },
-  { id: 'subscribers', label: 'المشتركون', icon: Users, tone: ['#2459e0', '#5b9cf6'], href: () => null },
-  { id: 'requests', label: 'طلبات المساعدة', icon: HandHeart, tone: ['#6d35d9', '#a07cf5'], href: () => '#/soon/requests' },
+  { id: 'families', label: 'العوائل المتعففة', icon: HeartHandshake, tone: ['#2f7d62', '#5fa58a'], href: (item) => (item.ref ? familyHref(item.ref) : '#/families') },
+  { id: 'patients', label: 'المرضى', icon: HeartPulse, tone: ['#b0546a', '#d08a9a'], href: (item) => (item.ref ? `#/patients/${item.ref}` : '#/patients') },
+  { id: 'expenses', label: 'الحركات المالية', icon: Receipt, tone: ['#146c43', '#3f9a6e'], href: () => '#/expenses' },
+  { id: 'subscribers', label: 'المشتركون', icon: Users, tone: ['#3d6aa8', '#7896c4'], href: () => null },
+  { id: 'requests', label: 'طلبات المساعدة', icon: HandHeart, tone: ['#6b5a9e', '#9a8cc4'], href: () => '#/soon/requests' },
 ];
 const SOURCE = new Map(SOURCES.map((source) => [source.id, source]));
 
@@ -127,7 +128,7 @@ export function AidPage({ me }: { me: Me }) {
           </section>
 
           <section className="ar-sources" aria-label="المساعدات حسب الصفحة">
-            <button type="button" className="ar-source" aria-pressed={source === 'all'} onClick={() => setSource('all')} style={toneStyle(['#146c43', '#1f8f5a'])}>
+            <button type="button" className="ar-source" aria-pressed={source === 'all'} onClick={() => setSource('all')} style={toneStyle(['#475569', '#7b8794'])}>
               <span className="ar-source-tile" aria-hidden><HandCoins size={18} /></span>
               <span className="ar-source-text"><b>الكل</b><small><bdi>{formatNumber(figures.count)}</bdi> مساعدة</small></span>
             </button>

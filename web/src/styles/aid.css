@@ -10,9 +10,10 @@
 }
 .ar-source[aria-pressed="true"] { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 8%, var(--dd-card)); box-shadow: 0 0 0 1px var(--tone) inset; }
 .ar-source-tile {
-  display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 11px; color: #fff;
-  background: linear-gradient(135deg, var(--tone-2), var(--tone));
+  display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 11px;
+  background: color-mix(in srgb, var(--tone) 12%, var(--dd-card)); color: var(--tone);
 }
+:root[data-theme="dark"] .ar-source-tile { background: color-mix(in srgb, var(--tone) 22%, var(--dd-card)); color: var(--tone-2); }
 .ar-source-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ar-source-text b { overflow: hidden; color: var(--dd-ink); font-size: .84rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .ar-source-text small { overflow: hidden; color: var(--dd-ink-3); font-size: .7rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -32,10 +33,10 @@ a.ar-person:hover { color: var(--dd-green); text-decoration: underline; }
 .ar-item { overflow: hidden; border: 1px solid var(--dd-line); border-radius: 16px; background: var(--dd-card); }
 .ar-item-link { display: grid; align-items: start; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px 12px 10px; color: inherit; text-decoration: none; }
 .ar-item-tile {
-  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: #fff;
-  background: linear-gradient(135deg, var(--tone-2), var(--tone)); box-shadow: 0 8px 14px -10px var(--tone);
+  display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px;
+  background: color-mix(in srgb, var(--tone) 11%, var(--dd-card)); color: var(--tone);
 }
-:root[data-theme="dark"] .ar-item-tile { box-shadow: none; }
+:root[data-theme="dark"] .ar-item-tile { background: color-mix(in srgb, var(--tone) 22%, var(--dd-card)); color: var(--tone-2); }
 .ar-item-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .ar-item-main b { display: -webkit-box; overflow: hidden; color: var(--dd-ink); font-size: .88rem; font-weight: 800; line-height: 1.4; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .ar-item-main small { overflow: hidden; color: var(--dd-ink-2); font-size: .74rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -44,10 +45,10 @@ a.ar-person:hover { color: var(--dd-green); text-decoration: underline; }
 .ar-item-value b small { color: var(--dd-ink-3); font-size: .64rem; font-weight: 600; }
 .ar-item-main .ar-item-date { display: inline-flex; align-items: center; gap: 3px; color: var(--dd-ink-3); font-size: .7rem; }
 .ar-item-source {
-  display: block; padding: 6px 12px; border-top: 1px dashed var(--dd-line);
-  background: color-mix(in srgb, var(--tone) 7%, var(--dd-card)); color: var(--tone); font-size: .72rem; font-weight: 700;
+  display: block; padding: 6px 12px; border-top: 1px solid var(--dd-line);
+  background: var(--dd-soft); color: var(--dd-ink-2); font-size: .72rem; font-weight: 700;
 }
-:root[data-theme="dark"] .ar-item-source { color: var(--tone-2); }
+.ar-item-source::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-inline-end: 6px; border-radius: 50%; background: var(--tone); vertical-align: middle; }
 
 @media (max-width: 1279.98px) { .ar-sources { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 767.98px) {
