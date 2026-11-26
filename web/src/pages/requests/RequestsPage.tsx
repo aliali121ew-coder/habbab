@@ -594,7 +594,7 @@ function WindowPanel() {
       <div className="rq-window-head">
         <span className="rq-window-ic"><CalendarClock size={20} /></span>
         <div>
-          <strong>استقبال طلبات العوائل</strong>
+          <strong>استقبال <span className="rq-window-long">طلبات العوائل</span><span className="rq-window-short">الطلبات</span></strong>
           <small>
             {state === 'open' ? `مفتوح حتى ${fmt(w.until)}` : state === 'scheduled' ? `يُفتح ${fmt(w.from)}` : 'مغلق — العوائل لا تستطيع التقديم الآن'}
           </small>

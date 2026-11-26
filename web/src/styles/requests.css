@@ -334,3 +334,62 @@
   color: var(--rq); background: var(--rq-soft); font-size: .86rem; font-weight: 700; text-decoration: none;
 }
 .rq-open-map small { color: var(--ink-3); font-weight: 400; font-size: .74rem; }
+
+.rq-window-short { display: none; }
+
+/* ── Phone: the register's top compact (requests intake, search, filters) ─────────────────────
+   The intake card is one row (icon, title and state, its button at the end); the search and the
+   type filter share a row; the status chips are smaller. The computer layout is in requests-desktop.css. */
+@media (max-width: 767.98px) {
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head   head"
+      "window window"
+      "search bar"
+      "chips  chips"
+      "list   list";
+    column-gap: 8px;
+    row-gap: 10px;
+  }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-head { grid-area: head; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-window { grid-area: window; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-search { grid-area: search; height: 44px; padding: 0 12px; border-radius: 14px; gap: 8px; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-chips { grid-area: chips; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-bar { grid-area: bar; gap: 8px; font-size: .8rem; }
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-list,
+  .rq:not(.rq-detail):not(.rq-wizard):not(.rq-map-page) > .rq-empty { grid-area: list; }
+  .rq .rq-search input { font-size: .9rem; }
+  .rq .rq-kind-filter { height: 44px; padding: 0 10px; border-radius: 14px; }
+  .rq .rq-kind-filter select { max-width: 84px; font-size: .82rem; }
+  .rq .rq-chips button { height: 34px; padding: 0 14px; font-size: .8rem; }
+
+  /* the intake card: one row */
+  .rq .rq-window {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "head actions";
+    align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px;
+  }
+  .rq .rq-window-head { grid-area: head; gap: 10px; min-width: 0; }
+  .rq .rq-window-head strong { overflow: hidden; font-size: .86rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+  .rq .rq-window-head small {
+    display: -webkit-box; overflow: hidden; font-size: .72rem; line-height: 1.45;
+    -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .rq .rq-window-ic { width: 36px; height: 36px; border-radius: 11px; }
+  .rq .rq-window-ic svg { width: 18px; height: 18px; }
+  .rq .rq-window-badge { display: none; }
+  .rq .rq-window-long { display: none; }
+  .rq .rq-window-short { display: inline; }
+  .rq .rq-window > .rq-window-actions { grid-area: actions; flex-wrap: nowrap; gap: 6px; }
+  .rq .rq-window-actions .rq-primary, .rq .rq-window-actions .rq-ghost { height: 38px; padding: 0 12px; border-radius: 12px; font-size: .82rem; box-shadow: none; }
+  /* open or scheduled: the link and the two buttons go on rows of their own */
+  .rq .rq-window:has(.rq-window-link), .rq .rq-window:has(.rq-window-form) { grid-template-areas: "head head" "link link" "actions actions"; }
+  .rq .rq-window-link { grid-area: link; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .rq .rq-window-link input { grid-column: 1 / -1; height: 38px; font-size: .78rem; }
+  .rq .rq-window-link .rq-ghost { justify-content: center; height: 36px; padding: 0 8px; border-radius: 11px; font-size: .78rem; }
+  .rq .rq-window:has(.rq-window-link) > .rq-window-actions .rq-primary,
+  .rq .rq-window:has(.rq-window-link) > .rq-window-actions .rq-ghost { flex: 1; }
+  .rq .rq-window-form { grid-area: actions; }
+  .rq .rq-window .rq-error { grid-column: 1 / -1; margin: 0; }
+}
