@@ -126,6 +126,35 @@ const CASH: DonationIcon = { icon: Money, label: 'مبلغ مالي' };
 const OTHER: DonationIcon = { icon: Gift, label: 'مساعدة عينية' };
 const BOX: DonationIcon = { icon: Package, label: 'مواد' };
 
+// Each kind's colour (deep, light), the same in the ring, its key and the pictures in the table
+// and cards, so a kind is recognised by its colour everywhere.
+const TONES: Record<string, [string, string]> = {
+  'مبلغ مالي': ['#0f9f6e', '#34d3a0'],
+  'بقر ولحوم': ['#2459e0', '#5b9cf6'],
+  'طبقة بيض': ['#6d35d9', '#a07cf5'],
+  'طحين ورز': ['#d97706', '#fbbf24'],
+  'سلة غذائية': ['#be185d', '#f472b6'],
+  'دجاج': ['#c2410c', '#fb923c'],
+  'ملابس': ['#0e7490', '#22d3ee'],
+  'أجهزة كهربائية': ['#4338ca', '#818cf8'],
+  'سمك': ['#0369a1', '#38bdf8'],
+  'حليب': ['#0d9488', '#5eead4'],
+  'خضار وفواكه': ['#15803d', '#4ade80'],
+  'حلويات وتمر': ['#a16207', '#facc15'],
+  'مواد منزلية': ['#9a3412', '#fdba74'],
+  'ماء': ['#0284c7', '#7dd3fc'],
+  'أدوية': ['#dc2626', '#f87171'],
+  'مستلزمات طبية': ['#e11d48', '#fb7185'],
+  'أفرشة': ['#9333ea', '#d8b4fe'],
+  'أثاث': ['#92400e', '#f59e0b'],
+  'قرطاسية وكتب': ['#1d4ed8', '#93c5fd'],
+  'حقائب': ['#be123c', '#fda4af'],
+  'وقود': ['#334155', '#94a3b8'],
+  'ذهب ومجوهرات': ['#b45309', '#fcd34d'],
+};
+const PLAIN: [string, string] = ['#64748b', '#a3b1c4'];
+export const kindTone = (label: string): [string, string] => TONES[label] ?? PLAIN;
+
 export function donationIcon(donation: { kind: 'cash' | 'in_kind'; item: string | null }): DonationIcon {
   if (donation.kind === 'cash') return CASH;
   const text = (donation.item ?? '').trim();
@@ -133,11 +162,12 @@ export function donationIcon(donation: { kind: 'cash' | 'in_kind'; item: string 
   return RULES.find((rule) => rule.words.some((word) => text.includes(word)))?.icon ?? OTHER;
 }
 
-// The picture as a black-and-white rounded tile; size in pixels.
+// The picture as a rounded tile in the kind's colour (white drawing); size in pixels.
 export function DonationIconTile({ donation, size = 40 }: { donation: { kind: 'cash' | 'in_kind'; item: string | null }; size?: number }) {
   const { icon: Icon, label } = donationIcon(donation);
+  const [deep, light] = kindTone(label);
   return (
-    <span className="dn-icon-tile" title={label} role="img" aria-label={label} style={{ width: size, height: size }}>
+    <span className="dn-icon-tile" title={label} role="img" aria-label={label} style={{ width: size, height: size, ['--tone' as string]: deep, ['--tone-2' as string]: light }}>
       <Icon size={Math.round(size * 0.58)} />
     </span>
   );

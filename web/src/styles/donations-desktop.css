@@ -367,31 +367,23 @@
 .dd-bars.is-goods .dd-dot { border-color: var(--dd-gold); }
 .dd-toggle.is-goods button[aria-pressed="true"] { background: var(--dd-gold); color: #3b2500; }
 
-/* Donation pictures (pages/aid/donationIcons.tsx): a rounded tile tinted with the item's colour. */
+/* Donation pictures (pages/aid/donationIcons.tsx): a rounded tile in the kind's colour, white drawing. */
 .dn-icon-tile {
   display: inline-grid;
   place-items: center;
   flex: none;
   border-radius: 30%;
-  background: linear-gradient(150deg, color-mix(in srgb, var(--tone) 16%, var(--surface)), color-mix(in srgb, var(--tone) 26%, var(--surface)));
-  color: var(--tone);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 22%, transparent), 0 6px 14px -10px var(--tone);
+  background: linear-gradient(135deg, var(--tone-2, #a3b1c4), var(--tone, #64748b));
+  color: #fff;
+  box-shadow: 0 8px 14px -10px var(--tone, #64748b);
 }
-:root[data-theme="dark"] .dn-icon-tile { background: color-mix(in srgb, var(--tone) 22%, var(--surface)); color: color-mix(in srgb, var(--tone) 70%, #fff); }
+:root[data-theme="dark"] .dn-icon-tile { box-shadow: none; }
 .dd-pic-col { text-align: center !important; }
 .dd-pic { width: 1%; text-align: center; }
 .dd-pic-wrap { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
 .dd-pic-wrap small { color: var(--dd-ink-3); font-size: .64rem; font-weight: 600; white-space: nowrap; }
 
-/* Donation pictures in black and white. */
-.dn-icon-tile { background: #fff; color: #111; box-shadow: inset 0 0 0 1.5px #1f2937, 0 4px 10px -8px rgb(0 0 0 / 40%); }
-:root[data-theme="dark"] .dn-icon-tile { background: #0f1412; color: #f5f5f5; box-shadow: inset 0 0 0 1.5px #e5e7eb; }
-.dn-icon-tile svg { stroke-width: 1.7; }
-
-/* Donation pictures: light grey line drawings on white, one column only. */
-.dn-icon-tile { background: var(--surface, #fff); color: #8b94a3; box-shadow: inset 0 0 0 1px #e3e7ec; }
-:root[data-theme="dark"] .dn-icon-tile { background: transparent; color: #9aa4b2; box-shadow: inset 0 0 0 1px #34403b; }
-.dn-icon-tile svg { stroke-width: 1.5; }
+.dn-icon-tile svg { stroke-width: 1.8; }
 .dd-pic-wrap small { color: #9aa4b2; }
 /* Donor's donations in the period. */
 .dd-count { display: inline-flex; align-items: baseline; gap: 4px; padding: 3px 10px; border-radius: 99px; background: var(--dd-soft); color: var(--dd-ink-2); font-size: .74rem; font-weight: 600; white-space: nowrap; }
@@ -464,15 +456,21 @@ a.dd-ghost { text-decoration: none; }
 .dd-ring-cash span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dd-ring-cash b { color: var(--dd-ink); font-size: .98rem; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .dd-ring-cash b small { color: var(--dd-ink-3); font-size: .66rem; font-weight: 600; }
-.dd-ring-legend { display: grid; width: 100%; margin: 0; padding: 0; list-style: none; }
-.dd-ring-legend li + li { border-top: 1px solid var(--dd-line); }
-.dd-ring-legend button { display: grid; gap: 7px; width: 100%; padding: 11px 4px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: start; cursor: pointer; }
-.dd-ring-legend button[aria-pressed="true"] { padding-inline: 10px; background: var(--dd-soft); }
-.dd-ring-line { display: flex; align-items: center; gap: 9px; }
-.dd-ring-line { gap: 10px; }
-.dd-ring-tile { display: grid; flex: none; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, var(--tone-2), var(--tone)); color: #fff; box-shadow: 0 8px 14px -10px var(--tone); }
-:root[data-theme="dark"] .dd-ring-tile { box-shadow: none; }
-.dd-ring-legend .dd-ring-bar, .dd-ring-legend .dd-ring-meta { margin-inline-start: 48px; }
+/* The ring's key: dot, name and share in a 3×3 grid; more than nine kinds scroll inside it. */
+.dd-ring-keys {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 56px; gap: 8px;
+  width: 100%; max-height: calc(56px * 3 + 8px * 2); margin: 0; padding: 0; overflow-y: auto; overscroll-behavior: contain;
+  list-style: none; scrollbar-width: thin;
+}
+.dd-ring-keys button {
+  display: flex; flex-direction: column; justify-content: center; gap: 3px; width: 100%; height: 100%; padding: 6px 9px;
+  border: 1px solid var(--dd-line); border-radius: 12px; background: var(--dd-card); color: inherit; font: inherit; text-align: start; cursor: pointer;
+}
+.dd-ring-keys button[aria-pressed="true"] { border-color: var(--tone); background: color-mix(in srgb, var(--tone) 9%, var(--dd-card)); }
+.dd-key-name { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; color: var(--dd-ink-2); font-size: .72rem; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; }
+.dd-key-name i { flex: none; width: 9px; height: 9px; border-radius: 50%; background: linear-gradient(135deg, var(--tone-2), var(--tone)); }
+.dd-key-share { color: var(--tone); font-size: .98rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+:root[data-theme="dark"] .dd-key-share { color: var(--tone-2); }
 .dd-ring-name { flex: 1; min-width: 0; overflow: hidden; color: var(--dd-ink); font-size: .86rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .dd-ring-share { color: var(--tone); font-size: 1rem; font-weight: 900; font-variant-numeric: tabular-nums; }
 :root[data-theme="dark"] .dd-ring-share { color: var(--tone-2); }

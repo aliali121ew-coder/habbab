@@ -5,7 +5,7 @@ import {
 import { MONTH_NAMES, formatNumber, formatPercent } from '../../format';
 import { donorHref } from '../../route';
 import type { Donation } from '../aid/DonationDialog';
-import { DonationIconTile, donationIcon } from '../aid/donationIcons';
+import { DonationIconTile, donationIcon, kindTone } from '../aid/donationIcons';
 
 const now = new Date();
 const THIS_YEAR = now.getUTCFullYear();
@@ -458,12 +458,7 @@ function formatCompactAr(value: number) {
   return String(value);
 }
 
-// The ring's colours as gradients (deep → light), in a fixed order (largest kind first).
-const RING_TONES: [string, string][] = [
-  ['#0f9f6e', '#34d3a0'], ['#2459e0', '#5b9cf6'], ['#6d35d9', '#a07cf5'], ['#d97706', '#fbbf24'],
-  ['#be185d', '#f472b6'], ['#0e7490', '#22d3ee'], ['#c2410c', '#fb923c'], ['#475569', '#94a3b8'],
-];
-const toneOf = (at: number) => RING_TONES[at % RING_TONES.length];
+
 
 // A filled ring segment between two angles (radians, clockwise from the top).
 function sector(r0: number, r1: number, a0: number, a1: number) {
@@ -509,10 +504,10 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
   }, [seen, items.length]);
   const grow = useGrow(seen);
 
-  const kinds = new Map<string, { count: number; cash: number; icon: ReturnType<typeof donationIcon>['icon'] }>();
+  const kinds = new Map<string, { count: number; cash: number }>();
   items.forEach((item) => {
-    const { label: key, icon } = donationIcon(item);
-    const row = kinds.get(key) ?? { count: 0, cash: 0, icon };
+    const key = donationIcon(item).label;
+    const row = kinds.get(key) ?? { count: 0, cash: 0 };
     row.count += 1;
     row.cash += item.amount ?? 0;
     kinds.set(key, row);
@@ -538,8 +533,8 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
               <defs>
                 {rows.map(([name], at) => (
                   <linearGradient key={name} id={`dd-ring-g${at}`} x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0" stopColor={toneOf(at)[1]} />
-                    <stop offset="1" stopColor={toneOf(at)[0]} />
+                    <stop offset="0" stopColor={kindTone(name)[1]} />
+                    <stop offset="1" stopColor={kindTone(name)[0]} />
                   </linearGradient>
                 ))}
               </defs>
@@ -566,7 +561,7 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
             <span className="dd-ring-disc" aria-live="polite">
               {chosen ? (
                 <>
-                  <b style={{ color: toneOf(chosenAt)[0] }}><bdi>{formatPercent((chosen[1].count / total) * 100)}</bdi></b>
+                  <b style={{ color: kindTone(chosen[0])[0] }}><bdi>{formatPercent((chosen[1].count / total) * 100)}</bdi></b>
                   <small>{chosen[0]}</small>
                 </>
               ) : (
@@ -584,23 +579,14 @@ function KindRing({ items, label, currency }: { items: Donation[]; label: string
               <b><bdi>{formatNumber(Math.round((chosen ? chosen[1].cash : cashTotal) * grow))}</bdi> <small>{currency}</small></b>
             </p>
           )}
-          <ul className="dd-ring-legend">
-            {rows.map(([name, row], at) => {
-              const share = (row.count / total) * 100;
-              const Icon = row.icon;
+          <ul className="dd-ring-keys" aria-label="الأنواع ونسبها">
+            {rows.map(([name, row]) => {
+              const [deep, light] = kindTone(name);
               return (
                 <li key={name}>
-                  <button type="button" aria-pressed={active === name} onClick={() => toggle(name)} style={{ ['--tone' as string]: toneOf(at)[0], ['--tone-2' as string]: toneOf(at)[1] }}>
-                    <span className="dd-ring-line">
-                      <span className="dd-ring-tile" aria-hidden><Icon size={19} /></span>
-                      <span className="dd-ring-name">{name}</span>
-                      <bdi className="dd-ring-share">{formatPercent(share)}</bdi>
-                    </span>
-                    <span className="dd-ring-bar" aria-hidden><span style={{ width: `${Math.max(share, 3) * grow}%` }} /></span>
-                    <span className="dd-ring-meta">
-                      <span><bdi>{formatNumber(row.count)}</bdi> {row.count === 1 ? 'تبرع' : 'تبرعات'}</span>
-                      {row.cash > 0 && <span><bdi>{formatNumber(row.cash)}</bdi> {currency}</span>}
-                    </span>
+                  <button type="button" aria-pressed={active === name} onClick={() => toggle(name)} style={{ ['--tone' as string]: deep, ['--tone-2' as string]: light }}>
+                    <span className="dd-key-name"><i aria-hidden />{name}</span>
+                    <bdi className="dd-key-share">{formatPercent((row.count / total) * 100)}</bdi>
                   </button>
                 </li>
               );
