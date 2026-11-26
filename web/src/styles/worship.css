@@ -38,7 +38,55 @@
 :root[data-theme="dark"] .wsp-tabs button.on { border-color: #34c27e; background: color-mix(in srgb, #34c27e 18%, transparent); color: #6ee7b7; }
 
 .wsp-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-@media (max-width: 760px) { .wsp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } }
+.wsp-phone-cards { display: none; }
+
+@media (max-width: 767.98px) {
+  .wsp-grid { display: none; }
+  .wsp-phone-cards {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding-bottom: 6px;
+  }
+  .wsp-pcard {
+    position: relative; display: block; width: 100%; padding: 0; overflow: hidden;
+    aspect-ratio: 2.38 / 1;
+    border: 1.5px solid rgb(232 199 122 / 72%);
+    border-radius: 22px; background: #0b2c2a; cursor: pointer;
+    box-shadow: 0 14px 28px -14px rgb(7 26 24 / 62%), inset 0 1px 0 rgb(255 255 255 / 22%);
+    animation: wsp-pcard-in .58s cubic-bezier(.22, 1, .36, 1) both;
+    animation-delay: calc(var(--i, 0) * 80ms);
+    transition: transform .18s cubic-bezier(.22, 1, .36, 1), box-shadow .18s ease, border-color .18s ease;
+  }
+  .wsp-pcard img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transform: scale(1.045);
+    transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+  }
+  /* Subtle golden light sweep on entrance */
+  .wsp-pcard::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, transparent 32%, rgb(255 236 179 / 28%) 50%, transparent 68%);
+    transform: translateX(120%);
+    animation: wsp-pcard-shine 1.15s cubic-bezier(.22, 1, .36, 1) both;
+    animation-delay: calc(var(--i, 0) * 110ms + 240ms);
+  }
+  .wsp-pcard:active {
+    transform: scale(.972);
+    border-color: #f3d58d;
+    box-shadow: 0 6px 16px -8px rgb(7 26 24 / 70%), 0 0 0 2px rgb(243 213 141 / 38%);
+  }
+  .wsp-pcard:active img { transform: scale(1.07); }
+  .wsp-pcard:focus-visible { outline: 2px solid #e8c77a; outline-offset: 2px; }
+  @keyframes wsp-pcard-in {
+    from { opacity: 0; transform: translateY(22px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes wsp-pcard-shine {
+    from { transform: translateX(120%); }
+    to   { transform: translateX(-120%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wsp-pcard, .wsp-pcard::after { animation: none; }
+  }
+}
 
 .wsp-tile {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-width: 0;

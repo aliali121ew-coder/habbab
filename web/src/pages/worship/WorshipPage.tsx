@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { ArrowRight, BookOpen, Compass, Hand, Sparkles, type LucideIcon } from 'lucide-react';
 import { AmalSection, IstikharaSection, QiblaSection, QuranSection, ReaderSection } from './WorshipSections';
+import quranCardUrl from '../../assets/worship/quran.jpg';
+import duasCardUrl from '../../assets/worship/duas.jpg';
+import ziyaratCardUrl from '../../assets/worship/ziyarat.jpg';
+import amalCardUrl from '../../assets/worship/amal.jpg';
+import qiblaCardUrl from '../../assets/worship/qibla.jpg';
+import istikharaCardUrl from '../../assets/worship/istikhara.jpg';
 
 /** A small mosque, since the icon set has none. Drawn on the same 24px grid as the others. */
 function Mosque({ size = 24 }: { size?: number }) {
@@ -14,16 +20,16 @@ function Mosque({ size = 24 }: { size?: number }) {
 }
 
 type SectionSlug = 'quran' | 'duas' | 'ziyarat' | 'amal' | 'qibla' | 'istikhara';
-type Tile = { slug: SectionSlug; title: string; hint: string; tone: string; icon: LucideIcon | typeof Mosque };
+type Tile = { slug: SectionSlug; title: string; hint: string; tone: string; icon: LucideIcon | typeof Mosque; cardImg: string };
 
 // The order follows the reference: right column first on an Arabic screen.
 const TILES: Tile[] = [
-  { slug: 'quran', title: 'القرآن الكريم', hint: 'تلاوة وحفظ', tone: 'green', icon: BookOpen },
-  { slug: 'duas', title: 'الأدعية', hint: 'أدعية مأثورة', tone: 'violet', icon: Hand },
-  { slug: 'ziyarat', title: 'الزيارات', hint: 'زيارات مأثورة', tone: 'sky', icon: Mosque },
-  { slug: 'amal', title: 'الأعمال', hint: 'أعمال الأيام', tone: 'amber', icon: Sparkles },
-  { slug: 'qibla', title: 'اتجاه القبلة', hint: 'بوصلة القبلة', tone: 'red', icon: Compass },
-  { slug: 'istikhara', title: 'الاستخارة', hint: 'بالقرآن والسبحة', tone: 'indigo', icon: Sparkles },
+  { slug: 'quran', title: 'القرآن الكريم', hint: 'تلاوة وحفظ', tone: 'green', icon: BookOpen, cardImg: quranCardUrl },
+  { slug: 'duas', title: 'الأدعية', hint: 'أدعية مأثورة', tone: 'violet', icon: Hand, cardImg: duasCardUrl },
+  { slug: 'ziyarat', title: 'الزيارات', hint: 'زيارات مأثورة', tone: 'sky', icon: Mosque, cardImg: ziyaratCardUrl },
+  { slug: 'amal', title: 'الأعمال', hint: 'أعمال الأيام', tone: 'amber', icon: Sparkles, cardImg: amalCardUrl },
+  { slug: 'qibla', title: 'اتجاه القبلة', hint: 'بوصلة القبلة', tone: 'red', icon: Compass, cardImg: qiblaCardUrl },
+  { slug: 'istikhara', title: 'الاستخارة', hint: 'بالقرآن والسبحة', tone: 'indigo', icon: Sparkles, cardImg: istikharaCardUrl },
 ];
 
 /** العبادات: full-width hub with six working sections (Quran, Duas, Ziyarat, Amal, Qibla, Istikhara). */
@@ -49,15 +55,33 @@ export function WorshipPage() {
       </header>
 
       {!section ? (
-        <div className="wsp-grid">
-          {TILES.map(({ slug, title, hint, tone, icon: Icon }) => (
-            <button key={slug} type="button" className={`wsp-tile tone-${tone}`} onClick={() => setSection(slug)}>
-              <span className="wsp-tile-icon"><Icon size={34} /></span>
-              <strong>{title}</strong>
-              <small>{hint}</small>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="wsp-grid">
+            {TILES.map(({ slug, title, hint, tone, icon: Icon }) => (
+              <button key={slug} type="button" className={`wsp-tile tone-${tone}`} onClick={() => setSection(slug)}>
+                <span className="wsp-tile-icon"><Icon size={34} /></span>
+                <strong>{title}</strong>
+                <small>{hint}</small>
+              </button>
+            ))}
+          </div>
+
+          {/* Phone-only: 6 stacked luxury illustrated cards matching the user's exact artwork */}
+          <div className="wsp-phone-cards" aria-label="أقسام العبادات">
+            {TILES.map(({ slug, title, hint, cardImg }, idx) => (
+              <button
+                key={slug}
+                type="button"
+                className="wsp-pcard"
+                style={{ ['--i' as string]: idx }}
+                aria-label={`${title} — ${hint}`}
+                onClick={() => setSection(slug)}
+              >
+                <img src={cardImg} alt={`${title} — ${hint}`} loading={idx < 3 ? 'eager' : 'lazy'} decoding="async" />
+              </button>
+            ))}
+          </div>
+        </>
       ) : (
         <>
           <nav className="wsp-tabs" aria-label="أقسام العبادات">
