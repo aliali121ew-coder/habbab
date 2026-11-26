@@ -170,15 +170,6 @@
 :root[data-theme="dark"] .sub-ring-disc b { color: var(--ink); }
 .sub-ring-disc small { max-width: 86%; overflow: hidden; color: #5b5f8a; font-size: .72rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 :root[data-theme="dark"] .sub-ring-disc small { color: var(--ink-2); }
-.sub-ring-summary {
-  display: flex; align-items: center; gap: 8px; width: 100%; margin: 0; padding: 9px 12px; border-radius: 12px;
-  background: color-mix(in srgb, #146c43 10%, var(--surface)); color: #146c43; font-size: .76rem; font-weight: 700;
-}
-:root[data-theme="dark"] .sub-ring-summary { background: #163327; color: #34c27e; }
-.sub-ring-summary svg { flex: none; }
-.sub-ring-summary span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sub-ring-summary b { color: var(--ink); font-size: .92rem; font-weight: 900; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.sub-ring-summary b small { color: var(--ink-3); font-size: .68rem; font-weight: 600; }
 .panel.dpn .sub-ring-keys {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px;
   width: 100%; margin: 0; padding: 0; list-style: none;

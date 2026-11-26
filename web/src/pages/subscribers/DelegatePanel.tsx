@@ -77,7 +77,6 @@ function Breakdown({ slices, title, tag }: { slices: Slice[]; title: string; tag
   const toggle = (key: Slice['key']) => setActive((prev) => (prev === key ? null : key));
   const percent = (value: number) => (total ? formatPercent((value / total) * 100) : '0%');
 
-  const paidSlice = slices.find((s) => s.key === 'paid');
   const full = Math.PI * 2 * grow;
   let start = 0;
 
@@ -140,15 +139,6 @@ function Breakdown({ slices, title, tag }: { slices: Slice[]; title: string; tag
             )}
           </span>
         </div>
-
-        <p className="sub-ring-summary">
-          <UsersRound size={15} aria-hidden />
-          <span>{chosen ? chosen.label : 'المسددون هذا الشهر'}</span>
-          <b>
-            <bdi>{formatNumber(chosen ? chosen.value : (paidSlice?.value ?? 0))}</bdi>
-            {' '}<small>مشترك</small>
-          </b>
-        </p>
 
         <ul className="sub-ring-keys" aria-label="حالات المشتركين ونسبها">
           {slices.map((slice) => {
