@@ -13,6 +13,7 @@ import { useQuran, type FlipMode, type QuranTheme } from '../store/quranStore';
 import { playPageFlipSound, warmPageAudio } from '../utils/pageSound';
 import { QChip, QIconButton } from '../components/ui/Primitives';
 import { AyahContextMenu } from '../components/AyahContextMenu';
+import { PageCurlOverlay, computePageCurl } from '../components/PageCurlOverlay';
 import { idbSet, type StoredBookmark } from '../db/quranDb';
 
 const SINGLE_MAX_ANGLE = 112;
@@ -566,17 +567,21 @@ export function MushafReader({
 
   const flipLabel = settings.flipMode === 'curl' ? 'تقليب ورقي' : settings.flipMode === 'slide' ? 'انزلاق' : 'تمرير';
 
-  // Single-page lighting & transforms
+  // Single-page curved top-corner peel geometry (SVG Bézier curl + blurred cast shadow + organic wave!)
+  const singleCurlProgress = isFlipping
+    ? (flip.kind === 'next' ? r : 1 - r)
+    : 0;
+  const singleCurlDir: 1 | -1 = flip.kind === 'next' ? 1 : -1;
+  const singleCurlActive = !isSpread && isFlipping && settings.flipMode === 'curl' && singleCurlProgress > 0.005;
+  const singleCurlGeom = singleCurlActive ? computePageCurl(singleCurlProgress, singleCurlDir) : null;
+  const singleClipId = 'qr-mushaf-curl-clip';
+
   const singleTopData = isFlipping && flip.kind === 'prev' ? pagesMap[page - 1] : pagesMap[page];
   const singleUnderData = isFlipping ? (flip.kind === 'next' ? pagesMap[page + 1] : pagesMap[page]) : undefined;
-  const singleTopTransform = isFlipping
-    ? (settings.flipMode === 'curl' ? `rotateY(${a.toFixed(2)}deg)` : `translateX(${(r * 100).toFixed(2)}%)`)
-    : 'none';
-  const singleTopBrightness = isFlipping && settings.flipMode === 'curl' ? (1 - 0.48 * r).toFixed(3) : '1';
-  const singleTopOpacity = isFlipping && settings.flipMode === 'curl' && a > 96
-    ? Math.max(0, 1 - (a - 96) / (SINGLE_MAX_ANGLE - 96))
-    : 1;
-  const singleUnderBrightness = isFlipping && settings.flipMode === 'curl' ? (0.55 + 0.45 * (1 - r)).toFixed(3) : '1';
+  const singleSlideTransform = isFlipping && settings.flipMode === 'slide'
+    ? `translateX(${(r * 100).toFixed(2)}%)`
+    : undefined;
+  const singleUnderBrightness = singleCurlActive ? (0.82 + 0.18 * singleCurlProgress).toFixed(3) : '1';
 
   // Double-page spread slots (RTL Arabic book: right = odd page P, left = even page P+1)
   const spreadRightNum = isFlipping && flip.kind === 'prev' ? Math.max(1, page - 2) : page;
@@ -732,7 +737,7 @@ export function MushafReader({
             )}
           </div>
         ) : (
-          /* ══ MOBILE: Single-Page 3D Leaf Flip ══ */
+          /* ══ MOBILE: Real Curved Top-Corner Page Peel (Bézier Arch + Wave + Blurred Cast Shadow) ══ */
           <div ref={bookRef} className="qr-book">
             {isFlipping && (
               <div
@@ -753,16 +758,15 @@ export function MushafReader({
                   num={num}
                   onAyahSelect={() => undefined}
                 />
-                <div className="qr-cast" style={{ opacity: settings.flipMode === 'curl' ? (sinA * 0.5).toFixed(3) : '0' }} />
               </div>
             )}
 
             <div
               className="qr-leaf-top"
               style={{
-                transform: singleTopTransform,
-                filter: `brightness(${singleTopBrightness})`,
-                opacity: singleTopOpacity,
+                clipPath: singleCurlGeom ? `url(#${singleClipId})` : undefined,
+                WebkitClipPath: singleCurlGeom ? `url(#${singleClipId})` : undefined,
+                transform: singleSlideTransform,
               }}
             >
               <MushafPageSheet
@@ -778,8 +782,14 @@ export function MushafReader({
                 num={num}
                 onAyahSelect={handleAyahSelect}
               />
-              <div className="qr-shade" style={{ opacity: isFlipping && settings.flipMode === 'curl' ? (sinA * 0.65).toFixed(3) : '0' }} />
+              {!isFlipping && settings.flipMode === 'curl' && page < TOTAL_PAGES && (
+                <span className="qr-top-corner-hint" aria-hidden="true" />
+              )}
             </div>
+
+            {singleCurlGeom && (
+              <PageCurlOverlay geom={singleCurlGeom} theme={resolvedTheme} clipId={singleClipId} />
+            )}
           </div>
         )}
       </main>
