@@ -267,14 +267,13 @@ function drawPageAutoFit(
   const footH = 30;
   const surahMeta = surahForPage(data.page);
   const juzMeta = juzForPage(data.page);
-  const hizbNum = Math.ceil(data.hizbQuarter / 4);
 
-  ctx.font = '800 12px "IBM Plex Sans Arabic", sans-serif';
+  ctx.font = '800 12.5px "IBM Plex Sans Arabic", sans-serif';
   ctx.fillStyle = pal.gold;
   ctx.textAlign = 'right';
   ctx.fillText(`سورة ${surahMeta.name}`, w - 18, 21);
   ctx.textAlign = 'left';
-  ctx.fillText(`${juzMeta.name} · الحزب ${opts.num(hizbNum)}`, 18, 21);
+  ctx.fillText(juzMeta.name, 18, 21);
 
   ctx.save();
   ctx.strokeStyle = pal.frame;

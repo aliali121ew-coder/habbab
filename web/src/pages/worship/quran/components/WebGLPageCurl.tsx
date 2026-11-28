@@ -130,22 +130,26 @@ const CURL_FRAGMENT_SHADER = /* glsl */ `
       baseColor = clamp(baseColor, 0.0, 1.0);
     }
 
-    // Lambert diffuse + ambient lighting
+    // On flat uncurled front surface (vFoldDist <= 0): keep exact 1:1 sRGB brightness (1.0)
+    // so there is ZERO darkening or font-weight shift between WebGL and DOM!
+    // Apply 3D Lambert + Specular shading smoothly across the curved roll & folded back face.
     vec3 L = normalize(uLightDir);
     vec3 V = normalize(vec3(0.0, 0.0, 1.8) - vWorldPos);
     vec3 H = normalize(L + V);
 
     float ndotl = max(dot(N, L), 0.0);
-    float diffuse = 0.66 + 0.36 * ndotl;
+    float curlWeight = (!isFront) ? 1.0 : smoothstep(0.0, max(0.02, uRadius * 0.35), vFoldDist);
+    float lambert = 0.78 + 0.26 * ndotl;
+    float diffuse = mix(1.0, lambert, curlWeight);
 
-    // Soft specular sheen strictly accentuated on the curved bend region
-    float spec = pow(max(dot(N, H), 0.0), 26.0) * (0.14 + 0.22 * vCurlArc);
+    // Soft specular sheen strictly on the curved bend region
+    float spec = pow(max(dot(N, H), 0.0), 28.0) * (0.24 * vCurlArc);
 
-    // Crease shadow gradient increasing right near the fold line (d ≈ 0)
-    float creaseProx = exp(-abs(vFoldDist) / max(0.035, uRadius * 0.65));
-    float creaseShade = 1.0 - 0.18 * creaseProx * step(-0.04, vFoldDist);
+    // Subtle crease shadow right along the fold line (vFoldDist ≈ 0)
+    float creaseProx = exp(-abs(vFoldDist) / max(0.025, uRadius * 0.45));
+    float creaseShade = 1.0 - 0.11 * creaseProx * smoothstep(0.0, 0.02, uRadius);
 
-    vec3 finalCol = baseColor * diffuse * creaseShade + vec3(spec);
+    vec3 finalCol = clamp(baseColor * diffuse * creaseShade + vec3(spec), 0.0, 1.0);
     gl_FragColor = vec4(finalCol, frontSample.a * uOpacity);
   }
 `;
@@ -247,11 +251,13 @@ export default function WebGLPageCurl({
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(28, 1, 0.05, 20);
 
+    // Keep textures in direct sRGB space (NoColorSpace) because custom ShaderMaterial writes
+    // directly to the framebuffer — prevents sRGB-to-linear gamma darkening & font thickening!
     const configureTex = (tex: THREE.CanvasTexture) => {
       tex.minFilter = THREE.LinearFilter;
       tex.magFilter = THREE.LinearFilter;
       tex.generateMipmaps = false;
-      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.colorSpace = THREE.NoColorSpace;
       return tex;
     };
 
@@ -360,7 +366,7 @@ export default function WebGLPageCurl({
     const st = glRef.current;
     if (!st || !frontCanvas) return;
     st.frontTex.image = frontCanvas;
-    st.frontTex.colorSpace = THREE.SRGBColorSpace;
+    st.frontTex.colorSpace = THREE.NoColorSpace;
     st.frontTex.needsUpdate = true;
   }, [frontCanvas]);
 
@@ -368,7 +374,7 @@ export default function WebGLPageCurl({
     const st = glRef.current;
     if (!st || !backCanvas) return;
     st.backTex.image = backCanvas;
-    st.backTex.colorSpace = THREE.SRGBColorSpace;
+    st.backTex.colorSpace = THREE.NoColorSpace;
     st.backTex.needsUpdate = true;
   }, [backCanvas]);
 
@@ -376,7 +382,7 @@ export default function WebGLPageCurl({
     const st = glRef.current;
     if (!st || !underCanvas) return;
     st.underTex.image = underCanvas;
-    st.underTex.colorSpace = THREE.SRGBColorSpace;
+    st.underTex.colorSpace = THREE.NoColorSpace;
     st.underTex.needsUpdate = true;
   }, [underCanvas]);
 

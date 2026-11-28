@@ -152,7 +152,6 @@ function MushafPageSheet({
 
   const surahMeta = surahForPage(data.page);
   const juzMeta = juzForPage(data.page);
-  const hizbNum = Math.ceil(data.hizbQuarter / 4);
 
   const blocks: { surah: number; surahName: string; startsSurah: boolean; ayahs: MushafAyah[] }[] = [];
   for (const a of data.ayahs) {
@@ -168,7 +167,7 @@ function MushafPageSheet({
     <div className="qr-page-card">
       <div className="qr-page-head">
         <span>سورة {surahMeta.name}</span>
-        <span>{juzMeta.name} · الحزب {num(hizbNum)}</span>
+        <span>{juzMeta.name}</span>
       </div>
 
       <div ref={bodyRef} className={`qr-page-body${scrollMode ? ' is-scroll' : ''}`}>
