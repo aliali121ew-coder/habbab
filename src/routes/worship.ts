@@ -102,3 +102,67 @@ worship.get('/search', async (c) => {
   c.header('cache-control', 'public, max-age=3600');
   return c.body(payload, 200, { 'content-type': 'application/json; charset=utf-8' });
 });
+
+interface AlQuranPageAyah {
+  number: number;
+  numberInSurah: number;
+  text: string;
+  juz: number;
+  hizbQuarter: number;
+  sajda: boolean | { id: number };
+  surah: { number: number; name: string };
+}
+
+interface AlQuranPageResponse {
+  status: string;
+  data?: {
+    number: number;
+    ayahs: AlQuranPageAyah[];
+  };
+}
+
+const BASMALA_PREFIX = /^بِسْمِ\s+ٱللَّهِ\s+ٱلرَّحْمَٰنِ\s+ٱلرَّحِيمِ\s*/;
+
+// Real 604-page Madinah Mushaf (Hafs Uthmani) with 30-day KV edge caching.
+worship.get('/page/:p', async (c) => {
+  const p = Number(c.req.param('p'));
+  if (!Number.isInteger(p) || p < 1 || p > 604) fail(400, 'رقم الصفحة يجب أن يكون بين 1 و 604');
+
+  const key = `quran:page:v1:${p}`;
+  const cached = await c.env.CACHE?.get(key);
+  if (cached) {
+    c.header('cache-control', 'public, max-age=86400');
+    return c.body(cached, 200, { 'content-type': 'application/json; charset=utf-8' });
+  }
+
+  const res = await fetch(`https://api.alquran.cloud/v1/page/${p}/quran-uthmani`);
+  if (!res.ok) return c.json({ error: 'تعذّر تحميل صفحة المصحف حالياً، حاول مرة أخرى' }, 502);
+  const json = (await res.json()) as AlQuranPageResponse;
+  if (json.status !== 'OK' || !json.data) return c.json({ error: 'تعذّر قراءة بيانات الصفحة' }, 502);
+
+  const ayahs = json.data.ayahs.map((a) => {
+    let text = a.text;
+    if (a.numberInSurah === 1 && a.surah.number !== 1 && a.surah.number !== 9) {
+      text = text.replace(BASMALA_PREFIX, '').trim();
+    }
+    return {
+      surah: a.surah.number,
+      surahName: a.surah.name,
+      n: a.numberInSurah,
+      global: a.number,
+      text,
+      sajda: Boolean(a.sajda),
+    };
+  });
+
+  const first = json.data.ayahs[0];
+  const payload = JSON.stringify({
+    page: p,
+    juz: first?.juz ?? 1,
+    hizbQuarter: first?.hizbQuarter ?? 1,
+    ayahs,
+  });
+  await c.env.CACHE?.put(key, payload, { expirationTtl: 60 * 60 * 24 * 30 }).catch(() => undefined);
+  c.header('cache-control', 'public, max-age=86400');
+  return c.body(payload, 200, { 'content-type': 'application/json; charset=utf-8' });
+});

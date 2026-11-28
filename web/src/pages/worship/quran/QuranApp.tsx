@@ -5,18 +5,8 @@ import './styles/quran-tokens.css';
 import { QuranProvider, useQuran, type QuranTab, type QuranTheme } from './store/quranStore';
 import { QuranIndex, type OpenTarget } from './screens/QuranIndex';
 import { QuranSearch } from './screens/QuranSearch';
+import { MushafReader } from './screens/MushafReader';
 import { QButton, QIconButton } from './components/ui/Primitives';
-import { MUSHAF_SURAHS } from './data/mushafMeta';
-import { api } from '../../../api';
-import { OFFLINE_SURAHS } from '../worshipData';
-
-interface SurahPayload {
-  number: number;
-  name: string;
-  ayahs: { n: number; text: string }[];
-}
-
-const surahCacheKey = (n: number) => `ahbab:quran-surah:v1:${n}`;
 
 function QuranOnboarding() {
   const { settings, updateSettings, num } = useQuran();
@@ -131,111 +121,6 @@ function QuranOnboarding() {
   );
 }
 
-/** Temporary Phase-2 bridge reader so opening any surah keeps working seamlessly until Phase 3 builds the 604-page 3D Mushaf Reader. */
-function QuickSurahReader({
-  target,
-  onBack,
-  onOpenSurah,
-}: {
-  target: OpenTarget;
-  onBack: () => void;
-  onOpenSurah: (next: OpenTarget) => void;
-}) {
-  const { settings, updateSettings, setLastRead, num } = useQuran();
-  const [ayahs, setAyahs] = useState<{ n: number; text: string }[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [loadedId, setLoadedId] = useState<number>(0);
-
-  const meta = MUSHAF_SURAHS[target.surah - 1] ?? MUSHAF_SURAHS[0];
-
-  if (loadedId !== meta.n && !loading) {
-    setLoadedId(meta.n);
-    setError('');
-    setLastRead({ surah: meta.n, page: target.page || meta.page, ayah: target.ayah ?? 1 });
-    let hit: { n: number; text: string }[] | null = null;
-    try {
-      const cached = localStorage.getItem(surahCacheKey(meta.n));
-      if (cached) hit = JSON.parse(cached) as { n: number; text: string }[];
-    } catch { /* ignore */ }
-    if (!hit && OFFLINE_SURAHS[meta.n]) hit = OFFLINE_SURAHS[meta.n];
-    if (hit) {
-      setAyahs(hit);
-    } else {
-      setAyahs(null);
-      setLoading(true);
-      void api<SurahPayload>(`/worship/surah/${meta.n}`)
-        .then((data) => {
-          setAyahs(data.ayahs);
-          try { localStorage.setItem(surahCacheKey(meta.n), JSON.stringify(data.ayahs)); } catch { /* quota */ }
-        })
-        .catch((e) => setError((e as Error).message || 'تعذّر تحميل السورة، تحقق من الإنترنت'))
-        .finally(() => setLoading(false));
-    }
-  }
-
-  const prev = meta.n > 1 ? MUSHAF_SURAHS[meta.n - 2] : null;
-  const next = meta.n < 114 ? MUSHAF_SURAHS[meta.n] : null;
-  const showBasmala = meta.n !== 1 && meta.n !== 9;
-
-  return (
-    <div style={{ display: 'grid', gap: 14 }}>
-      <header className="q-header">
-        <QIconButton onClick={onBack} aria-label="العودة إلى الفهرس">
-          <ArrowRight size={22} />
-        </QIconButton>
-        <h2 className="q-header-title">سورة {meta.name}</h2>
-        <div className="q-header-actions">
-          <QButton onClick={() => updateSettings({ fontSize: Math.max(18, settings.fontSize - 2) })} aria-label="تصغير الخط">أ−</QButton>
-          <QButton onClick={() => updateSettings({ fontSize: Math.min(36, settings.fontSize + 2) })} aria-label="تكبير الخط">أ+</QButton>
-        </div>
-      </header>
-
-      {loading && <div className="q-card" style={{ padding: 32, textAlign: 'center', color: 'var(--q-ink-3)' }}>جارٍ تحميل سورة {meta.name}…</div>}
-      {error && <div className="q-card" style={{ padding: 20, color: 'var(--q-danger)', textAlign: 'center' }}>{error}</div>}
-      {ayahs && (
-        <article
-          className="q-card"
-          style={{
-            padding: '24px clamp(16px, 3vw, 36px)',
-            background: 'var(--q-page-paper)',
-            borderColor: 'var(--q-page-frame)',
-            fontFamily: 'var(--q-font-mushaf)',
-            fontSize: settings.fontSize,
-            lineHeight: 2.15,
-            textAlign: 'justify',
-          }}
-        >
-          {showBasmala && (
-            <p style={{ textAlign: 'center', fontSize: '1.35em', color: 'var(--q-primary)', margin: '0 0 18px', fontWeight: 700 }}>
-              بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-            </p>
-          )}
-          <div>
-            {ayahs.map((a) => (
-              <span key={a.n}>
-                {a.text}{' '}
-                <span style={{ color: 'var(--q-gold)', fontSize: '0.82em', paddingInline: 4 }}>
-                  ﴿{num(a.n)}﴾
-                </span>{' '}
-              </span>
-            ))}
-          </div>
-        </article>
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-        {prev ? (
-          <QButton onClick={() => onOpenSurah({ surah: prev.n, page: prev.page, ayah: 1 })}>السابقة: {prev.name}</QButton>
-        ) : <span />}
-        {next && (
-          <QButton variant="primary" onClick={() => onOpenSurah({ surah: next.n, page: next.page, ayah: 1 })}>التالية: {next.name}</QButton>
-        )}
-      </div>
-    </div>
-  );
-}
-
 function QuranWorkspace({ onBackToWorship }: { onBackToWorship: () => void }) {
   const { resolvedTheme, updateSettings } = useQuran();
   const [activeTab, setActiveTab] = useState<QuranTab>('index');
@@ -247,13 +132,15 @@ function QuranWorkspace({ onBackToWorship }: { onBackToWorship: () => void }) {
     <div className="q-root q-shell" dir="rtl" data-q-theme={resolvedTheme}>
       <QuranOnboarding />
 
-      {readingTarget ? (
-        <QuickSurahReader
-          target={readingTarget}
-          onBack={() => setReadingTarget(null)}
-          onOpenSurah={(next) => setReadingTarget(next)}
+      {readingTarget && (
+        <MushafReader
+          initialPage={readingTarget.page}
+          initialAyah={readingTarget.ayah}
+          onClose={() => setReadingTarget(null)}
         />
-      ) : (
+      )}
+
+      {!readingTarget && (
         <>
           {/* Clean Header matching reference: Right back arrow · Centered «القرآن الكريم» · Left 3-theme quick dots */}
           <header className="q-header">

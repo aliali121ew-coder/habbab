@@ -41,7 +41,7 @@ const DEFAULT_SETTINGS: QuranSettings = {
   tajweed: false,
   doublePage: true,
   wakeLock: true,
-  flipSound: false,
+  flipSound: true,
   reciterId: 'ar.alafasy',
   playbackRate: 1,
   autoPlayNext: true,
