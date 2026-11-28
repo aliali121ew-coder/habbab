@@ -6,62 +6,63 @@
 
 .topbar-title { display: none; }
 .bottom-nav { display: none; }
-.install-bar { display: none; }
+.install-overlay { display: none; }
 
 @media (max-width: 767px) {
-  /* ── Persistent top install banner on phone browsers (hidden once installed) ── */
-  .install-bar {
-    display: flex; align-items: center; gap: 10px;
-    padding: calc(8px + var(--safe-top, 0px)) 12px 9px;
+  /* ── Top drop-down install card with blurred backdrop (phone browsers only, hidden once installed) ── */
+  .install-overlay {
+    position: fixed; inset: 0; z-index: 150;
+    display: grid; align-items: start; justify-items: center;
+    padding: calc(20px + var(--safe-top, 0px)) 16px 16px;
+    background: rgb(10 18 34 / 58%);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    animation: install-scrim-in .24s ease-out both;
+  }
+  .install-sheet {
+    width: min(100%, 360px);
+    display: grid; justify-items: center; text-align: center; gap: 10px;
+    padding: 22px 20px 20px; border-radius: 26px;
+    background: var(--surface); color: var(--ink);
+    border: 1px solid color-mix(in srgb, var(--bar-active) 26%, var(--line));
+    box-shadow: 0 24px 60px -16px rgb(0 0 0 / 55%);
+    animation: install-drop-in .38s cubic-bezier(.22, 1, .36, 1) both;
+  }
+  .install-sheet-logo {
+    width: 74px; height: 74px; display: grid; place-items: center;
+    border-radius: 50%; overflow: hidden; background: #fff;
+    border: 3px solid color-mix(in srgb, var(--bar-active) 40%, #e8c77a);
+    box-shadow: 0 12px 26px -10px color-mix(in srgb, var(--bar-active) 65%, transparent);
+  }
+  .install-sheet-logo img { width: 108%; height: 108%; object-fit: cover; display: block; }
+  .install-sheet-title { font-size: 1.04rem; font-weight: 800; line-height: 1.35; color: var(--ink); margin-top: 2px; }
+  .install-sheet-sub { font-size: .78rem; font-weight: 700; color: var(--bar-active); margin-top: -6px; }
+  .install-sheet-desc { margin: 0; font-size: .84rem; line-height: 1.65; color: var(--ink-2); max-width: 300px; }
+  .install-sheet-btn {
+    width: 100%; height: 46px; margin-top: 6px;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 0; border-radius: 15px;
     background: linear-gradient(110deg, var(--bar-active), color-mix(in srgb, var(--bar-active) 76%, #000));
-    color: #fff;
-    box-shadow: 0 6px 18px -12px rgb(15 23 42 / 55%);
-    position: relative; z-index: 35;
+    color: #fff; font: inherit; font-size: .94rem; font-weight: 800; cursor: pointer;
+    box-shadow: 0 12px 24px -10px color-mix(in srgb, var(--bar-active) 75%, transparent);
+    transition: transform .14s ease;
   }
-  .install-bar + .topbar { padding-top: 8px !important; }
-  .install-bar-logo {
-    width: 36px; height: 36px; flex: none; border-radius: 50%; overflow: hidden;
-    border: 2px solid rgb(255 255 255 / 45%); background: #fff;
+  .install-sheet-btn:active { transform: scale(.97); }
+  .install-guide-steps {
+    margin: 4px 0 2px; padding-inline-start: 20px; width: 100%; text-align: start;
+    display: grid; gap: 8px; font-size: .84rem; line-height: 1.65; color: var(--ink-2);
   }
-  .install-bar-logo img { width: 108%; height: 108%; object-fit: cover; display: block; }
-  .install-bar-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
-  .install-bar-text strong { font-size: .84rem; font-weight: 800; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .install-bar-text small { font-size: .72rem; opacity: .88; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .install-bar-btn {
-    flex: none; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 13px;
-    border: 0; border-radius: 999px; background: #fff; color: var(--bar-active);
-    font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; white-space: nowrap;
-    box-shadow: 0 4px 12px -6px rgb(0 0 0 / 45%);
-  }
-  .install-bar-btn:active { transform: scale(.96); }
-
-  .install-guide-scrim {
-    position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 16px;
-    background: rgb(15 23 42 / 55%);
-  }
-  .install-guide {
-    position: relative; width: min(100%, 380px); display: grid; gap: 14px; padding: 18px;
-    border-radius: 22px; background: var(--surface); color: var(--ink);
-    box-shadow: 0 22px 50px -18px rgb(0 0 0 / 50%);
-  }
-  .install-guide-x {
-    position: absolute; top: 12px; left: 12px; width: 32px; height: 32px; display: grid; place-items: center;
-    border: 0; border-radius: 10px; background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink-2); cursor: pointer;
-  }
-  .install-guide-head { display: flex; align-items: center; gap: 10px; padding-left: 34px; }
-  .install-guide-ic {
-    width: 42px; height: 42px; flex: none; display: grid; place-items: center; border-radius: 13px;
-    background: color-mix(in srgb, var(--bar-active) 12%, var(--surface)); color: var(--bar-active);
-  }
-  .install-guide-head > div { display: grid; gap: 2px; }
-  .install-guide-head strong { font-size: .96rem; font-weight: 800; }
-  .install-guide-head small { font-size: .78rem; color: var(--ink-3); }
-  .install-guide-steps { margin: 0; padding-inline-start: 20px; display: grid; gap: 10px; font-size: .86rem; line-height: 1.65; color: var(--ink-2); }
   .install-guide-steps b { color: var(--ink); }
   .install-inline-ic { display: inline-block; vertical-align: -3px; color: var(--bar-active); }
-  .install-guide-ok {
-    height: 44px; border: 0; border-radius: 14px; background: var(--bar-active); color: #fff;
-    font: inherit; font-size: .92rem; font-weight: 800; cursor: pointer;
+  @keyframes install-scrim-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes install-drop-in {
+    from { opacity: 0; transform: translateY(-44px) scale(.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .install-overlay, .install-sheet { animation: none; }
   }
 
   /* ── top bar (gesture-scrubbed fade 0–100% & slide with scroll, matching bottom bar) ── */
