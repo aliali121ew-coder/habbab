@@ -1,6 +1,6 @@
 /* ══════════════════════════════════════════════════════════════════════════════
-   Mushaf Reader (604 Pages) — 3D Page Curl, Dynamic Shadows, Printed Frame,
-   Immersive Bars, Double-Page Spread & Floating Ayah Context Menu
+   Mushaf Reader (604 Pages) — Realistic Interactive Page Curl (Apple Books Style)
+   Curled Paper Flap · Dynamic Cast Shadow · Finger Drag-Follow & Hold · Sound
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .qr-fullscreen {
@@ -14,7 +14,6 @@
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: pan-y;
 }
 
 /* ── Top & Bottom Immersive Bars ── */
@@ -22,7 +21,7 @@
   position: absolute;
   inset-block-start: 0;
   inset-inline: 0;
-  z-index: 30;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -62,7 +61,7 @@
   position: absolute;
   inset-block-end: 0;
   inset-inline: 0;
-  z-index: 30;
+  z-index: 40;
   display: grid;
   gap: 10px;
   padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
@@ -109,7 +108,7 @@
 }
 .qr-tools-row::-webkit-scrollbar { display: none; }
 
-/* ── 3D Page Stage & Perspective Book Spine ── */
+/* ── Book Stage ── */
 .qr-stage {
   position: relative;
   flex: 1;
@@ -117,98 +116,86 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: calc(12px + env(safe-area-inset-top, 0px)) 10px calc(14px + env(safe-area-inset-bottom, 0px));
-  perspective: 2200px;
-  perspective-origin: 50% 50%;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 8px calc(12px + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
+  touch-action: pan-y;
 }
 
 .qr-book {
   position: relative;
-  width: min(100%, 620px);
+  width: min(100%, 640px);
   height: 100%;
-  transform-style: preserve-3d;
-}
-.qr-book.is-spread {
-  width: min(100%, 1160px);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 18px 46px -18px rgb(0 0 0 / 32%);
 }
 
-/* Under-layer (revealed page beneath the curling sheet) */
-.qr-sheet-under {
+/* Layer 1: Revealed Underneath Page */
+.qr-layer-under {
   position: absolute;
   inset: 0;
   z-index: 1;
-  border-radius: 18px;
-  overflow: hidden;
 }
 
-/* Dynamic cast shadow cast onto the underlying page as the top sheet lifts & curls */
-.qr-under-shadow {
+/* Layer 2: Soft Cast Shadow falling onto the revealed page behind the curled flap */
+.qr-layer-cast-shadow {
   position: absolute;
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  border-radius: 18px;
-  background: linear-gradient(
-    90deg,
-    rgb(0 0 0 / 0%) 0%,
-    rgb(0 0 0 / 42%) 48%,
-    rgb(0 0 0 / 16%) 78%,
-    rgb(0 0 0 / 0%) 100%
-  );
-  will-change: opacity, transform;
-}
-
-/* Active turning sheet */
-.qr-sheet-active {
-  position: relative;
-  z-index: 3;
-  width: 100%;
-  height: 100%;
-  border-radius: 18px;
-  transform-style: preserve-3d;
-  backface-visibility: hidden;
-  will-change: transform;
-  box-shadow: 0 18px 42px -18px rgb(0 0 0 / 34%);
-}
-.qr-sheet-active.animating {
-  transition: transform 340ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 340ms ease;
-}
-
-/* Specular paper-bend gradient + curved corner highlight across the curling sheet */
-.qr-curl-sheen {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-  border-radius: 18px;
   will-change: opacity, background;
 }
 
-/* Curled corner fold visual (inspired by physical page peel) */
-.qr-curl-peel {
+/* Layer 3: Current Page (clipped live along the diagonal curl fold line) */
+.qr-layer-front {
   position: absolute;
-  inset-block-start: 0;
-  z-index: 7;
-  pointer-events: none;
-  width: 0;
-  height: 0;
-  border-radius: 0 0 22px 0;
-  background: linear-gradient(
-    135deg,
-    rgb(255 255 255 / 92%) 0%,
-    rgb(232 223 200 / 88%) 48%,
-    rgb(160 144 114 / 38%) 100%
-  );
-  box-shadow: -10px 12px 28px rgb(0 0 0 / 36%);
-  will-change: width, height, opacity;
+  inset: 0;
+  z-index: 3;
+  will-change: clip-path, transform;
 }
-.q-root[data-q-theme="dark"] .qr-curl-peel {
-  background: linear-gradient(135deg, #252E2A 0%, #151B18 55%, #070A09 100%);
-  box-shadow: -10px 12px 32px rgb(0 0 0 / 78%);
+
+/* Subtle inner crease shadow on the front page right next to the fold line */
+.qr-layer-front-crease {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  will-change: opacity, background;
+}
+
+/* Layer 4: Curled Back-Side Paper Flap (Realistic curved cylindrical paper + drop shadow) */
+.qr-curl-flap-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  will-change: filter;
+}
+.qr-curl-flap {
+  position: absolute;
+  inset: 0;
+  will-change: clip-path, background;
+}
+
+/* Subtle corner hint in bottom-left when idle so user knows they can peel & hold the page */
+.qr-corner-hint {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 34px;
+  height: 34px;
+  z-index: 8;
+  pointer-events: none;
+  background: linear-gradient(
+    225deg,
+    rgb(0 0 0 / 0%) 48%,
+    rgb(0 0 0 / 10%) 50%,
+    var(--q-page-paper) 53%,
+    color-mix(in srgb, var(--q-page-frame) 45%, var(--q-page-paper)) 100%
+  );
+  border-top-right-radius: 10px;
+  box-shadow: 3px -3px 10px -4px rgb(0 0 0 / 28%);
+  opacity: 0.72;
 }
 
 /* ── Printed Mushaf Page Surface & Ornamental Double Frame ── */
@@ -224,7 +211,7 @@
   box-shadow:
     inset 0 0 0 5px var(--q-page-paper),
     inset 0 0 0 6.5px color-mix(in srgb, var(--q-page-frame) 55%, transparent),
-    inset -18px 0 28px -22px rgb(0 0 0 / 18%);
+    inset -18px 0 28px -22px rgb(0 0 0 / 16%);
   overflow: hidden;
 }
 
@@ -304,17 +291,9 @@
   transition: background-color 180ms ease, filter 200ms ease;
   cursor: pointer;
 }
-.qr-ayah.hl {
-  background: var(--q-ayah-hl);
-}
-.qr-ayah.hidden-hifz {
-  filter: blur(7px);
-  opacity: 0.45;
-}
-.qr-ayah.hidden-hifz.revealed {
-  filter: none;
-  opacity: 1;
-}
+.qr-ayah.hl { background: var(--q-ayah-hl); }
+.qr-ayah.hidden-hifz { filter: blur(7px); opacity: 0.45; }
+.qr-ayah.hidden-hifz.revealed { filter: none; opacity: 1; }
 
 .qr-ayah-rosette {
   display: inline-block;
@@ -338,14 +317,14 @@
 .q-root[data-q-theme="dark"] .qr-tj-ghunna  { color: #4ADE80; }
 .q-root[data-q-theme="dark"] .qr-tj-madd    { color: #FB923C; }
 
-/* Side tap zones for instant 1-tap flipping */
+/* Side tap arrows (Desktop & Tablet) */
 .qr-edge-btn {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  z-index: 20;
-  width: 38px;
-  height: 68px;
+  z-index: 25;
+  width: 40px;
+  height: 70px;
   display: grid;
   place-items: center;
   border: 1px solid var(--q-line);
@@ -354,7 +333,7 @@
   color: var(--q-ink-2);
   backdrop-filter: blur(8px);
   cursor: pointer;
-  opacity: 0.72;
+  opacity: 0.78;
   transition: opacity 180ms ease, transform 150ms var(--q-ease);
 }
 .qr-edge-btn:hover { opacity: 1; }
@@ -429,7 +408,5 @@
 .qr-ctx-btn:active { transform: scale(0.95); }
 
 @media (prefers-reduced-motion: reduce) {
-  .qr-sheet-active.animating, .qr-topbar, .qr-bottombar {
-    transition: none !important;
-  }
+  .qr-topbar, .qr-bottombar { transition: none !important; }
 }
