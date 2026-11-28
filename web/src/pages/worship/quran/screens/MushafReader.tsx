@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight, Bookmark, BookOpen, ChevronLeft, ChevronRight, Eye, EyeOff,
   LoaderCircle, Sparkles, Volume2, VolumeX,
@@ -11,15 +11,24 @@ import {
 import { TOTAL_PAGES, juzForPage, surahForPage } from '../data/mushafMeta';
 import { useQuran, type FlipMode, type QuranTheme } from '../store/quranStore';
 import { playPageFlipSound, warmPageAudio } from '../utils/pageSound';
+import { prewarmPageCanvases, renderMushafPageCanvas } from '../utils/mushafCanvasRenderer';
 import { QChip, QIconButton } from '../components/ui/Primitives';
 import { AyahContextMenu } from '../components/AyahContextMenu';
-import { PageCurlOverlay, computePageCurl } from '../components/PageCurlOverlay';
 import { idbSet, type StoredBookmark } from '../db/quranDb';
+import type { WebGLCurlFrame } from '../components/WebGLPageCurl';
 
-const SINGLE_MAX_ANGLE = 112;
-const SPREAD_MAX_ANGLE = 180;
-const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+// Lazy-load Three.js WebGL Page Curl ONLY when MushafReader opens
+const LazyWebGLPageCurl = lazy(() => import('../components/WebGLPageCurl'));
+
+function checkWebGLAvailable(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const c = document.createElement('canvas');
+    return Boolean(c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl'));
+  } catch {
+    return false;
+  }
+}
 
 function renderTajweedText(text: string, enabled: boolean) {
   if (!enabled) return text;
@@ -43,7 +52,7 @@ function MushafPageSheet({
   revealedAyahs,
   highlightedAyah,
   num,
-  gutterSide = 'right',
+  scrollRef,
   onAyahSelect,
 }: {
   data: MushafPageData | undefined;
@@ -56,7 +65,7 @@ function MushafPageSheet({
   revealedAyahs: Set<string>;
   highlightedAyah: string | null;
   num: (v: number | string) => string;
-  gutterSide?: 'right' | 'left';
+  scrollRef?: React.RefObject<HTMLDivElement | null>;
   onAyahSelect: (ayah: MushafAyah, clientY: number) => void;
 }) {
   const longPressTimer = useRef<number | null>(null);
@@ -100,7 +109,7 @@ function MushafPageSheet({
         <span>{juzMeta.name} · الحزب {num(hizbNum)}</span>
       </div>
 
-      <div className="qr-page-scroll">
+      <div ref={scrollRef} className="qr-page-scroll">
         {blocks.map((block, bIdx) => (
           <div key={`${block.surah}-${bIdx}`}>
             {block.startsSurah && (
@@ -162,28 +171,18 @@ function MushafPageSheet({
       <div className="qr-page-foot">
         <span>— {num(data.page)} —</span>
       </div>
-      <div className={`qr-gut${gutterSide === 'left' ? ' left-side' : ''}`} aria-hidden="true" />
+      <div className="qr-gut" aria-hidden="true" />
     </div>
   );
 }
 
-interface FlipState {
-  active: boolean;
-  kind: 'next' | 'prev';
-  angle: number;
-}
-
-const IDLE_FLIP: FlipState = { active: false, kind: 'next', angle: 0 };
-
-function useIsWideBook(): boolean {
-  const [wide, setWide] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 900 : false));
-  useEffect(() => {
-    const onResize = () => setWide(window.innerWidth >= 900);
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-  return wide;
-}
+const IDLE_FRAME: WebGLCurlFrame = {
+  active: false,
+  dir: 1,
+  progress: 0,
+  cornerTilt: 0.35,
+  speed: 0,
+};
 
 export function MushafReader({
   initialPage,
@@ -195,19 +194,7 @@ export function MushafReader({
   onClose: () => void;
 }) {
   const { settings, resolvedTheme, updateSettings, setLastRead, num } = useQuran();
-  const isWide = useIsWideBook();
-  const isSpread = isWide && settings.doublePage && settings.flipMode === 'curl';
-  const maxAngle = isSpread ? SPREAD_MAX_ANGLE : SINGLE_MAX_ANGLE;
-  const stepSize = isSpread ? 2 : 1;
-
-  // In spread mode, keep the right page odd (1, 3, 5, ...) so facing pairs match printed Madinah Mushaf!
-  const normalizePage = useCallback((p: number, spread: boolean) => {
-    const clamped = Math.max(1, Math.min(TOTAL_PAGES, p));
-    if (!spread) return clamped;
-    return clamped % 2 === 0 ? Math.max(1, clamped - 1) : clamped;
-  }, []);
-
-  const [page, setPage] = useState(() => normalizePage(initialPage, isSpread));
+  const [page, setPage] = useState(() => Math.max(1, Math.min(TOTAL_PAGES, initialPage)));
   const [pagesMap, setPagesMap] = useState<Record<number, MushafPageData>>(() => {
     const init: Record<number, MushafPageData> = {};
     for (const p of [initialPage, initialPage + 1, initialPage - 1]) {
@@ -224,30 +211,77 @@ export function MushafReader({
   const [selectedAyah, setSelectedAyah] = useState<{ ayah: MushafAyah; y: number } | null>(null);
   const [quickBookmarked, setQuickBookmarked] = useState(false);
 
-  const [flip, setFlip] = useState<FlipState>(IDLE_FLIP);
-  const flipRef = useRef<FlipState>(IDLE_FLIP);
-  const rafRef = useRef<number | null>(null);
+  // Capabilities & automatic fallback detection
+  const webglSupported = useMemo(checkWebGLAvailable, []);
+  const reducedMotion = useMemo(
+    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    [],
+  );
+  const useWebGL = webglSupported && !reducedMotion && settings.flipMode === 'curl';
+
+  // Measure `.qr-book` dimensions so WebGL mesh & Canvas textures match the DOM card pixel-for-pixel
   const stageRef = useRef<HTMLDivElement | null>(null);
   const bookRef = useRef<HTMLDivElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [bookSize, setBookSize] = useState<{ w: number; h: number }>({ w: 360, h: 580 });
+
+  useEffect(() => {
+    const el = bookRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 40 && r.height > 40) {
+        setBookSize((prev) =>
+          Math.abs(prev.w - r.width) < 1 && Math.abs(prev.h - r.height) < 1
+            ? prev
+            : { w: Math.round(r.width), h: Math.round(r.height) },
+        );
+      }
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [barsVisible]);
+
+  // WebGL active state & textures
+  const frameRef = useRef<WebGLCurlFrame>({ ...IDLE_FRAME });
+  const [webglVisible, setWebglVisible] = useState(false);
+  const [webglCanvases, setWebglCanvases] = useState<{
+    front: HTMLCanvasElement | null;
+    back: HTMLCanvasElement | null;
+    under: HTMLCanvasElement | null;
+  }>({ front: null, back: null, under: null });
+
+  // CSS fallback slide state (when WebGL is unavailable or reduced-motion / slide mode is active)
+  const [cssSlide, setCssSlide] = useState<{ active: boolean; dir: 1 | -1; progress: number }>({
+    active: false,
+    dir: 1,
+    progress: 0,
+  });
+
+  const springRafRef = useRef<number | null>(null);
   const pageRef = useRef(page);
   pageRef.current = page;
-
+  const pagesMapRef = useRef(pagesMap);
+  pagesMapRef.current = pagesMap;
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
+  const themeRef = useRef(resolvedTheme);
+  themeRef.current = resolvedTheme;
+  const numRef = useRef(num);
+  numRef.current = num;
+  const bookSizeRef = useRef(bookSize);
+  bookSizeRef.current = bookSize;
+  const useWebGLRef = useRef(useWebGL);
+  useWebGLRef.current = useWebGL;
   const selectedRef = useRef(selectedAyah);
   selectedRef.current = selectedAyah;
-  const isSpreadRef = useRef(isSpread);
-  isSpreadRef.current = isSpread;
 
-  const setFlipBoth = useCallback((next: FlipState) => {
-    flipRef.current = next;
-    setFlip(next);
-  }, []);
-
-  const cancelAnim = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+  const cancelSpring = useCallback(() => {
+    if (springRafRef.current !== null) {
+      cancelAnimationFrame(springRafRef.current);
+      springRafRef.current = null;
     }
   }, []);
 
@@ -288,15 +322,34 @@ export function MushafReader({
         setError((e as Error).message || 'تعذّر تحميل الصفحة');
         setLoading(false);
       });
-    // Preload facing + next + prev pages into React map & IndexedDB
-    ensurePages([p + 1, p + 2, p + 3, p - 1, p - 2]);
+    ensurePages([p + 1, p - 1, p + 2]);
     preloadAdjacentPages(p);
   }, [ensurePages, initialAyah, initialPage, setLastRead]);
 
   useEffect(() => {
     fetchCurrent(page);
     setRevealedAyahs(new Set());
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [page, fetchCurrent]);
+
+  // Pre-warm high-DPI Canvas textures in idle time so starting a drag takes 0ms!
+  useEffect(() => {
+    if (!useWebGL) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    prewarmPageCanvases(
+      [pagesMap[page], pagesMap[page + 1], pagesMap[page - 1]],
+      {
+        width: bookSize.w,
+        height: bookSize.h,
+        dpr,
+        theme: resolvedTheme,
+        fontSize: settings.fontSize,
+        tajweed: settings.tajweed,
+        scrollTop: 0,
+        num,
+      },
+    );
+  }, [useWebGL, page, pagesMap, bookSize.w, bookSize.h, resolvedTheme, settings.fontSize, settings.tajweed, num]);
 
   // Wake Lock API
   useEffect(() => {
@@ -307,56 +360,119 @@ export function MushafReader({
     return () => { void sentinel?.release().catch(() => undefined); };
   }, [settings.wakeLock]);
 
-  const animateAngle = useCallback((
-    kind: 'next' | 'prev',
-    fromAngle: number,
-    toAngle: number,
-    dur: number,
-    useEaseInOut: boolean,
-    onDone?: () => void,
+  // Prepare the 3 GPU Canvas textures for a turn in direction `dir` (+1 = Next, -1 = Prev)
+  const prepareTurnTextures = useCallback((currPage: number, dir: 1 | -1) => {
+    const targetPage = currPage + dir;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const sz = bookSizeRef.current;
+    const baseOpts = {
+      width: sz.w,
+      height: sz.h,
+      dpr,
+      theme: themeRef.current,
+      fontSize: settingsRef.current.fontSize,
+      tajweed: settingsRef.current.tajweed,
+      num: numRef.current,
+    };
+    const currData = pagesMapRef.current[currPage] ?? getCachedPageSync(currPage);
+    const nextData = pagesMapRef.current[targetPage] ?? getCachedPageSync(targetPage);
+
+    const front = renderMushafPageCanvas(currData, {
+      ...baseOpts,
+      scrollTop: scrollRef.current?.scrollTop ?? 0,
+    });
+    const under = renderMushafPageCanvas(nextData, { ...baseOpts, scrollTop: 0 });
+    setWebglCanvases({ front, back: under, under });
+  }, []);
+
+  // Damped Spring Physics solver on pointer release (or programmatic button tap)
+  const runSpringTo = useCallback((
+    dir: 1 | -1,
+    target: 0 | 1,
+    initialVelocityProgressPerSec: number,
+    onCommit?: () => void,
   ) => {
-    cancelAnim();
-    const t0 = performance.now();
-    const step = (now: number) => {
-      const t = Math.min(1, (now - t0) / dur);
-      const e = useEaseInOut ? easeInOutCubic(t) : easeOutCubic(t);
-      const angle = fromAngle + (toAngle - fromAngle) * e;
-      setFlipBoth({ active: true, kind, angle });
-      if (t < 1) {
-        rafRef.current = requestAnimationFrame(step);
+    cancelSpring();
+    let pos = frameRef.current.progress;
+    let vel = initialVelocityProgressPerSec;
+    let lastT = performance.now();
+
+    // Natural critically-damped paper spring (snappy with momentum, zero rubbery oscillation)
+    const stiffness = 185;
+    const damping = 25;
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.032, Math.max(0.001, (now - lastT) / 1000));
+      lastT = now;
+
+      const force = -stiffness * (pos - target) - damping * vel;
+      vel += force * dt;
+      pos += vel * dt;
+
+      const clampedPos = Math.max(0, Math.min(1, pos));
+      frameRef.current.progress = clampedPos;
+      frameRef.current.speed = Math.min(1.5, Math.abs(vel) * 0.45);
+
+      if (!useWebGLRef.current) {
+        setCssSlide({ active: true, dir, progress: clampedPos });
+      }
+
+      const done = Math.abs(pos - target) < 0.004 && Math.abs(vel) < 0.025;
+      if (!done) {
+        springRafRef.current = requestAnimationFrame(tick);
       } else {
-        rafRef.current = null;
-        setFlipBoth(IDLE_FLIP);
-        onDone?.();
+        springRafRef.current = null;
+        frameRef.current = { ...IDLE_FRAME };
+        if (target === 1) {
+          onCommit?.();
+          // Wait 1 rAF so React commits the new DOM page before hiding WebGL overlay (zero flash!)
+          requestAnimationFrame(() => {
+            setWebglVisible(false);
+            setCssSlide({ active: false, dir: 1, progress: 0 });
+          });
+        } else {
+          setWebglVisible(false);
+          setCssSlide({ active: false, dir: 1, progress: 0 });
+        }
       }
     };
-    rafRef.current = requestAnimationFrame(step);
-  }, [cancelAnim, setFlipBoth]);
 
-  // Programmatic visible 3D flip (820ms on desktop 2-page spread like the video, 620ms on mobile!)
+    springRafRef.current = requestAnimationFrame(tick);
+  }, [cancelSpring]);
+
+  // Programmatic flip (side arrows / keyboard)
   const flipTo = useCallback((dir: 1 | -1) => {
-    const spread = isSpreadRef.current;
-    const step = spread ? 2 : 1;
-    const maxA = spread ? SPREAD_MAX_ANGLE : SINGLE_MAX_ANGLE;
     const curr = pageRef.current;
-    const next = Math.max(1, Math.min(TOTAL_PAGES, curr + dir * step));
-    if (next === curr || rafRef.current !== null) return;
+    const next = curr + dir;
+    if (next < 1 || next > TOTAL_PAGES || springRafRef.current !== null) return;
 
     ensurePages([next, next + 1]);
-    if (settingsRef.current.flipSound) playPageFlipSound(spread ? 0.72 : 0.55);
-    if (settingsRef.current.flipMode === 'scroll') {
+    if (settingsRef.current.flipSound) playPageFlipSound(0.54);
+
+    if (settingsRef.current.flipMode === 'scroll' || reducedMotion) {
       setPage(next);
       return;
     }
-    const dur = spread ? 820 : 620;
-    if (dir === 1) {
-      animateAngle('next', 0, maxA, dur, true, () => setPage(next));
-    } else {
-      animateAngle('prev', maxA, 0, dur, true, () => setPage(next));
-    }
-  }, [animateAngle, ensurePages]);
 
-  // Keyboard shortcuts
+    if (useWebGLRef.current) {
+      prepareTurnTextures(curr, dir);
+      frameRef.current = {
+        active: true,
+        dir,
+        progress: 0.01,
+        cornerTilt: 0.45, // peels gracefully from the upper corner first
+        speed: 0.65,
+      };
+      setWebglVisible(true);
+    } else {
+      frameRef.current = { ...IDLE_FRAME, active: true, dir, progress: 0.01 };
+      setCssSlide({ active: true, dir, progress: 0.01 });
+    }
+
+    runSpringTo(dir, 1, 1.85, () => setPage(next));
+  }, [ensurePages, prepareTurnTextures, reducedMotion, runSpringTo]);
+
+  // Keyboard shortcuts (RTL: ArrowLeft = Next page, ArrowRight = Prev page, Escape = Close)
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') { e.preventDefault(); flipTo(1); }
@@ -367,7 +483,7 @@ export function MushafReader({
     return () => window.removeEventListener('keydown', onKey);
   }, [flipTo, onClose]);
 
-  // Live 1:1 Finger/Mouse Drag-Follow & Hold (pauses mid-air until user lifts finger!)
+  // Real-time Pointer Tracking (RTL left->right = Next Page, top-left / bottom-left corner tilt, velocity spring)
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -377,24 +493,38 @@ export function MushafReader({
       startX: 0,
       startY: 0,
       lastX: 0,
-      vx: 0,
-      width: 375,
+      lastTime: 0,
+      vxPxPerMs: 0,
+      width: 360,
+      height: 580,
+      top: 0,
+      cornerTilt: 0.35,
       locked: 'none' as 'none' | 'horizontal' | 'vertical',
-      kind: 'next' as 'next' | 'prev',
+      dir: 1 as 1 | -1,
+      preparedDir: 0 as 0 | 1 | -1,
     };
 
     const startGesture = (clientX: number, clientY: number) => {
       if (settingsRef.current.flipMode === 'scroll' || selectedRef.current) return;
       warmPageAudio();
-      cancelAnim();
+      cancelSpring();
       const rect = bookRef.current?.getBoundingClientRect();
       drag.down = true;
       drag.startX = clientX;
       drag.startY = clientY;
       drag.lastX = clientX;
-      drag.vx = 0;
+      drag.lastTime = performance.now();
+      drag.vxPxPerMs = 0;
       drag.width = rect?.width || window.innerWidth;
+      drag.height = rect?.height || window.innerHeight;
+      drag.top = rect?.top || 0;
       drag.locked = 'none';
+      drag.preparedDir = 0;
+
+      // Determine whether user grabbed near top corner (+1) or bottom corner (-1)
+      const relY = Math.max(0, Math.min(1, (clientY - drag.top) / drag.height));
+      // Top of page (relY=0) -> +0.9, middle (0.5) -> +0.25, bottom (relY=1) -> -0.85
+      drag.cornerTilt = Math.max(-0.9, Math.min(0.95, (0.58 - relY) * 1.7));
     };
 
     const moveGesture = (clientX: number, clientY: number, prevent?: () => void) => {
@@ -405,7 +535,7 @@ export function MushafReader({
       if (drag.locked === 'none') {
         if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.1) {
           drag.locked = 'horizontal';
-          drag.kind = dx >= 0 ? 'next' : 'prev';
+          drag.dir = dx >= 0 ? 1 : -1;
         } else if (Math.abs(dy) > 12) {
           drag.locked = 'vertical';
           return;
@@ -416,62 +546,71 @@ export function MushafReader({
       if (drag.locked !== 'horizontal') return;
       prevent?.();
 
-      const spread = isSpreadRef.current;
-      const step = spread ? 2 : 1;
-      const maxA = spread ? SPREAD_MAX_ANGLE : SINGLE_MAX_ANGLE;
       const curr = pageRef.current;
-      const targetPage = drag.kind === 'next' ? curr + step : curr - step;
-      if (targetPage < 1 || targetPage > TOTAL_PAGES) {
-        setFlipBoth(IDLE_FLIP);
-        return;
+      const dir: 1 | -1 = dx >= 0 ? 1 : -1;
+      drag.dir = dir;
+      const targetPage = curr + dir;
+      if (targetPage < 1 || targetPage > TOTAL_PAGES) return;
+
+      if (drag.preparedDir !== dir) {
+        drag.preparedDir = dir;
+        ensurePages([targetPage]);
+        if (useWebGLRef.current) {
+          prepareTurnTextures(curr, dir);
+          setWebglVisible(true);
+        }
       }
 
-      ensurePages([targetPage, targetPage + 1]);
-      drag.vx = clientX - drag.lastX;
+      const now = performance.now();
+      const dt = Math.max(4, now - drag.lastTime);
+      const instVx = (clientX - drag.lastX) / dt; // px/ms
+      drag.vxPxPerMs = drag.vxPxPerMs * 0.62 + instVx * 0.38;
       drag.lastX = clientX;
+      drag.lastTime = now;
 
-      const span = spread ? drag.width * 0.72 : drag.width * 0.85;
-      const ratio = Math.max(0, Math.min(1, Math.abs(dx) / span));
-      const arc = Math.acos(Math.max(-1, Math.min(1, 1 - ratio * 2))) / Math.PI; // 0..1
-      const mappedAngle = Math.max(0, Math.min(maxA, arc * maxA));
+      // Smoothly update live vertical finger tracking so corner follows vertical finger motion too
+      const liveRelY = Math.max(0, Math.min(1, (clientY - drag.top) / drag.height));
+      const liveTilt = Math.max(-0.9, Math.min(0.95, (0.55 - liveRelY) * 1.65));
+      drag.cornerTilt = drag.cornerTilt * 0.75 + liveTilt * 0.25;
 
-      const angle = drag.kind === 'next' ? mappedAngle : maxA - mappedAngle;
-      setFlipBoth({ active: true, kind: drag.kind, angle });
+      const progress = Math.max(0.005, Math.min(0.97, Math.abs(dx) / (drag.width * 0.92)));
+      const normSpeed = Math.min(1.5, Math.abs(drag.vxPxPerMs) * 0.85);
+
+      frameRef.current = {
+        active: true,
+        dir,
+        progress,
+        cornerTilt: drag.cornerTilt,
+        speed: normSpeed,
+      };
+
+      if (!useWebGLRef.current) {
+        setCssSlide({ active: true, dir, progress });
+      }
     };
 
     const endGesture = () => {
       if (!drag.down) return;
       drag.down = false;
-      if (drag.locked !== 'horizontal') return;
+      if (drag.locked !== 'horizontal' || drag.preparedDir === 0) return;
 
-      const f = flipRef.current;
-      if (!f.active) return;
+      const curr = pageRef.current;
+      const dir = drag.dir;
+      const next = curr + dir;
+      const p = frameRef.current.progress;
+      // Signed velocity toward completing the turn (in px/ms)
+      const signedVx = dir === 1 ? drag.vxPxPerMs : -drag.vxPxPerMs;
+      const progressVelPerSec = (signedVx * 1000) / Math.max(240, drag.width);
 
-      const spread = isSpreadRef.current;
-      const step = spread ? 2 : 1;
-      const maxA = spread ? SPREAD_MAX_ANGLE : SINGLE_MAX_ANGLE;
-      const threshold = maxA * 0.32;
+      const shouldCommit = next >= 1 && next <= TOTAL_PAGES
+        && (p > 0.26 || (signedVx > 0.38 && p > 0.06))
+        && signedVx > -0.45;
 
-      if (f.kind === 'next') {
-        const next = Math.min(TOTAL_PAGES, pageRef.current + step);
-        if ((f.angle > threshold || drag.vx > 6) && next !== pageRef.current) {
-          if (settingsRef.current.flipSound) playPageFlipSound(0.45);
-          const rem = Math.max(240, Math.round(((maxA - f.angle) / maxA) * 520));
-          animateAngle('next', f.angle, maxA, rem, false, () => setPage(next));
-        } else {
-          const rem = Math.max(200, Math.round((f.angle / maxA) * 360));
-          animateAngle('next', f.angle, 0, rem, false);
-        }
+      if (shouldCommit) {
+        if (settingsRef.current.flipSound) playPageFlipSound(0.46);
+        runSpringTo(dir, 1, Math.max(0.6, progressVelPerSec), () => setPage(next));
       } else {
-        const prev = Math.max(1, pageRef.current - step);
-        if ((f.angle < maxA - threshold || drag.vx < -6) && prev !== pageRef.current) {
-          if (settingsRef.current.flipSound) playPageFlipSound(0.45);
-          const rem = Math.max(240, Math.round((f.angle / maxA) * 520));
-          animateAngle('prev', f.angle, 0, rem, false, () => setPage(prev));
-        } else {
-          const rem = Math.max(200, Math.round(((maxA - f.angle) / maxA) * 360));
-          animateAngle('prev', f.angle, maxA, rem, false);
-        }
+        runSpringTo(dir, 0, Math.min(-0.4, progressVelPerSec));
       }
     };
 
@@ -504,7 +643,7 @@ export function MushafReader({
     window.addEventListener('mouseup', onMouseUp);
 
     return () => {
-      cancelAnim();
+      cancelSpring();
       stage.removeEventListener('touchstart', onTouchStart);
       stage.removeEventListener('touchmove', onTouchMove);
       stage.removeEventListener('touchend', onTouchEnd);
@@ -513,7 +652,7 @@ export function MushafReader({
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [animateAngle, cancelAnim, ensurePages, setFlipBoth]);
+  }, [cancelSpring, ensurePages, prepareTurnTextures, runSpringTo]);
 
   const quickBookmarkPage = async () => {
     const first = pagesMap[page]?.ayahs[0];
@@ -550,10 +689,6 @@ export function MushafReader({
 
   const surahMeta = surahForPage(page);
   const juzMeta = juzForPage(page);
-  const isFlipping = flip.active;
-  const a = flip.angle;
-  const r = a / maxAngle;
-  const sinA = Math.sin((a * Math.PI) / 180);
 
   const cycleTheme = () => {
     const order: QuranTheme[] = ['light', 'sepia', 'dark'];
@@ -567,27 +702,9 @@ export function MushafReader({
 
   const flipLabel = settings.flipMode === 'curl' ? 'تقليب ورقي' : settings.flipMode === 'slide' ? 'انزلاق' : 'تمرير';
 
-  // Single-page curved top-corner peel geometry (SVG Bézier curl + blurred cast shadow + organic wave!)
-  const singleCurlProgress = isFlipping
-    ? (flip.kind === 'next' ? r : 1 - r)
-    : 0;
-  const singleCurlDir: 1 | -1 = flip.kind === 'next' ? 1 : -1;
-  const singleCurlActive = !isSpread && isFlipping && settings.flipMode === 'curl' && singleCurlProgress > 0.005;
-  const singleCurlGeom = singleCurlActive ? computePageCurl(singleCurlProgress, singleCurlDir) : null;
-  const singleClipId = 'qr-mushaf-curl-clip';
-
-  const singleTopData = isFlipping && flip.kind === 'prev' ? pagesMap[page - 1] : pagesMap[page];
-  const singleUnderData = isFlipping ? (flip.kind === 'next' ? pagesMap[page + 1] : pagesMap[page]) : undefined;
-  const singleSlideTransform = isFlipping && settings.flipMode === 'slide'
-    ? `translateX(${(r * 100).toFixed(2)}%)`
+  const cssSlideTransform = cssSlide.active
+    ? `translateX(${(cssSlide.dir * cssSlide.progress * 102).toFixed(2)}%)`
     : undefined;
-  const singleUnderBrightness = singleCurlActive ? (0.82 + 0.18 * singleCurlProgress).toFixed(3) : '1';
-
-  // Double-page spread slots (RTL Arabic book: right = odd page P, left = even page P+1)
-  const spreadRightNum = isFlipping && flip.kind === 'prev' ? Math.max(1, page - 2) : page;
-  const spreadLeftNum = isFlipping && flip.kind === 'next' ? Math.min(TOTAL_PAGES, page + 3) : Math.min(TOTAL_PAGES, page + 1);
-  const spreadLeafFrontNum = isFlipping ? (flip.kind === 'next' ? page + 1 : page - 1) : page + 1;
-  const spreadLeafBackNum = isFlipping ? (flip.kind === 'next' ? page + 2 : page) : page + 2;
 
   return (
     <div className="q-root qr-fullscreen" dir="rtl" data-q-theme={resolvedTheme}>
@@ -598,9 +715,7 @@ export function MushafReader({
         </QIconButton>
         <div className="qr-top-meta">
           <strong>سورة {surahMeta.name}</strong>
-          <small>
-            {juzMeta.name} · {isSpread ? `صفحة ${num(page)}–${num(Math.min(TOTAL_PAGES, page + 1))}` : `صفحة ${num(page)}`} من {num(TOTAL_PAGES)}
-          </small>
+          <small>{juzMeta.name} · صفحة {num(page)} من {num(TOTAL_PAGES)}</small>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <QIconButton
@@ -620,12 +735,12 @@ export function MushafReader({
         </div>
       </header>
 
-      {/* Main 3D Book Stage (reserves exact padding when bars are visible — ZERO overlap!) */}
+      {/* Main Stage — Reserves space when bars are visible; returns to normal interactive DOM after flip */}
       <main
         ref={stageRef}
         className={`qr-stage${barsVisible ? ' bars-on' : ''}`}
         onClick={() => {
-          if (!flipRef.current.active) setBarsVisible((v) => !v);
+          if (!webglVisible && !cssSlide.active) setBarsVisible((v) => !v);
         }}
       >
         {page > 1 && (
@@ -638,7 +753,7 @@ export function MushafReader({
             <ChevronRight size={22} />
           </button>
         )}
-        {page + stepSize - 1 < TOTAL_PAGES && (
+        {page < TOTAL_PAGES && (
           <button
             type="button"
             className="qr-edge-btn next"
@@ -649,149 +764,68 @@ export function MushafReader({
           </button>
         )}
 
-        {isSpread ? (
-          /* ══ DESKTOP / TABLET: 2-Page Open Book Spread (Matches Video 1:1!) ══ */
-          <div ref={bookRef} className="qr-spread">
-            <div className="qr-spread-shadow" aria-hidden="true" />
-
-            {/* Stationary Right Half (Odd page) */}
-            <div className="qr-spread-half right">
+        <div ref={bookRef} className="qr-book">
+          {/* CSS Fallback Under-Page (used only when WebGL is disabled / reduced-motion / slide mode) */}
+          {cssSlide.active && (
+            <div className="qr-css-under" aria-hidden="true">
               <MushafPageSheet
-                data={pagesMap[spreadRightNum]}
-                loading={loading && !pagesMap[spreadRightNum]}
-                error={error}
-                onRetry={() => fetchCurrent(page)}
-                fontSize={settings.fontSize}
-                tajweed={settings.tajweed}
-                hifzMode={hifzMode}
-                revealedAyahs={revealedAyahs}
-                highlightedAyah={selectedAyah ? `${selectedAyah.ayah.surah}:${selectedAyah.ayah.n}` : null}
-                num={num}
-                gutterSide="left"
-                onAyahSelect={handleAyahSelect}
-              />
-              {isFlipping && <div className="qr-cast right-side" style={{ opacity: (sinA * 0.5).toFixed(3) }} />}
-            </div>
-
-            {/* Stationary Left Half (Even page) */}
-            <div className="qr-spread-half left">
-              <MushafPageSheet
-                data={pagesMap[spreadLeftNum]}
-                loading={!pagesMap[spreadLeftNum]}
+                data={pagesMap[page + cssSlide.dir]}
+                loading={!pagesMap[page + cssSlide.dir]}
                 error=""
-                onRetry={() => fetchCurrent(page)}
+                onRetry={() => undefined}
                 fontSize={settings.fontSize}
                 tajweed={settings.tajweed}
                 hifzMode={hifzMode}
                 revealedAyahs={revealedAyahs}
-                highlightedAyah={selectedAyah ? `${selectedAyah.ayah.surah}:${selectedAyah.ayah.n}` : null}
+                highlightedAyah={null}
                 num={num}
-                gutterSide="right"
-                onAyahSelect={handleAyahSelect}
+                onAyahSelect={() => undefined}
               />
-              {isFlipping && <div className="qr-cast" style={{ opacity: (sinA * 0.5).toFixed(3) }} />}
             </div>
+          )}
 
-            {/* 2-Sided 3D Turning Leaf (0° -> 180° around center spine!) */}
-            {isFlipping && (
-              <div
-                className="qr-spread-leaf"
-                style={{ transform: `rotateY(${a.toFixed(2)}deg)` }}
-                aria-hidden="true"
-              >
-                <div className="qr-spread-face front">
-                  <MushafPageSheet
-                    data={pagesMap[spreadLeafFrontNum]}
-                    loading={false}
-                    error=""
-                    onRetry={() => undefined}
-                    fontSize={settings.fontSize}
-                    tajweed={settings.tajweed}
-                    hifzMode={hifzMode}
-                    revealedAyahs={revealedAyahs}
-                    highlightedAyah={null}
-                    num={num}
-                    gutterSide="right"
-                    onAyahSelect={() => undefined}
-                  />
-                  <div className="qr-shade" style={{ opacity: a < 90 ? (sinA * 0.7).toFixed(3) : '0' }} />
-                </div>
-                <div className="qr-spread-face back">
-                  <MushafPageSheet
-                    data={pagesMap[spreadLeafBackNum]}
-                    loading={false}
-                    error=""
-                    onRetry={() => undefined}
-                    fontSize={settings.fontSize}
-                    tajweed={settings.tajweed}
-                    hifzMode={hifzMode}
-                    revealedAyahs={revealedAyahs}
-                    highlightedAyah={null}
-                    num={num}
-                    gutterSide="left"
-                    onAyahSelect={() => undefined}
-                  />
-                  <div className="qr-shade back-side" style={{ opacity: a > 90 ? (sinA * 0.7).toFixed(3) : '0' }} />
-                </div>
-              </div>
+          {/* Live Interactive & Selectable DOM Mushaf Page */}
+          <div
+            className={`qr-dom-layer${webglVisible ? ' webgl-hidden' : ''}`}
+            style={{
+              transform: cssSlideTransform,
+              transition: cssSlide.active ? 'none' : undefined,
+            }}
+          >
+            <MushafPageSheet
+              data={pagesMap[page]}
+              loading={loading && !pagesMap[page]}
+              error={error}
+              onRetry={() => fetchCurrent(page)}
+              fontSize={settings.fontSize}
+              tajweed={settings.tajweed}
+              hifzMode={hifzMode}
+              revealedAyahs={revealedAyahs}
+              highlightedAyah={selectedAyah ? `${selectedAyah.ayah.surah}:${selectedAyah.ayah.n}` : null}
+              num={num}
+              scrollRef={scrollRef}
+              onAyahSelect={handleAyahSelect}
+            />
+            {!webglVisible && useWebGL && page < TOTAL_PAGES && (
+              <span className="qr-top-corner-hint" aria-hidden="true" />
             )}
           </div>
-        ) : (
-          /* ══ MOBILE: Real Curved Top-Corner Page Peel (Bézier Arch + Wave + Blurred Cast Shadow) ══ */
-          <div ref={bookRef} className="qr-book">
-            {isFlipping && (
-              <div
-                className="qr-leaf-under"
-                style={{ filter: `brightness(${singleUnderBrightness})` }}
-                aria-hidden="true"
-              >
-                <MushafPageSheet
-                  data={singleUnderData}
-                  loading={!singleUnderData}
-                  error=""
-                  onRetry={() => undefined}
-                  fontSize={settings.fontSize}
-                  tajweed={settings.tajweed}
-                  hifzMode={hifzMode}
-                  revealedAyahs={revealedAyahs}
-                  highlightedAyah={null}
-                  num={num}
-                  onAyahSelect={() => undefined}
-                />
-              </div>
-            )}
 
-            <div
-              className="qr-leaf-top"
-              style={{
-                clipPath: singleCurlGeom ? `url(#${singleClipId})` : undefined,
-                WebkitClipPath: singleCurlGeom ? `url(#${singleClipId})` : undefined,
-                transform: singleSlideTransform,
-              }}
-            >
-              <MushafPageSheet
-                data={singleTopData}
-                loading={!isFlipping && loading}
-                error={!isFlipping ? error : ''}
-                onRetry={() => fetchCurrent(page)}
-                fontSize={settings.fontSize}
-                tajweed={settings.tajweed}
-                hifzMode={hifzMode}
-                revealedAyahs={revealedAyahs}
-                highlightedAyah={selectedAyah ? `${selectedAyah.ayah.surah}:${selectedAyah.ayah.n}` : null}
-                num={num}
-                onAyahSelect={handleAyahSelect}
+          {/* Lazy-loaded Three.js WebGL 40×60 Mesh Cylindrical Page Curl */}
+          {useWebGL && (
+            <Suspense fallback={null}>
+              <LazyWebGLPageCurl
+                width={bookSize.w}
+                height={bookSize.h}
+                frontCanvas={webglCanvases.front}
+                backCanvas={webglCanvases.back}
+                underCanvas={webglCanvases.under}
+                frameRef={frameRef}
+                visible={webglVisible}
               />
-              {!isFlipping && settings.flipMode === 'curl' && page < TOTAL_PAGES && (
-                <span className="qr-top-corner-hint" aria-hidden="true" />
-              )}
-            </div>
-
-            {singleCurlGeom && (
-              <PageCurlOverlay geom={singleCurlGeom} theme={resolvedTheme} clipId={singleClipId} />
-            )}
-          </div>
-        )}
+            </Suspense>
+          )}
+        </div>
       </main>
 
       {/* Immersive Bottom Bar */}
@@ -803,7 +837,7 @@ export function MushafReader({
             min={1}
             max={TOTAL_PAGES}
             value={page}
-            onChange={(e) => setPage(normalizePage(Number(e.target.value), isSpread))}
+            onChange={(e) => setPage(Number(e.target.value))}
             aria-label="الانتقال إلى صفحة المصحف"
           />
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--q-ink-3)' }}>{num(TOTAL_PAGES)}</span>

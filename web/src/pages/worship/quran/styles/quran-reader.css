@@ -130,62 +130,56 @@
   padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
 }
 
-/* ── Single-Page Curved Peel Book (Mobile < 900px) ── */
+/* ── Single-Page WebGL Curl Book + CSS Fallback ── */
 .qr-book {
   position: relative;
-  width: min(100%, 560px);
+  width: min(100%, 600px);
   height: 100%;
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 16px 40px -16px rgb(0 0 0 / 32%);
 }
 
-.qr-leaf-under {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: 16px;
-  overflow: hidden;
-  will-change: filter;
-}
-
-.qr-leaf-top {
+.qr-dom-layer {
   position: absolute;
   inset: 0;
   z-index: 5;
   border-radius: 16px;
   overflow: hidden;
-  will-change: clip-path, transform;
+  transition: transform 280ms var(--q-ease), opacity 220ms ease;
+}
+.qr-dom-layer.webgl-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: none;
 }
 
-.qr-curl-svg {
+.qr-css-under {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 9;
-  pointer-events: none;
-  overflow: visible;
+  z-index: 1;
+  border-radius: 16px;
+  overflow: hidden;
 }
 
-/* Subtle top-left curved corner hint when resting */
+/* Subtle bottom-left & top-left corner curl affordance when resting */
 .qr-top-corner-hint {
   position: absolute;
-  top: 0;
+  bottom: 0;
   left: 0;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   z-index: 8;
   pointer-events: none;
   background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--q-page-frame) 35%, var(--q-bg)) 0%,
-    var(--q-page-paper) 46%,
+    225deg,
+    transparent 46%,
     rgb(0 0 0 / 12%) 50%,
-    transparent 54%
+    var(--q-page-paper) 54%,
+    color-mix(in srgb, var(--q-page-frame) 40%, var(--q-page-paper)) 100%
   );
-  border-bottom-right-radius: 12px;
-  box-shadow: 3px 3px 10px -4px rgb(0 0 0 / 26%);
+  border-top-right-radius: 11px;
+  box-shadow: 3px -3px 10px -4px rgb(0 0 0 / 26%);
   opacity: 0.72;
 }
 
