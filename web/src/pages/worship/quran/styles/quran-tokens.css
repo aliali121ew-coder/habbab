@@ -1,0 +1,694 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   Quran Section Design System — Three Themes (Light · OLED Dark · Warm Sepia)
+   All colors defined strictly via CSS custom properties; logical RTL properties.
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.q-root {
+  /* Light Theme (Default) */
+  --q-bg: #FAF8F3;
+  --q-surface: #FFFFFF;
+  --q-surface-2: #F3EFE6;
+  --q-surface-glass: rgb(255 255 255 / 84%);
+  --q-ink: #1B1B1B;
+  --q-ink-2: #4A4A46;
+  --q-ink-3: #7A776F;
+  --q-primary: #1F6B4A;
+  --q-primary-2: #2A825B;
+  --q-primary-soft: color-mix(in srgb, #1F6B4A 10%, transparent);
+  --q-primary-border: color-mix(in srgb, #1F6B4A 24%, transparent);
+  --q-gold: #B8963E;
+  --q-gold-soft: color-mix(in srgb, #B8963E 14%, transparent);
+  --q-line: #E8E3D8;
+  --q-line-strong: #D7D0C0;
+  --q-shadow-sm: 0 2px 10px -4px rgb(27 27 27 / 8%);
+  --q-shadow-md: 0 12px 28px -14px rgb(31 107 74 / 26%);
+  --q-shadow-lg: 0 22px 48px -20px rgb(15 23 42 / 28%);
+  --q-page-paper: #FDFBF5;
+  --q-page-frame: #C8AD68;
+  --q-ayah-hl: color-mix(in srgb, #B8963E 22%, transparent);
+  --q-danger: #C53030;
+  --q-danger-soft: rgb(197 48 48 / 12%);
+
+  /* Typography scale (12 / 14 / 16 / 20 / 24 / 32) */
+  --q-fs-xs: 0.75rem;   /* 12px */
+  --q-fs-sm: 0.875rem;  /* 14px */
+  --q-fs-md: 1rem;      /* 16px */
+  --q-fs-lg: 1.25rem;   /* 20px */
+  --q-fs-xl: 1.5rem;    /* 24px */
+  --q-fs-2xl: 2rem;     /* 32px */
+
+  /* Fonts */
+  --q-font-ui: 'IBM Plex Sans Arabic', system-ui, -apple-system, sans-serif;
+  --q-font-mushaf: 'Amiri', 'Noto Naskh Arabic', serif;
+  --q-font-title: 'Reem Kufi', 'Noto Kufi Arabic', var(--q-font-ui);
+
+  /* Radii & Motion */
+  --q-r-sm: 12px;
+  --q-r-md: 16px;
+  --q-r-lg: 20px;
+  --q-r-xl: 24px;
+  --q-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  font-family: var(--q-font-ui);
+  color: var(--q-ink);
+  background: var(--q-bg);
+  transition: background-color 260ms ease, color 260ms ease, border-color 260ms ease;
+}
+
+/* ── True OLED Dark Theme ── */
+.q-root[data-q-theme="dark"] {
+  --q-bg: #000000;
+  --q-surface: #0C0F0E;
+  --q-surface-2: #141917;
+  --q-surface-glass: rgb(12 15 14 / 86%);
+  --q-ink: #E8E6E1;
+  --q-ink-2: #B5B3AC;
+  --q-ink-3: #83817A;
+  --q-primary: #3FAE7A;
+  --q-primary-2: #2D8E61;
+  --q-primary-soft: color-mix(in srgb, #3FAE7A 16%, transparent);
+  --q-primary-border: color-mix(in srgb, #3FAE7A 32%, transparent);
+  --q-gold: #D4B259;
+  --q-gold-soft: color-mix(in srgb, #D4B259 16%, transparent);
+  --q-line: #1E2421;
+  --q-line-strong: #2C3531;
+  --q-shadow-sm: none;
+  --q-shadow-md: 0 10px 28px -14px rgb(0 0 0 / 80%);
+  --q-shadow-lg: 0 20px 44px -16px rgb(0 0 0 / 90%);
+  --q-page-paper: #070908;
+  --q-page-frame: #6B5A2C;
+  --q-ayah-hl: color-mix(in srgb, #3FAE7A 24%, transparent);
+  --q-danger: #F87171;
+  --q-danger-soft: rgb(248 113 113 / 16%);
+}
+
+/* ── Warm Paper Sepia Theme ── */
+.q-root[data-q-theme="sepia"] {
+  --q-bg: #F4ECD8;
+  --q-surface: #FBF5E6;
+  --q-surface-2: #EAE0C8;
+  --q-surface-glass: rgb(251 245 230 / 88%);
+  --q-ink: #3B2F1E;
+  --q-ink-2: #5F4E37;
+  --q-ink-3: #857256;
+  --q-primary: #5E7F4F;
+  --q-primary-2: #4A683D;
+  --q-primary-soft: color-mix(in srgb, #5E7F4F 13%, transparent);
+  --q-primary-border: color-mix(in srgb, #5E7F4F 28%, transparent);
+  --q-gold: #A98331;
+  --q-gold-soft: color-mix(in srgb, #A98331 15%, transparent);
+  --q-line: #DFD3B8;
+  --q-line-strong: #CBBBA0;
+  --q-shadow-sm: 0 2px 10px -4px rgb(59 47 30 / 10%);
+  --q-shadow-md: 0 12px 26px -14px rgb(59 47 30 / 24%);
+  --q-shadow-lg: 0 20px 44px -18px rgb(59 47 30 / 28%);
+  --q-page-paper: #F7EFE0;
+  --q-page-frame: #B3924D;
+  --q-ayah-hl: color-mix(in srgb, #A98331 24%, transparent);
+  --q-danger: #B91C1C;
+  --q-danger-soft: rgb(185 28 28 / 12%);
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Reusable UI Primitives
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.q-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding-inline: 16px;
+  border-radius: var(--q-r-sm);
+  border: 1px solid var(--q-line);
+  background: var(--q-surface);
+  color: var(--q-ink);
+  font: inherit;
+  font-size: var(--q-fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 150ms var(--q-ease), background-color 180ms ease, border-color 180ms ease;
+}
+.q-btn:active { transform: scale(0.97); }
+.q-btn:focus-visible { outline: 2px solid var(--q-primary); outline-offset: 2px; }
+.q-btn.primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--q-primary-2), var(--q-primary));
+  color: #fff;
+  box-shadow: var(--q-shadow-md);
+}
+.q-btn.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--q-ink-2);
+}
+.q-btn.ghost:hover { background: var(--q-surface-2); color: var(--q-ink); }
+
+.q-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border-radius: var(--q-r-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--q-ink);
+  cursor: pointer;
+  transition: transform 150ms var(--q-ease), background-color 180ms ease, color 180ms ease;
+}
+.q-icon-btn:hover { background: var(--q-surface-2); }
+.q-icon-btn:active { transform: scale(0.94); }
+.q-icon-btn:focus-visible { outline: 2px solid var(--q-primary); outline-offset: 2px; }
+.q-icon-btn.bordered { border-color: var(--q-line); background: var(--q-surface); }
+.q-icon-btn.active { background: var(--q-primary-soft); color: var(--q-primary); border-color: var(--q-primary-border); }
+
+.q-card {
+  border-radius: var(--q-r-lg);
+  border: 1px solid var(--q-line);
+  background: var(--q-surface);
+  box-shadow: var(--q-shadow-sm);
+  transition: background-color 240ms ease, border-color 240ms ease, transform 150ms var(--q-ease);
+}
+
+.q-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding-inline: 14px;
+  border-radius: 999px;
+  border: 1px solid var(--q-line);
+  background: var(--q-surface);
+  color: var(--q-ink-2);
+  font: inherit;
+  font-size: var(--q-fs-xs);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+.q-chip.on {
+  border-color: var(--q-primary-border);
+  background: var(--q-primary-soft);
+  color: var(--q-primary);
+}
+
+/* Segmented Control with Framer Motion sliding pill */
+.q-seg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: var(--q-r-md);
+  background: var(--q-surface-2);
+  border: 1px solid var(--q-line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.q-seg::-webkit-scrollbar { display: none; }
+.q-seg-item {
+  position: relative;
+  flex: 1 0 auto;
+  min-height: 40px;
+  padding-inline: 14px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--q-ink-2);
+  font: inherit;
+  font-size: var(--q-fs-sm);
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  transition: color 180ms ease;
+}
+.q-seg-item.on { color: #fff; }
+.q-seg-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--q-primary-2), var(--q-primary));
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--q-primary) 55%, transparent);
+  z-index: -1;
+}
+
+/* Skeleton shimmer */
+.q-skel {
+  border-radius: var(--q-r-md);
+  background: linear-gradient(90deg, var(--q-surface-2) 25%, var(--q-line) 50%, var(--q-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: q-shimmer 1.35s ease-in-out infinite;
+}
+@keyframes q-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   Quran Shell & Home / Index Screen (Matches Reference Screenshot + Plan)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.q-shell {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--q-r-xl);
+  background: var(--q-bg);
+  min-height: calc(100dvh - 180px);
+  align-content: start;
+}
+
+@media (max-width: 767.98px) {
+  .q-shell {
+    padding: 8px 2px 16px;
+    border-radius: 0;
+    background: transparent;
+  }
+}
+
+/* Header bar: right back arrow · centered title · left quick actions */
+.q-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding-block: 2px;
+}
+.q-header-title {
+  margin: 0;
+  text-align: center;
+  font-size: 1.38rem;
+  font-weight: 800;
+  color: var(--q-ink);
+  letter-spacing: -0.01em;
+}
+.q-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Theme pill bar (compact) */
+.q-theme-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  background: var(--q-surface);
+  border: 1px solid var(--q-line);
+}
+.q-theme-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 150ms var(--q-ease), border-color 150ms ease;
+}
+.q-theme-dot.light { background: #FAF8F3; box-shadow: inset 0 0 0 1px #D5CEBE; }
+.q-theme-dot.sepia { background: #EFE3C6; box-shadow: inset 0 0 0 1px #CBB78E; }
+.q-theme-dot.dark  { background: #0C0F0E; box-shadow: inset 0 0 0 1px #3FAE7A; }
+.q-theme-dot.on    { border-color: var(--q-primary); transform: scale(1.12); }
+
+/* Hero "Continue Reading" Card (emerald gradient with subtle geometric pattern) */
+.q-continue {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 18px 18px 16px;
+  border: 0;
+  border-radius: var(--q-r-xl);
+  background: linear-gradient(135deg, #2B7753 0%, #1F5E41 55%, #184C35 100%);
+  color: #fff;
+  text-align: start;
+  cursor: pointer;
+  box-shadow: 0 14px 30px -14px rgb(24 76 53 / 62%);
+  transition: transform 160ms var(--q-ease), box-shadow 180ms ease;
+}
+.q-root[data-q-theme="dark"] .q-continue {
+  background: linear-gradient(135deg, #256849 0%, #174933 60%, #0F3323 100%);
+  box-shadow: 0 14px 30px -14px rgb(0 0 0 / 80%);
+}
+.q-root[data-q-theme="sepia"] .q-continue {
+  background: linear-gradient(135deg, #658656 0%, #4E6B41 60%, #3E5734 100%);
+}
+.q-continue::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 18% 25%, #F6DF9B 1.5px, transparent 1.5px),
+                    radial-gradient(circle at 82% 75%, #F6DF9B 1.5px, transparent 1.5px);
+  background-size: 26px 26px;
+}
+.q-continue:active { transform: scale(0.985); }
+.q-continue-play {
+  width: 50px;
+  height: 50px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  background: rgb(255 255 255 / 16%);
+  border: 1px solid rgb(255 255 255 / 22%);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+.q-continue-body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.q-continue-kicker {
+  font-size: var(--q-fs-xs);
+  font-weight: 600;
+  color: rgb(255 255 255 / 80%);
+}
+.q-continue-title {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.q-continue-prog {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.q-continue-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 20%);
+  overflow: hidden;
+}
+.q-continue-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #E8C77A, #FFF0C2);
+}
+.q-continue-pct {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #F6DF9B;
+}
+.q-continue-arrow {
+  color: rgb(255 255 255 / 88%);
+  display: grid;
+  place-items: center;
+}
+
+/* Search Input Bar */
+.q-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+  padding-inline: 16px;
+  border-radius: var(--q-r-md);
+  border: 1px solid var(--q-line);
+  background: var(--q-surface);
+  box-shadow: var(--q-shadow-sm);
+  transition: border-color 180ms ease;
+}
+.q-search-bar:focus-within {
+  border-color: var(--q-primary);
+}
+.q-search-bar svg { color: var(--q-ink-3); flex: none; }
+.q-search-bar input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--q-ink);
+  font: inherit;
+  font-size: var(--q-fs-md);
+  outline: none;
+}
+.q-search-bar input::placeholder { color: var(--q-ink-3); }
+
+/* Surah Card — Matches Reference Screenshot (Diamond Badge · Meta · Calligraphy Name) */
+.q-list-wrap {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+@media (min-width: 768px) {
+  .q-list-wrap.is-grid {
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  }
+}
+
+.q-surah-card {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 76px;
+  padding: 12px 16px;
+  border-radius: var(--q-r-lg);
+  border: 1px solid var(--q-line);
+  background: var(--q-surface);
+  color: var(--q-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  box-shadow: var(--q-shadow-sm);
+  transition: transform 150ms var(--q-ease), border-color 180ms ease, background-color 180ms ease;
+}
+.q-surah-card:hover {
+  border-color: var(--q-primary-border);
+  background: color-mix(in srgb, var(--q-primary) 3%, var(--q-surface));
+}
+.q-surah-card:active { transform: scale(0.985); }
+
+/* Octagonal / Star Ornamental Number Badge */
+.q-star-badge {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.q-star-badge svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  color: var(--q-primary);
+}
+.q-star-badge span {
+  position: relative;
+  z-index: 1;
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--q-primary);
+}
+
+.q-surah-info {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.q-surah-en {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--q-ink);
+  line-height: 1.25;
+}
+.q-surah-sub {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--q-ink-3);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.q-surah-ar {
+  font-family: var(--q-font-mushaf);
+  font-size: 1.52rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--q-primary);
+  padding-inline-start: 6px;
+  white-space: nowrap;
+}
+
+/* Juz / Hizb / Page Cards */
+.q-meta-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 68px;
+  padding: 12px 16px;
+  border-radius: var(--q-r-lg);
+  border: 1px solid var(--q-line);
+  background: var(--q-surface);
+  color: var(--q-ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  box-shadow: var(--q-shadow-sm);
+  transition: transform 150ms var(--q-ease), border-color 180ms ease;
+}
+.q-meta-card:hover { border-color: var(--q-primary-border); }
+.q-meta-card:active { transform: scale(0.985); }
+.q-meta-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.q-meta-pill {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--q-gold-soft);
+  color: var(--q-gold);
+  font-size: var(--q-fs-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+/* Fast Scroller Side Track */
+.q-fast-track {
+  position: fixed;
+  inset-inline-end: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 3px;
+  border-radius: 999px;
+  background: var(--q-surface-glass);
+  border: 1px solid var(--q-line);
+  backdrop-filter: blur(8px);
+  touch-action: none;
+  user-select: none;
+}
+.q-fast-mark {
+  width: 20px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: var(--q-ink-3);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.q-fast-mark.on { color: var(--q-primary); background: var(--q-primary-soft); }
+.q-fast-bubble {
+  position: fixed;
+  inset-inline-end: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 41;
+  min-width: 58px;
+  height: 44px;
+  padding-inline: 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--q-primary);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  box-shadow: var(--q-shadow-md);
+  pointer-events: none;
+}
+
+/* Quran Sub-Navigation Bar (inside Quran workspace for Index / Search / Bookmarks / Settings) */
+.q-subnav {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 5px;
+  border-radius: var(--q-r-md);
+  background: var(--q-surface);
+  border: 1px solid var(--q-line);
+  box-shadow: var(--q-shadow-sm);
+}
+.q-subnav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  padding-inline: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--q-ink-3);
+  font: inherit;
+  font-size: var(--q-fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+.q-subnav-btn.on {
+  background: var(--q-primary-soft);
+  color: var(--q-primary);
+}
+
+/* Onboarding Modal (first run only, 3 quick steps, skippable) */
+.q-onboard-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 56%);
+  backdrop-filter: blur(10px);
+}
+.q-onboard-card {
+  width: min(100%, 400px);
+  display: grid;
+  gap: 16px;
+  padding: 24px 20px 20px;
+  border-radius: var(--q-r-xl);
+  background: var(--q-surface);
+  border: 1px solid var(--q-line);
+  color: var(--q-ink);
+  box-shadow: var(--q-shadow-lg);
+}
+.q-onboard-steps {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+.q-onboard-steps span {
+  width: 24px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--q-line);
+  transition: background-color 200ms ease, width 200ms ease;
+}
+.q-onboard-steps span.on {
+  width: 36px;
+  background: var(--q-primary);
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .q-root, .q-btn, .q-surah-card, .q-continue, .q-skel {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, BookOpen, Compass, Hand, Sparkles, type LucideIcon } from 'lucide-react';
-import { AmalSection, IstikharaSection, QiblaSection, QuranSection, ReaderSection } from './WorshipSections';
+import { AmalSection, IstikharaSection, QiblaSection, ReaderSection } from './WorshipSections';
+import { QuranApp } from './quran/QuranApp';
 import quranCardUrl from '../../assets/worship/quran.jpg';
 import duasCardUrl from '../../assets/worship/duas.jpg';
 import ziyaratCardUrl from '../../assets/worship/ziyarat.jpg';
@@ -36,6 +37,10 @@ const TILES: Tile[] = [
 export function WorshipPage() {
   const [section, setSection] = useState<SectionSlug | null>(null);
   const current = section ? TILES.find((t) => t.slug === section) ?? null : null;
+
+  if (section === 'quran') {
+    return <QuranApp onBackToWorship={() => setSection(null)} />;
+  }
 
   return (
     <div dir="rtl" className="wsp">
@@ -96,7 +101,6 @@ export function WorshipPage() {
               </button>
             ))}
           </nav>
-          {section === 'quran' && <QuranSection />}
           {section === 'duas' && <ReaderSection kind="duas" />}
           {section === 'ziyarat' && <ReaderSection kind="ziyarat" />}
           {section === 'amal' && <AmalSection />}
