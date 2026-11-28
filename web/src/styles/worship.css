@@ -47,9 +47,9 @@
   }
   .wsp-pcard {
     position: relative; display: block; width: 100%; padding: 0; overflow: hidden;
-    aspect-ratio: 2.38 / 1;
-    border: 1.5px solid rgb(232 199 122 / 72%);
-    border-radius: 22px; background: #0b2c2a; cursor: pointer;
+    aspect-ratio: 2.15 / 1;
+    border: 1.5px solid rgb(232 199 122 / 78%);
+    border-radius: 22px; background: #0b2c2a; cursor: pointer; font: inherit; color: #fff;
     box-shadow: 0 14px 28px -14px rgb(7 26 24 / 62%), inset 0 1px 0 rgb(255 255 255 / 22%);
     animation: wsp-pcard-in .58s cubic-bezier(.22, 1, .36, 1) both;
     animation-delay: calc(var(--i, 0) * 80ms);
@@ -57,13 +57,45 @@
   }
   .wsp-pcard img {
     width: 100%; height: 100%; object-fit: cover; display: block;
-    transform: scale(1.045);
+    transform: scale(1.035);
     transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+  }
+  .wsp-pcard-content {
+    position: absolute; inset-block: 0; inset-inline-start: 0; width: 56%; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    padding: 12px 14px 12px 6px; text-align: center;
+    background: linear-gradient(270deg, rgb(0 0 0 / 26%) 0%, rgb(0 0 0 / 12%) 72%, transparent 100%);
+  }
+  .wsp-pcard-ziyarat .wsp-pcard-content {
+    background: linear-gradient(270deg, rgb(42 26 4 / 38%) 0%, rgb(42 26 4 / 16%) 75%, transparent 100%);
+  }
+  .wsp-pcard-content strong {
+    font-size: clamp(1.22rem, 5.4vw, 1.52rem); font-weight: 800; line-height: 1.2;
+    color: #fdf1c8; letter-spacing: -.01em;
+    text-shadow: 0 2px 10px rgb(0 0 0 / 58%);
+  }
+  .wsp-pcard-content small {
+    font-size: clamp(.78rem, 3.4vw, .9rem); font-weight: 600; line-height: 1.3;
+    color: rgb(255 255 255 / 92%);
+    text-shadow: 0 1px 6px rgb(0 0 0 / 50%);
+  }
+  .wsp-pcard-cta {
+    margin-top: 6px; display: inline-flex; align-items: center; justify-content: center;
+    min-width: 84px; height: 30px; padding: 0 20px; border-radius: 999px;
+    background: rgb(6 14 16 / 42%);
+    border: 1px solid rgb(243 213 141 / 72%);
+    color: #fce8b2; font-size: .8rem; font-weight: 800; letter-spacing: .01em;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 4px 12px -4px rgb(0 0 0 / 45%), inset 0 1px 0 rgb(255 255 255 / 16%);
+    transition: background-color .16s ease, border-color .16s ease, transform .16s ease;
+  }
+  .wsp-pcard:active .wsp-pcard-cta {
+    background: rgb(243 213 141 / 24%); border-color: #fdf1c8; color: #fff; transform: scale(.96);
   }
   /* Subtle golden light sweep on entrance */
   .wsp-pcard::after {
-    content: ""; position: absolute; inset: 0; pointer-events: none;
-    background: linear-gradient(115deg, transparent 32%, rgb(255 236 179 / 28%) 50%, transparent 68%);
+    content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    background: linear-gradient(115deg, transparent 32%, rgb(255 236 179 / 26%) 50%, transparent 68%);
     transform: translateX(120%);
     animation: wsp-pcard-shine 1.15s cubic-bezier(.22, 1, .36, 1) both;
     animation-delay: calc(var(--i, 0) * 110ms + 240ms);

@@ -66,18 +66,23 @@ export function WorshipPage() {
             ))}
           </div>
 
-          {/* Phone-only: 6 stacked luxury illustrated cards matching the user's exact artwork */}
+          {/* Phone-only: 6 stacked luxury illustrated cards with crisp live Arabic titles & دخول CTA */}
           <div className="wsp-phone-cards" aria-label="أقسام العبادات">
             {TILES.map(({ slug, title, hint, cardImg }, idx) => (
               <button
                 key={slug}
                 type="button"
-                className="wsp-pcard"
+                className={`wsp-pcard wsp-pcard-${slug}`}
                 style={{ ['--i' as string]: idx }}
                 aria-label={`${title} — ${hint}`}
                 onClick={() => setSection(slug)}
               >
-                <img src={cardImg} alt={`${title} — ${hint}`} loading={idx < 3 ? 'eager' : 'lazy'} decoding="async" />
+                <img src={cardImg} alt="" aria-hidden="true" loading={idx < 3 ? 'eager' : 'lazy'} decoding="async" />
+                <span className="wsp-pcard-content">
+                  <strong>{title}</strong>
+                  <small>{hint}</small>
+                  <span className="wsp-pcard-cta" aria-hidden="true">دخول</span>
+                </span>
               </button>
             ))}
           </div>
