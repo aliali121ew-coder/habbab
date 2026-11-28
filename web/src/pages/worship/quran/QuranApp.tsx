@@ -4,6 +4,7 @@ import { ArrowRight, Bookmark, BookOpen, Search, Settings } from 'lucide-react';
 import './styles/quran-tokens.css';
 import { QuranProvider, useQuran, type QuranTab, type QuranTheme } from './store/quranStore';
 import { QuranIndex, type OpenTarget } from './screens/QuranIndex';
+import { QuranSearch } from './screens/QuranSearch';
 import { QButton, QIconButton } from './components/ui/Primitives';
 import { MUSHAF_SURAHS } from './data/mushafMeta';
 import { api } from '../../../api';
@@ -315,12 +316,7 @@ function QuranWorkspace({ onBackToWorship }: { onBackToWorship: () => void }) {
               style={{ display: 'grid', gap: 14 }}
             >
               {activeTab === 'index' && <QuranIndex onOpen={(target) => setReadingTarget(target)} />}
-              {activeTab === 'search' && (
-                <div className="q-card" style={{ padding: 28, textAlign: 'center', color: 'var(--q-ink-2)' }}>
-                  <strong style={{ display: 'block', marginBottom: 6 }}>البحث الذكي داخل الآيات</strong>
-                  <small style={{ color: 'var(--q-ink-3)' }}>سيُبنى بالكامل في المرحلة 6 مع Web Worker والتطبيع العربي والقفز المباشر.</small>
-                </div>
-              )}
+              {activeTab === 'search' && <QuranSearch onOpen={(target) => setReadingTarget(target)} />}
               {activeTab === 'bookmarks' && (
                 <div className="q-card" style={{ padding: 28, textAlign: 'center', color: 'var(--q-ink-2)' }}>
                   <strong style={{ display: 'block', marginBottom: 6 }}>الفواصل الملونة ومتتبع الختمة</strong>
