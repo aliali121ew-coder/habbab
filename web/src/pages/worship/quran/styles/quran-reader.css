@@ -1,7 +1,9 @@
 /* ══════════════════════════════════════════════════════════════════════════════
-   Mushaf Reader (604 Pages) — Realistic 3D Book Leaf Flip
-   (perspective: 1700px · perspective-origin: 85% 50% · transform-origin: 100% 50%
-    · live brightness lighting · spine gutter · dynamic shade · finger-hold)
+   Mushaf Reader (604 Pages) — True 3D Book Engine
+   - Desktop / Tablet (>= 900px): 2-Page Open Book Spread with 0°->180° 2-sided leaf
+     turning across the center spine, stacked page edges, gutter & cast shadows!
+   - Mobile (< 900px): Single-Page 3D Leaf Flip (perspective 1700px, live finger hold).
+   - Zero overlap: stage reserves exact padding for top/bottom bars when visible.
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .qr-fullscreen {
@@ -27,7 +29,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+  height: calc(58px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 12px 0;
   background: var(--q-surface-glass);
   border-bottom: 1px solid var(--q-line);
   backdrop-filter: blur(14px);
@@ -64,8 +67,8 @@
   inset-inline: 0;
   z-index: 40;
   display: grid;
-  gap: 10px;
-  padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  gap: 8px;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
   background: var(--q-surface-glass);
   border-top: 1px solid var(--q-line);
   backdrop-filter: blur(14px);
@@ -109,7 +112,7 @@
 }
 .qr-tools-row::-webkit-scrollbar { display: none; }
 
-/* ── 3D Book Stage (Exact perspective + spine origin from reference) ── */
+/* ── Book Stage — Reserves exact space when bars are visible (ZERO text overlap!) ── */
 .qr-stage {
   position: relative;
   flex: 1;
@@ -117,21 +120,26 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: calc(10px + env(safe-area-inset-top, 0px)) 8px calc(12px + env(safe-area-inset-bottom, 0px));
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 10px calc(12px + env(safe-area-inset-bottom, 0px));
   overflow: hidden;
   touch-action: pan-y;
+  transition: padding 260ms var(--q-ease);
+}
+.qr-stage.bars-on {
+  padding-top: calc(66px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
 }
 
+/* ── Single-Page 3D Book (Mobile < 900px) ── */
 .qr-book {
   position: relative;
-  width: min(100%, 600px);
+  width: min(100%, 560px);
   height: 100%;
   perspective: 1700px;
   perspective-origin: 85% 50%;
-  direction: ltr; /* keeps right spine at 100% 50% consistently */
+  direction: ltr;
 }
 
-/* Under page (revealed page below the turning leaf) */
 .qr-leaf-under {
   position: absolute;
   inset: 0;
@@ -141,7 +149,6 @@
   will-change: filter;
 }
 
-/* Turning top leaf (rotates cleanly around the right spine 100% 50%) */
 .qr-leaf-top {
   position: absolute;
   inset: 0;
@@ -151,11 +158,79 @@
   backface-visibility: hidden;
   border-radius: 6px 14px 14px 6px;
   overflow: hidden;
-  box-shadow: 0 14px 36px rgb(0 0 0 / 34%);
+  box-shadow: 0 14px 36px rgb(0 0 0 / 32%);
   will-change: transform, filter, opacity;
 }
 
-/* Spine gutter shadow (permanent right-edge book crease) */
+/* ── Double-Page 3D Open Book Spread (Desktop & Tablet >= 900px — Matches Video 1:1!) ── */
+.qr-spread {
+  position: relative;
+  width: min(100% - 108px, 1120px);
+  height: 100%;
+  perspective: 3200px;
+  perspective-origin: 50% 50%;
+  direction: ltr;
+}
+
+.qr-spread-shadow {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  bottom: -14px;
+  height: 24px;
+  background: radial-gradient(ellipse at 50% 50%, rgb(0 0 0 / 42%), rgb(0 0 0 / 0%) 72%);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+.qr-spread-half {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  overflow: hidden;
+}
+.qr-spread-half.left {
+  left: 0;
+  z-index: 2;
+  border-radius: 12px 0 0 12px;
+  box-shadow: -3px 0 0 #EDEFE8, -6px 0 0 #C6CCC2, -9px 3px 16px rgb(0 0 0 / 22%);
+}
+.qr-spread-half.right {
+  right: 0;
+  z-index: 2;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 3px 0 0 #EDEFE8, 6px 0 0 #C6CCC2, 9px 3px 16px rgb(0 0 0 / 22%);
+}
+
+/* The 2-sided turning leaf in Double-Page mode: anchored at the CENTER spine (100% 50% of left half) */
+.qr-spread-leaf {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 50%;
+  z-index: 10;
+  transform-origin: 100% 50%;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.qr-spread-face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+.qr-spread-face.front {
+  border-radius: 12px 0 0 12px;
+}
+.qr-spread-face.back {
+  transform: rotateY(180deg);
+  border-radius: 0 12px 12px 0;
+}
+
+/* Spine gutter shadows */
 .qr-gut {
   position: absolute;
   top: 0;
@@ -165,6 +240,11 @@
   pointer-events: none;
   z-index: 6;
   background: linear-gradient(to left, rgb(18 34 32 / 28%), rgb(18 34 32 / 9%) 40%, rgb(18 34 32 / 0%));
+}
+.qr-gut.left-side {
+  right: auto;
+  left: 0;
+  background: linear-gradient(to right, rgb(18 34 32 / 28%), rgb(18 34 32 / 9%) 40%, rgb(18 34 32 / 0%));
 }
 
 /* Dynamic moving shade gradient across the lifting leaf */
@@ -176,15 +256,21 @@
   background: linear-gradient(to right, rgb(8 16 16 / 72%), rgb(8 16 16 / 16%) 74%, rgb(8 16 16 / 0%));
   will-change: opacity;
 }
+.qr-shade.back-side {
+  background: linear-gradient(to left, rgb(8 16 16 / 72%), rgb(8 16 16 / 16%) 74%, rgb(8 16 16 / 0%));
+}
 
-/* Cast shadow on the right edge of the revealed under-page */
+/* Cast shadow on stationary halves */
 .qr-cast {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 4;
-  background: linear-gradient(to left, rgb(10 20 20 / 54%), rgb(10 20 20 / 0%) 82%);
+  background: linear-gradient(to left, rgb(10 20 20 / 52%), rgb(10 20 20 / 0%) 82%);
   will-change: opacity;
+}
+.qr-cast.right-side {
+  background: linear-gradient(to right, rgb(10 20 20 / 52%), rgb(10 20 20 / 0%) 82%);
 }
 
 /* ── Printed Mushaf Page Surface & Paper Fiber Grain ── */
@@ -195,29 +281,26 @@
   display: flex;
   flex-direction: column;
   direction: rtl;
-  border-radius: 6px 14px 14px 6px;
+  border-radius: inherit;
   background: var(--q-page-paper);
   border: 1.5px solid var(--q-page-frame);
   box-shadow:
-    inset 0 0 0 5px var(--q-page-paper),
-    inset 0 0 0 6.5px color-mix(in srgb, var(--q-page-frame) 55%, transparent);
+    inset 0 0 0 4px var(--q-page-paper),
+    inset 0 0 0 5.5px color-mix(in srgb, var(--q-page-frame) 55%, transparent);
   overflow: hidden;
 }
 
-/* Subtle physical paper grain texture (from reference) */
 .qr-page-card::before {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.42;
+  opacity: 0.4;
   mix-blend-mode: multiply;
   z-index: 1;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .4 0 0 0 0 .38 0 0 0 .11 0'/></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
 }
-.q-root[data-q-theme="dark"] .qr-page-card::before {
-  opacity: 0;
-}
+.q-root[data-q-theme="dark"] .qr-page-card::before { opacity: 0; }
 
 .qr-page-head {
   position: relative;
@@ -225,7 +308,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px 6px;
+  padding: 10px 18px 6px;
   font-size: 0.78rem;
   font-weight: 800;
   color: var(--q-gold);
@@ -239,7 +322,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 14px clamp(16px, 4vw, 34px) 22px;
+  padding: 12px clamp(14px, 3.2vw, 30px) 18px;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -250,7 +333,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 6px 16px 10px;
+  padding: 6px 16px 9px;
   font-size: 0.78rem;
   font-weight: 800;
   color: var(--q-gold);
@@ -258,10 +341,9 @@
   flex: none;
 }
 
-/* Ornamental Surah Header Banner */
 .qr-surah-banner {
-  margin: 6px 0 12px;
-  padding: 9px 16px;
+  margin: 4px 0 10px;
+  padding: 8px 14px;
   border-radius: 12px;
   text-align: center;
   background: linear-gradient(
@@ -272,7 +354,7 @@
   );
   border: 1px solid color-mix(in srgb, var(--q-gold) 60%, transparent);
   font-family: var(--q-font-mushaf);
-  font-size: 1.32rem;
+  font-size: 1.28rem;
   font-weight: 700;
   color: var(--q-primary);
 }
@@ -280,16 +362,15 @@
 .qr-basmala {
   text-align: center;
   font-family: var(--q-font-mushaf);
-  font-size: 1.35em;
+  font-size: 1.3em;
   font-weight: 700;
   color: var(--q-primary);
-  margin: 0 0 12px;
+  margin: 0 0 10px;
 }
 
-/* Mushaf Verse Flow */
 .qr-mushaf-text {
   font-family: var(--q-font-mushaf);
-  line-height: 2.15;
+  line-height: 2.1;
   text-align: justify;
   text-align-last: center;
   color: var(--q-ink);
@@ -319,7 +400,6 @@
   margin-inline-start: 3px;
 }
 
-/* Tajweed subtle accents */
 .qr-tj-qalqala { color: #1D70B8; }
 .qr-tj-ghunna  { color: #1F8A5B; }
 .qr-tj-madd    { color: #B85D19; }
@@ -333,22 +413,22 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 25;
-  width: 42px;
-  height: 70px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid var(--q-line);
-  border-radius: 14px;
+  border: 1px solid var(--q-line-strong);
+  border-radius: 50%;
   background: var(--q-surface-glass);
-  color: var(--q-ink-2);
+  color: var(--q-ink);
   backdrop-filter: blur(8px);
   cursor: pointer;
-  opacity: 0.82;
-  transition: opacity 180ms ease, transform 150ms var(--q-ease);
+  opacity: 0.86;
+  transition: opacity 180ms ease, transform 150ms var(--q-ease), background-color 180ms ease;
 }
-.qr-edge-btn:hover { opacity: 1; }
-.qr-edge-btn.next { inset-inline-end: 12px; }
-.qr-edge-btn.prev { inset-inline-start: 12px; }
+.qr-edge-btn:hover { opacity: 1; background: var(--q-primary); color: #fff; border-color: var(--q-primary); }
+.qr-edge-btn.next { inset-inline-end: 14px; }
+.qr-edge-btn.prev { inset-inline-start: 14px; }
 @media (max-width: 767.98px) {
   .qr-edge-btn { display: none; }
 }
@@ -416,7 +496,3 @@
   cursor: pointer;
 }
 .qr-ctx-btn:active { transform: scale(0.95); }
-
-@media (prefers-reduced-motion: reduce) {
-  .qr-topbar, .qr-bottombar { transition: none !important; }
-}
