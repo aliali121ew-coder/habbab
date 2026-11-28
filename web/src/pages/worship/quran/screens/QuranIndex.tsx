@@ -1,23 +1,19 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ArrowLeft, Play, Search } from 'lucide-react';
 import {
-  HIZB_LIST, JUZ_LIST, MUSHAF_SURAHS, TOTAL_PAGES, surahForPage,
+  JUZ_LIST, MUSHAF_SURAHS, TOTAL_PAGES, surahForPage,
   type MushafSurah,
 } from '../data/mushafMeta';
 import { useQuran } from '../store/quranStore';
 import { QSegmentedControl, QStarBadge, type SegOption } from '../components/ui/Primitives';
 
-type IndexTab = 'surahs' | 'juz' | 'hizb' | 'pages';
+type IndexTab = 'surahs' | 'juz' | 'pages';
 
 const INDEX_TABS: readonly SegOption<IndexTab>[] = [
-  { id: 'surahs', label: 'السور' },
+  { id: 'surahs', label: 'الفهرس' },
   { id: 'juz', label: 'الأجزاء' },
-  { id: 'hizb', label: 'الأحزاب' },
   { id: 'pages', label: 'الصفحات' },
 ];
-
-const FAST_SURAH_MARKS = [1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 114];
-const FAST_PAGE_MARKS = [1, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 604];
 
 function normalizeQuick(text: string): string {
   return text
@@ -44,9 +40,6 @@ export function QuranIndex({
   const [tab, setTab] = useState<IndexTab>('surahs');
   const [query, setQuery] = useState('');
   const [pageWindowStart, setPageWindowStart] = useState(0);
-  const [fastBubble, setFastBubble] = useState<string | null>(null);
-  const itemRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
-  const bubbleTimer = useRef<number | null>(null);
 
   const lastSurah = MUSHAF_SURAHS[lastRead.surah - 1] ?? MUSHAF_SURAHS[0];
   const progressPct = Math.max(1, Math.min(100, Math.round((lastRead.page / TOTAL_PAGES) * 100)));
@@ -61,27 +54,6 @@ export function QuranIndex({
       || num(s.n) === query.trim(),
     );
   }, [query, num]);
-
-  const showBubble = useCallback((label: string) => {
-    setFastBubble(label);
-    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-      try { navigator.vibrate(8); } catch { /* ignore */ }
-    }
-    if (bubbleTimer.current) window.clearTimeout(bubbleTimer.current);
-    bubbleTimer.current = window.setTimeout(() => setFastBubble(null), 850);
-  }, []);
-
-  const jumpToSurah = useCallback((n: number) => {
-    showBubble(`س ${num(n)}`);
-    const el = itemRefs.current.get(n);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [num, showBubble]);
-
-  const jumpToPageBand = useCallback((p: number) => {
-    showBubble(`ص ${num(p)}`);
-    const bandStart = Math.max(0, Math.min(TOTAL_PAGES - 40, p - 1));
-    setPageWindowStart(bandStart);
-  }, [num, showBubble]);
 
   // Lightweight virtualized window for the 604 pages tab (renders 40 items at a time)
   const visiblePages = useMemo(() => {
@@ -135,7 +107,7 @@ export function QuranIndex({
         />
       </label>
 
-      {/* Segmented Control (السور · الأجزاء · الأحزاب · الصفحات) */}
+      {/* Segmented Control (الفهرس · الأجزاء · الصفحات) */}
       <QSegmentedControl
         options={INDEX_TABS}
         value={tab}
@@ -144,9 +116,9 @@ export function QuranIndex({
         ariaLabel="تصنيف فهرس القرآن الكريم"
       />
 
-      {/* Tab 1: Surahs */}
+      {/* Tab 1: الفهرس (Surahs) */}
       {tab === 'surahs' && (
-        <div className="q-list-wrap is-grid" role="list" aria-label="قائمة السور">
+        <div className="q-list-wrap is-grid" role="list" aria-label="فهرس السور">
           {filteredSurahs.length === 0 ? (
             <div className="q-card" style={{ padding: 28, textAlign: 'center', color: 'var(--q-ink-3)' }}>
               لا توجد سورة مطابقة لـ «{query}»
@@ -155,10 +127,6 @@ export function QuranIndex({
             filteredSurahs.map((s) => (
               <button
                 key={s.n}
-                ref={(el) => {
-                  if (el) itemRefs.current.set(s.n, el);
-                  else itemRefs.current.delete(s.n);
-                }}
                 type="button"
                 className="q-surah-card"
                 onClick={() => onOpen({ surah: s.n, page: s.page, ayah: 1 })}
@@ -181,7 +149,7 @@ export function QuranIndex({
         </div>
       )}
 
-      {/* Tab 2: Juz (30) */}
+      {/* Tab 2: الأجزاء (30) */}
       {tab === 'juz' && (
         <div className="q-list-wrap is-grid" role="list" aria-label="الأجزاء الثلاثون">
           {JUZ_LIST.map((j) => {
@@ -207,33 +175,7 @@ export function QuranIndex({
         </div>
       )}
 
-      {/* Tab 3: Hizb (60) */}
-      {tab === 'hizb' && (
-        <div className="q-list-wrap is-grid" role="list" aria-label="الأحزاب الستون">
-          {HIZB_LIST.map((h) => {
-            const s = surahForPage(h.startPage);
-            return (
-              <button
-                key={h.n}
-                type="button"
-                className="q-meta-card"
-                onClick={() => onOpen({ surah: s.n, page: h.startPage, ayah: 1 })}
-              >
-                <span className="q-meta-left">
-                  <QStarBadge label={num(h.n)} />
-                  <span className="q-surah-info">
-                    <span className="q-surah-en">الحزب {num(h.n)}</span>
-                    <span className="q-surah-sub">الجزء {num(h.juz)} • سورة {s.name}</span>
-                  </span>
-                </span>
-                <span className="q-meta-pill">ص {num(h.startPage)}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Tab 4: Pages (604 — virtualized 40-page band + quick range selector) */}
+      {/* Tab 3: الصفحات (604 — virtualized 40-page band + quick range selector) */}
       {tab === 'pages' && (
         <div style={{ display: 'grid', gap: 10 }}>
           {!query.trim() && (
@@ -277,41 +219,6 @@ export function QuranIndex({
           </div>
         </div>
       )}
-
-      {/* Side Fast Scroller for Surahs (when unfiltered) & Pages */}
-      {tab === 'surahs' && !query.trim() && (
-        <div className="q-fast-track" aria-label="القفز السريع للسور">
-          {FAST_SURAH_MARKS.map((m) => (
-            <span
-              key={m}
-              role="button"
-              tabIndex={0}
-              className="q-fast-mark"
-              onClick={() => jumpToSurah(m)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') jumpToSurah(m); }}
-            >
-              {num(m)}
-            </span>
-          ))}
-        </div>
-      )}
-      {tab === 'pages' && !query.trim() && (
-        <div className="q-fast-track" aria-label="القفز السريع للصفحات">
-          {FAST_PAGE_MARKS.map((m) => (
-            <span
-              key={m}
-              role="button"
-              tabIndex={0}
-              className="q-fast-mark"
-              onClick={() => jumpToPageBand(m)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') jumpToPageBand(m); }}
-            >
-              {num(m)}
-            </span>
-          ))}
-        </div>
-      )}
-      {fastBubble && <div className="q-fast-bubble" aria-live="polite">{fastBubble}</div>}
     </>
   );
 }

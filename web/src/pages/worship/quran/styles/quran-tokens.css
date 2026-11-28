@@ -562,57 +562,6 @@
   white-space: nowrap;
 }
 
-/* Fast Scroller Side Track */
-.q-fast-track {
-  position: fixed;
-  inset-inline-end: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 40;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 3px;
-  border-radius: 999px;
-  background: var(--q-surface-glass);
-  border: 1px solid var(--q-line);
-  backdrop-filter: blur(8px);
-  touch-action: none;
-  user-select: none;
-}
-.q-fast-mark {
-  width: 20px;
-  height: 18px;
-  display: grid;
-  place-items: center;
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: var(--q-ink-3);
-  border-radius: 6px;
-  cursor: pointer;
-}
-.q-fast-mark.on { color: var(--q-primary); background: var(--q-primary-soft); }
-.q-fast-bubble {
-  position: fixed;
-  inset-inline-end: 42px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 41;
-  min-width: 58px;
-  height: 44px;
-  padding-inline: 14px;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: var(--q-primary);
-  color: #fff;
-  font-size: 1rem;
-  font-weight: 800;
-  box-shadow: var(--q-shadow-md);
-  pointer-events: none;
-}
-
 /* Quran Sub-Navigation Bar (inside Quran workspace for Index / Search / Bookmarks / Settings) */
 .q-subnav {
   display: grid;
