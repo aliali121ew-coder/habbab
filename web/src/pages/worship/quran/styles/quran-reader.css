@@ -102,6 +102,38 @@
   border-radius: 999px;
 }
 
+.qr-speed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--q-ink-2);
+}
+.qr-speed-row input[type="range"] {
+  flex: 1;
+  accent-color: var(--q-gold);
+  cursor: pointer;
+}
+.qr-speed-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  color: var(--q-ink-2);
+}
+.qr-speed-val {
+  min-width: 64px;
+  text-align: center;
+  font-size: 0.73rem;
+  font-weight: 800;
+  color: var(--q-gold);
+  background: var(--q-gold-soft);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 .qr-tools-row {
   display: flex;
   align-items: center;
@@ -126,8 +158,8 @@
   transition: padding 260ms var(--q-ease);
 }
 .qr-stage.bars-on {
-  padding-top: calc(66px + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  padding-top: calc(64px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
 }
 
 /* ── Single-Page WebGL Curl Book + CSS Fallback ── */
@@ -337,14 +369,25 @@
   flex: none;
 }
 
-.qr-page-scroll {
+.qr-page-body {
   position: relative;
   z-index: 2;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px clamp(12px, 3vw, 26px) 10px;
+}
+.qr-page-body.is-scroll {
   overflow-y: auto;
+  justify-content: flex-start;
   padding: 12px clamp(14px, 3.2vw, 30px) 18px;
   -webkit-overflow-scrolling: touch;
+}
+.qr-page-fit-inner {
+  width: 100%;
 }
 
 .qr-page-foot {

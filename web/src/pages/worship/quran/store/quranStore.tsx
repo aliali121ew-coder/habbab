@@ -19,6 +19,7 @@ export interface QuranSettings {
   digits: DigitStyle;
   fontSize: number;
   flipMode: FlipMode;
+  flipSpeed: number;
   tajweed: boolean;
   doublePage: boolean;
   wakeLock: boolean;
@@ -38,6 +39,7 @@ const DEFAULT_SETTINGS: QuranSettings = {
   digits: 'arabic',
   fontSize: 24,
   flipMode: 'curl',
+  flipSpeed: 1,
   tajweed: false,
   doublePage: true,
   wakeLock: true,

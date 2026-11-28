@@ -7,9 +7,7 @@ export interface MushafRenderOptions {
   height: number;
   dpr: number;
   theme: QuranTheme;
-  fontSize: number;
   tajweed: boolean;
-  scrollTop?: number;
   num: (v: number | string) => string;
 }
 
@@ -53,7 +51,6 @@ const PALETTES: Record<QuranTheme, Palette> = {
   },
 };
 
-// LRU cache of pre-rendered page canvases (max 8 entries to keep memory light)
 const canvasCache = new Map<string, HTMLCanvasElement>();
 
 function cacheKey(data: MushafPageData, opts: MushafRenderOptions): string {
@@ -63,9 +60,7 @@ function cacheKey(data: MushafPageData, opts: MushafRenderOptions): string {
     Math.round(opts.height),
     opts.dpr.toFixed(2),
     opts.theme,
-    opts.fontSize,
     opts.tajweed ? 1 : 0,
-    Math.round(opts.scrollTop ?? 0),
     opts.num(1),
   ].join(':');
 }
@@ -87,6 +82,26 @@ interface Token {
   isSajda?: boolean;
 }
 
+interface SurahBlock {
+  surah: number;
+  surahName: string;
+  startsSurah: boolean;
+  tokens: Token[];
+}
+
+interface MeasuredToken extends Token {
+  width: number;
+}
+
+interface PreparedBlock {
+  surah: number;
+  surahName: string;
+  startsSurah: boolean;
+  bannerH: number;
+  basmalaH: number;
+  lines: { items: MeasuredToken[]; totalWordsW: number }[];
+}
+
 function tokenizeAyahs(ayahs: MushafAyah[], num: (v: number | string) => string): Token[] {
   const tokens: Token[] = [];
   for (const a of ayahs) {
@@ -100,9 +115,68 @@ function tokenizeAyahs(ayahs: MushafAyah[], num: (v: number | string) => string)
   return tokens;
 }
 
+function layoutBlocksAtFontSize(
+  ctx: CanvasRenderingContext2D,
+  blocks: SurahBlock[],
+  contentW: number,
+  fs: number,
+  lineRatio: number,
+): { prepared: PreparedBlock[]; totalH: number; spaceW: number } {
+  const mainFont = `400 ${fs.toFixed(2)}px "Amiri", "Noto Naskh Arabic", serif`;
+  const rosetteFont = `700 ${(fs * 0.78).toFixed(2)}px "Amiri", "Noto Naskh Arabic", serif`;
+  ctx.font = mainFont;
+  const spaceW = ctx.measureText(' ').width * 1.1;
+  const lineH = fs * lineRatio;
+
+  let totalH = 0;
+  const prepared: PreparedBlock[] = [];
+
+  for (const b of blocks) {
+    let bannerH = 0;
+    let basmalaH = 0;
+    if (b.startsSurah) {
+      bannerH = Math.max(26, Math.min(36, fs * 1.65));
+      totalH += bannerH + 6;
+      if (b.surah !== 1 && b.surah !== 9) {
+        basmalaH = fs * 1.55;
+        totalH += basmalaH + 4;
+      }
+    }
+
+    const measured: MeasuredToken[] = b.tokens.map((t) => {
+      ctx.font = t.isRosette ? rosetteFont : mainFont;
+      return { ...t, width: ctx.measureText(t.text).width };
+    });
+
+    const lines: { items: MeasuredToken[]; totalWordsW: number }[] = [];
+    let cur: MeasuredToken[] = [];
+    let curW = 0;
+
+    for (const m of measured) {
+      const addW = cur.length === 0 ? m.width : spaceW + m.width;
+      if (cur.length > 0 && curW + addW > contentW) {
+        lines.push({ items: cur, totalWordsW: cur.reduce((s, x) => s + x.width, 0) });
+        cur = [m];
+        curW = m.width;
+      } else {
+        cur.push(m);
+        curW += addW;
+      }
+    }
+    if (cur.length > 0) {
+      lines.push({ items: cur, totalWordsW: cur.reduce((s, x) => s + x.width, 0) });
+    }
+
+    totalH += lines.length * lineH;
+    prepared.push({ surah: b.surah, surahName: b.surahName, startsSurah: b.startsSurah, bannerH, basmalaH, lines });
+  }
+
+  return { prepared, totalH, spaceW };
+}
+
 /**
- * Renders a Mushaf page onto a high-DPI HTMLCanvasElement (capped at DPR <= 2)
- * matching `.qr-page-card` layout & typography so WebGL <-> DOM transitions are seamless.
+ * Renders a Mushaf page onto a high-DPI HTMLCanvasElement (DPR <= 2) with 100% auto-fitted text
+ * inside the paper frame (ZERO vertical clipping or overflow).
  */
 export function renderMushafPageCanvas(
   data: MushafPageData | undefined,
@@ -125,7 +199,7 @@ export function renderMushafPageCanvas(
     if (!ctx) return canvas;
 
     ctx.scale(dpr, dpr);
-    drawPage(ctx, data, w, h, pal, opts);
+    drawPageAutoFit(ctx, data, w, h, pal, opts);
 
     if (canvasCache.size >= 8) {
       const oldest = canvasCache.keys().next().value;
@@ -135,7 +209,6 @@ export function renderMushafPageCanvas(
     return canvas;
   }
 
-  // Fallback blank paper sheet while loading
   const blank = document.createElement('canvas');
   blank.width = Math.round(w * dpr);
   blank.height = Math.round(h * dpr);
@@ -152,7 +225,7 @@ export function renderMushafPageCanvas(
   return blank;
 }
 
-function drawPage(
+function drawPageAutoFit(
   ctx: CanvasRenderingContext2D,
   data: MushafPageData,
   w: number,
@@ -189,19 +262,19 @@ function drawPage(
   ctx.fillStyle = spineGrad;
   ctx.fillRect(w - 48, 0, 48, h);
 
-  // 2. Page Header
-  const headH = 34;
-  const footH = 32;
+  // 2. Page Header & Footer
+  const headH = 33;
+  const footH = 30;
   const surahMeta = surahForPage(data.page);
   const juzMeta = juzForPage(data.page);
   const hizbNum = Math.ceil(data.hizbQuarter / 4);
 
-  ctx.font = '800 12.5px "IBM Plex Sans Arabic", sans-serif';
+  ctx.font = '800 12px "IBM Plex Sans Arabic", sans-serif';
   ctx.fillStyle = pal.gold;
   ctx.textAlign = 'right';
-  ctx.fillText(`سورة ${surahMeta.name}`, w - 18, 22);
+  ctx.fillText(`سورة ${surahMeta.name}`, w - 18, 21);
   ctx.textAlign = 'left';
-  ctx.fillText(`${juzMeta.name} · الحزب ${opts.num(hizbNum)}`, 18, 22);
+  ctx.fillText(`${juzMeta.name} · الحزب ${opts.num(hizbNum)}`, 18, 21);
 
   ctx.save();
   ctx.strokeStyle = pal.frame;
@@ -215,40 +288,71 @@ function drawPage(
   ctx.stroke();
   ctx.restore();
 
-  // 3. Clipped scrollable content region
-  const padX = Math.max(14, Math.min(30, w * 0.052));
+  // 3. Build surah blocks & binary-search exact font size so 100% of text fits inside paper borders
+  const padX = Math.max(12, Math.min(26, w * 0.045));
   const contentW = w - padX * 2;
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(6, headH + 1, w - 12, h - headH - footH - 2);
-  ctx.clip();
+  const availH = h - headH - footH - 16;
 
-  let cursorY = headH + 14 - (opts.scrollTop ?? 0);
-
-  // Group ayahs into contiguous surah blocks
-  const blocks: { surah: number; surahName: string; startsSurah: boolean; ayahs: MushafAyah[] }[] = [];
+  const rawBlocks: SurahBlock[] = [];
   for (const a of data.ayahs) {
-    const last = blocks[blocks.length - 1];
+    const last = rawBlocks[rawBlocks.length - 1];
     if (!last || last.surah !== a.surah) {
-      blocks.push({ surah: a.surah, surahName: a.surahName, startsSurah: a.n === 1, ayahs: [a] });
-    } else {
-      last.ayahs.push(a);
+      rawBlocks.push({ surah: a.surah, surahName: a.surahName, startsSurah: a.n === 1, tokens: [] });
     }
   }
+  // Populate tokens per block
+  let bCursor = -1;
+  let prevSurah = -1;
+  const groupedAyahs: MushafAyah[][] = [];
+  for (const a of data.ayahs) {
+    if (a.surah !== prevSurah) {
+      bCursor++;
+      prevSurah = a.surah;
+      groupedAyahs[bCursor] = [];
+    }
+    groupedAyahs[bCursor].push(a);
+  }
+  for (let i = 0; i < rawBlocks.length; i++) {
+    rawBlocks[i].tokens = tokenizeAyahs(groupedAyahs[i], opts.num);
+  }
 
-  const fs = opts.fontSize;
-  const lineH = fs * 2.1;
+  const baseLineRatio = 1.92;
+  let lo = 10.5;
+  let hi = 28;
+  for (let iter = 0; iter < 7; iter++) {
+    const mid = (lo + hi) / 2;
+    const test = layoutBlocksAtFontSize(ctx, rawBlocks, contentW, mid, baseLineRatio);
+    if (test.totalH <= availH) lo = mid;
+    else hi = mid;
+  }
 
-  for (const block of blocks) {
+  const bestFs = lo;
+  const fit = layoutBlocksAtFontSize(ctx, rawBlocks, contentW, bestFs, baseLineRatio);
+  const totalLines = fit.prepared.reduce((acc, b) => acc + b.lines.length, 0);
+
+  // Gently stretch line-height up to 2.22 if there is extra vertical breathing room, else center cleanly
+  let lineH = bestFs * baseLineRatio;
+  if (totalLines > 4 && fit.totalH < availH * 0.95) {
+    const extraPerLine = (availH - fit.totalH) / totalLines;
+    lineH = Math.min(bestFs * 2.24, lineH + extraPerLine * 0.82);
+  }
+
+  const finalTotalH = fit.prepared.reduce(
+    (sum, b) => sum + (b.startsSurah ? b.bannerH + 6 + (b.basmalaH ? b.basmalaH + 4 : 0) : 0) + b.lines.length * lineH,
+    0,
+  );
+
+  let cursorY = headH + 8 + Math.max(0, (availH - finalTotalH) / 2);
+  const mainFont = `400 ${bestFs.toFixed(2)}px "Amiri", "Noto Naskh Arabic", serif`;
+  const rosetteFont = `700 ${(bestFs * 0.78).toFixed(2)}px "Amiri", "Noto Naskh Arabic", serif`;
+
+  for (const block of fit.prepared) {
     if (block.startsSurah) {
-      // Ornamental Surah Banner
-      const bannerH = 38;
-      cursorY += 4;
       const bGrad = ctx.createLinearGradient(padX, cursorY, padX + contentW, cursorY);
       bGrad.addColorStop(0, pal.bannerBg1);
       bGrad.addColorStop(0.5, pal.bannerBg2);
       bGrad.addColorStop(1, pal.bannerBg1);
-      roundRect(ctx, padX, cursorY, contentW, bannerH, 11);
+      roundRect(ctx, padX, cursorY, contentW, block.bannerH, 10);
       ctx.fillStyle = bGrad;
       ctx.fill();
       ctx.save();
@@ -258,100 +362,58 @@ function drawPage(
       ctx.stroke();
       ctx.restore();
 
-      ctx.font = '700 20px "Amiri", "Noto Naskh Arabic", serif';
+      ctx.font = `700 ${Math.max(15, Math.min(20, bestFs * 0.98)).toFixed(1)}px "Amiri", "Noto Naskh Arabic", serif`;
       ctx.fillStyle = pal.primary;
       ctx.textAlign = 'center';
-      ctx.fillText(block.surahName, w / 2, cursorY + 26);
-      cursorY += bannerH + 10;
+      ctx.fillText(block.surahName, w / 2, cursorY + block.bannerH * 0.7);
+      cursorY += block.bannerH + 6;
 
-      // Basmala
-      if (block.surah !== 1 && block.surah !== 9) {
-        ctx.font = `700 ${Math.round(fs * 1.24)}px "Amiri", "Noto Naskh Arabic", serif`;
+      if (block.basmalaH > 0) {
+        ctx.font = `700 ${(bestFs * 1.18).toFixed(1)}px "Amiri", "Noto Naskh Arabic", serif`;
         ctx.fillStyle = pal.primary;
         ctx.textAlign = 'center';
-        ctx.fillText('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', w / 2, cursorY + fs * 1.05);
-        cursorY += fs * 1.65;
+        ctx.fillText('بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ', w / 2, cursorY + block.basmalaH * 0.72);
+        cursorY += block.basmalaH + 4;
       }
     }
 
-    // Wrap tokens into lines
-    const tokens = tokenizeAyahs(block.ayahs, opts.num);
-    const mainFont = `400 ${fs}px "Amiri", "Noto Naskh Arabic", serif`;
-    const rosetteFont = `700 ${Math.round(fs * 0.78)}px "Amiri", "Noto Naskh Arabic", serif`;
+    for (let li = 0; li < block.lines.length; li++) {
+      const line = block.lines[li];
+      const baselineY = cursorY + lineH * 0.72;
+      const isLast = li === block.lines.length - 1;
 
-    ctx.font = mainFont;
-    const spaceW = ctx.measureText(' ').width * 1.15;
-
-    const measured = tokens.map((t) => {
-      ctx.font = t.isRosette ? rosetteFont : mainFont;
-      return { ...t, width: ctx.measureText(t.text).width };
-    });
-
-    const lines: { items: typeof measured; totalWordsW: number }[] = [];
-    let cur: typeof measured = [];
-    let curW = 0;
-
-    for (const m of measured) {
-      const addW = cur.length === 0 ? m.width : spaceW + m.width;
-      if (cur.length > 0 && curW + addW > contentW) {
-        const wordsOnly = cur.reduce((s, x) => s + x.width, 0);
-        lines.push({ items: cur, totalWordsW: wordsOnly });
-        cur = [m];
-        curW = m.width;
+      if (isLast || line.items.length === 1) {
+        const totalLineW = line.totalWordsW + fit.spaceW * (line.items.length - 1);
+        let xRight = w / 2 + totalLineW / 2;
+        ctx.textAlign = 'right';
+        for (const item of line.items) {
+          ctx.font = item.isRosette ? rosetteFont : mainFont;
+          ctx.fillStyle = item.isRosette ? pal.gold : item.isSajda ? pal.primary : pal.ink;
+          ctx.fillText(item.text, xRight, baselineY);
+          xRight -= item.width + fit.spaceW;
+        }
       } else {
-        cur.push(m);
-        curW += addW;
-      }
-    }
-    if (cur.length > 0) {
-      lines.push({ items: cur, totalWordsW: cur.reduce((s, x) => s + x.width, 0) });
-    }
-
-    // Draw lines (justified for full lines, centered for the last line — matching text-align-last: center)
-    for (let li = 0; li < lines.length; li++) {
-      const line = lines[li];
-      const baselineY = cursorY + fs * 1.25;
-      const isLast = li === lines.length - 1;
-
-      if (baselineY > headH - lineH && baselineY < h - footH + lineH) {
-        if (isLast || line.items.length === 1) {
-          // Centered last line
-          const totalLineW = line.totalWordsW + spaceW * (line.items.length - 1);
-          let xRight = w / 2 + totalLineW / 2;
-          ctx.textAlign = 'right';
-          for (const item of line.items) {
-            ctx.font = item.isRosette ? rosetteFont : mainFont;
-            ctx.fillStyle = item.isRosette ? pal.gold : item.isSajda ? pal.primary : pal.ink;
-            ctx.fillText(item.text, xRight, baselineY);
-            xRight -= item.width + spaceW;
-          }
-        } else {
-          // Justified RTL line from right margin (w - padX) to left margin (padX)
-          const gap = (contentW - line.totalWordsW) / (line.items.length - 1);
-          let xRight = w - padX;
-          ctx.textAlign = 'right';
-          for (const item of line.items) {
-            ctx.font = item.isRosette ? rosetteFont : mainFont;
-            ctx.fillStyle = item.isRosette ? pal.gold : item.isSajda ? pal.primary : pal.ink;
-            ctx.fillText(item.text, xRight, baselineY);
-            xRight -= item.width + gap;
-          }
+        const gap = (contentW - line.totalWordsW) / (line.items.length - 1);
+        let xRight = w - padX;
+        ctx.textAlign = 'right';
+        for (const item of line.items) {
+          ctx.font = item.isRosette ? rosetteFont : mainFont;
+          ctx.fillStyle = item.isRosette ? pal.gold : item.isSajda ? pal.primary : pal.ink;
+          ctx.fillText(item.text, xRight, baselineY);
+          xRight -= item.width + gap;
         }
       }
       cursorY += lineH;
     }
   }
 
-  ctx.restore();
-
   // 4. Page Footer
-  ctx.font = '800 12.5px "IBM Plex Sans Arabic", sans-serif';
+  ctx.font = '800 12px "IBM Plex Sans Arabic", sans-serif';
   ctx.fillStyle = pal.gold;
   ctx.textAlign = 'center';
-  ctx.fillText(`— ${opts.num(data.page)} —`, w / 2, h - 11);
+  ctx.fillText(`— ${opts.num(data.page)} —`, w / 2, h - 10);
 }
 
-/** Pre-warms textures for adjacent pages in idle time so drag start has 0ms latency. */
 export function prewarmPageCanvases(
   pages: (MushafPageData | undefined)[],
   opts: MushafRenderOptions,

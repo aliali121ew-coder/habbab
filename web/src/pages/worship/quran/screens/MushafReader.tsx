@@ -1,7 +1,7 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight, Bookmark, BookOpen, ChevronLeft, ChevronRight, Eye, EyeOff,
-  LoaderCircle, Sparkles, Volume2, VolumeX,
+  Gauge, LoaderCircle, Sparkles, Volume2, VolumeX,
 } from 'lucide-react';
 import '../styles/quran-reader.css';
 import {
@@ -47,12 +47,13 @@ function MushafPageSheet({
   error,
   onRetry,
   fontSize,
+  scrollMode,
+  fitTrigger,
   tajweed,
   hifzMode,
   revealedAyahs,
   highlightedAyah,
   num,
-  scrollRef,
   onAyahSelect,
 }: {
   data: MushafPageData | undefined;
@@ -60,15 +61,76 @@ function MushafPageSheet({
   error: string;
   onRetry: () => void;
   fontSize: number;
+  scrollMode: boolean;
+  fitTrigger: string;
   tajweed: boolean;
   hifzMode: boolean;
   revealedAyahs: Set<string>;
   highlightedAyah: string | null;
   num: (v: number | string) => string;
-  scrollRef?: React.RefObject<HTMLDivElement | null>;
   onAyahSelect: (ayah: MushafAyah, clientY: number) => void;
 }) {
   const longPressTimer = useRef<number | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-fit 100% of the page's Quran text strictly inside the paper borders (ZERO vertical scroll!)
+  useLayoutEffect(() => {
+    if (scrollMode || !data) return;
+    const body = bodyRef.current;
+    const inner = innerRef.current;
+    if (!body || !inner) return;
+
+    const availH = body.clientHeight - 16;
+    if (availH < 80) return;
+
+    const textNodes = inner.querySelectorAll<HTMLElement>('.qr-mushaf-text');
+    const banners = inner.querySelectorAll<HTMLElement>('.qr-surah-banner');
+    const basmalas = inner.querySelectorAll<HTMLElement>('.qr-basmala');
+
+    const applySize = (fs: number, lh: number) => {
+      textNodes.forEach((n) => {
+        n.style.fontSize = `${fs.toFixed(2)}px`;
+        n.style.lineHeight = lh.toFixed(3);
+      });
+      banners.forEach((b) => {
+        b.style.fontSize = `${Math.max(15, Math.min(20, fs * 0.98)).toFixed(1)}px`;
+        b.style.padding = `${Math.max(4, Math.round(fs * 0.28))}px 12px`;
+        b.style.margin = '2px 0 6px';
+      });
+      basmalas.forEach((bs) => {
+        bs.style.fontSize = `${(fs * 1.18).toFixed(1)}px`;
+        bs.style.margin = '0 0 6px';
+      });
+    };
+
+    // 7-step binary search in [10.5px, 28px] (< 0.5ms synchronous layout pass)
+    let lo = 10.5;
+    let hi = 28;
+    for (let i = 0; i < 7; i++) {
+      const mid = (lo + hi) / 2;
+      applySize(mid, 1.92);
+      if (inner.offsetHeight <= availH) lo = mid;
+      else hi = mid;
+    }
+
+    // Gently expand line-height up to 2.22 if spare vertical space exists so lines fill the sheet gracefully
+    let bestLh = 1.92;
+    applySize(lo, bestLh);
+    const usedH = inner.offsetHeight;
+    if (usedH < availH * 0.94 && data.ayahs.length > 3) {
+      let lhLo = 1.92;
+      let lhHi = 2.24;
+      for (let j = 0; j < 5; j++) {
+        const lhMid = (lhLo + lhHi) / 2;
+        applySize(lo, lhMid);
+        if (inner.offsetHeight <= availH) lhLo = lhMid;
+        else lhHi = lhMid;
+      }
+      bestLh = lhLo;
+    }
+    applySize(lo, bestLh);
+  }, [data, scrollMode, fitTrigger]);
 
   if (loading && !data) {
     return (
@@ -109,63 +171,65 @@ function MushafPageSheet({
         <span>{juzMeta.name} · الحزب {num(hizbNum)}</span>
       </div>
 
-      <div ref={scrollRef} className="qr-page-scroll">
-        {blocks.map((block, bIdx) => (
-          <div key={`${block.surah}-${bIdx}`}>
-            {block.startsSurah && (
-              <>
-                <div className="qr-surah-banner">{block.surahName}</div>
-                {block.surah !== 1 && block.surah !== 9 && (
-                  <p className="qr-basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
-                )}
-              </>
-            )}
-            <div className="qr-mushaf-text" style={{ fontSize }}>
-              {block.ayahs.map((a) => {
-                const key = `${a.surah}:${a.n}`;
-                const isHl = highlightedAyah === key;
-                const isRevealed = revealedAyahs.has(key);
-                return (
-                  <span
-                    key={key}
-                    className={`qr-ayah${isHl ? ' hl' : ''}${hifzMode ? ' hidden-hifz' : ''}${isRevealed ? ' revealed' : ''}`}
-                    onPointerDown={(e) => {
-                      const y = e.clientY;
-                      longPressTimer.current = window.setTimeout(() => onAyahSelect(a, y), 420);
-                    }}
-                    onPointerUp={() => {
-                      if (longPressTimer.current) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-                    }}
-                    onPointerMove={() => {
-                      if (longPressTimer.current) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-                    }}
-                    onPointerCancel={() => {
-                      if (longPressTimer.current) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; }
-                    }}
-                    onClick={(e) => {
-                      if (hifzMode) {
-                        e.stopPropagation();
-                        onAyahSelect(a, e.clientY);
-                      }
-                    }}
-                  >
-                    {renderTajweedText(a.text, tajweed)}
-                    {a.sajda && <span className="qr-sajda" title="موضع سجدة">۩</span>}
+      <div ref={bodyRef} className={`qr-page-body${scrollMode ? ' is-scroll' : ''}`}>
+        <div ref={innerRef} className="qr-page-fit-inner">
+          {blocks.map((block, bIdx) => (
+            <div key={`${block.surah}-${bIdx}`}>
+              {block.startsSurah && (
+                <>
+                  <div className="qr-surah-banner">{block.surahName}</div>
+                  {block.surah !== 1 && block.surah !== 9 && (
+                    <p className="qr-basmala">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+                  )}
+                </>
+              )}
+              <div className="qr-mushaf-text" style={scrollMode ? { fontSize } : undefined}>
+                {block.ayahs.map((a) => {
+                  const key = `${a.surah}:${a.n}`;
+                  const isHl = highlightedAyah === key;
+                  const isRevealed = revealedAyahs.has(key);
+                  return (
                     <span
-                      className="qr-ayah-rosette"
+                      key={key}
+                      className={`qr-ayah${isHl ? ' hl' : ''}${hifzMode ? ' hidden-hifz' : ''}${isRevealed ? ' revealed' : ''}`}
+                      onPointerDown={(e) => {
+                        const y = e.clientY;
+                        longPressTimer.current = window.setTimeout(() => onAyahSelect(a, y), 420);
+                      }}
+                      onPointerUp={() => {
+                        if (longPressTimer.current) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+                      }}
+                      onPointerMove={() => {
+                        if (longPressTimer.current) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+                      }}
+                      onPointerCancel={() => {
+                        if (longPressTimer.current) { window.clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+                      }}
                       onClick={(e) => {
-                        e.stopPropagation();
-                        onAyahSelect(a, e.clientY);
+                        if (hifzMode) {
+                          e.stopPropagation();
+                          onAyahSelect(a, e.clientY);
+                        }
                       }}
                     >
-                      ﴿{num(a.n)}﴾
-                    </span>{' '}
-                  </span>
-                );
-              })}
+                      {renderTajweedText(a.text, tajweed)}
+                      {a.sajda && <span className="qr-sajda" title="موضع سجدة">۩</span>}
+                      <span
+                        className="qr-ayah-rosette"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAyahSelect(a, e.clientY);
+                        }}
+                      >
+                        ﴿{num(a.n)}﴾
+                      </span>{' '}
+                    </span>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <div className="qr-page-foot">
@@ -183,6 +247,12 @@ const IDLE_FRAME: WebGLCurlFrame = {
   cornerTilt: 0.35,
   speed: 0,
 };
+
+function speedDescription(speed: number): string {
+  if (speed <= 0.65) return 'هادئ';
+  if (speed <= 1.15) return 'طبيعي';
+  return 'سريع';
+}
 
 export function MushafReader({
   initialPage,
@@ -211,18 +281,16 @@ export function MushafReader({
   const [selectedAyah, setSelectedAyah] = useState<{ ayah: MushafAyah; y: number } | null>(null);
   const [quickBookmarked, setQuickBookmarked] = useState(false);
 
-  // Capabilities & automatic fallback detection
   const webglSupported = useMemo(checkWebGLAvailable, []);
   const reducedMotion = useMemo(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     [],
   );
+  const isScrollMode = settings.flipMode === 'scroll';
   const useWebGL = webglSupported && !reducedMotion && settings.flipMode === 'curl';
 
-  // Measure `.qr-book` dimensions so WebGL mesh & Canvas textures match the DOM card pixel-for-pixel
   const stageRef = useRef<HTMLDivElement | null>(null);
   const bookRef = useRef<HTMLDivElement | null>(null);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [bookSize, setBookSize] = useState<{ w: number; h: number }>({ w: 360, h: 580 });
 
   useEffect(() => {
@@ -244,7 +312,6 @@ export function MushafReader({
     return () => ro.disconnect();
   }, [barsVisible]);
 
-  // WebGL active state & textures
   const frameRef = useRef<WebGLCurlFrame>({ ...IDLE_FRAME });
   const [webglVisible, setWebglVisible] = useState(false);
   const [webglCanvases, setWebglCanvases] = useState<{
@@ -253,7 +320,6 @@ export function MushafReader({
     under: HTMLCanvasElement | null;
   }>({ front: null, back: null, under: null });
 
-  // CSS fallback slide state (when WebGL is unavailable or reduced-motion / slide mode is active)
   const [cssSlide, setCssSlide] = useState<{ active: boolean; dir: 1 | -1; progress: number }>({
     active: false,
     dir: 1,
@@ -329,10 +395,9 @@ export function MushafReader({
   useEffect(() => {
     fetchCurrent(page);
     setRevealedAyahs(new Set());
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [page, fetchCurrent]);
 
-  // Pre-warm high-DPI Canvas textures in idle time so starting a drag takes 0ms!
+  // Pre-warm high-DPI auto-fitted Canvas textures in idle time
   useEffect(() => {
     if (!useWebGL) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -343,13 +408,11 @@ export function MushafReader({
         height: bookSize.h,
         dpr,
         theme: resolvedTheme,
-        fontSize: settings.fontSize,
         tajweed: settings.tajweed,
-        scrollTop: 0,
         num,
       },
     );
-  }, [useWebGL, page, pagesMap, bookSize.w, bookSize.h, resolvedTheme, settings.fontSize, settings.tajweed, num]);
+  }, [useWebGL, page, pagesMap, bookSize.w, bookSize.h, resolvedTheme, settings.tajweed, num]);
 
   // Wake Lock API
   useEffect(() => {
@@ -360,7 +423,6 @@ export function MushafReader({
     return () => { void sentinel?.release().catch(() => undefined); };
   }, [settings.wakeLock]);
 
-  // Prepare the 3 GPU Canvas textures for a turn in direction `dir` (+1 = Next, -1 = Prev)
   const prepareTurnTextures = useCallback((currPage: number, dir: 1 | -1) => {
     const targetPage = currPage + dir;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -370,22 +432,18 @@ export function MushafReader({
       height: sz.h,
       dpr,
       theme: themeRef.current,
-      fontSize: settingsRef.current.fontSize,
       tajweed: settingsRef.current.tajweed,
       num: numRef.current,
     };
     const currData = pagesMapRef.current[currPage] ?? getCachedPageSync(currPage);
     const nextData = pagesMapRef.current[targetPage] ?? getCachedPageSync(targetPage);
 
-    const front = renderMushafPageCanvas(currData, {
-      ...baseOpts,
-      scrollTop: scrollRef.current?.scrollTop ?? 0,
-    });
-    const under = renderMushafPageCanvas(nextData, { ...baseOpts, scrollTop: 0 });
+    const front = renderMushafPageCanvas(currData, baseOpts);
+    const under = renderMushafPageCanvas(nextData, baseOpts);
     setWebglCanvases({ front, back: under, under });
   }, []);
 
-  // Damped Spring Physics solver on pointer release (or programmatic button tap)
+  // Calm, dignified critically-damped paper spring controlled by user's `flipSpeed` setting!
   const runSpringTo = useCallback((
     dir: 1 | -1,
     target: 0 | 1,
@@ -393,13 +451,17 @@ export function MushafReader({
     onCommit?: () => void,
   ) => {
     cancelSpring();
-    let pos = frameRef.current.progress;
-    let vel = initialVelocityProgressPerSec;
-    let lastT = performance.now();
+    const speedMul = Math.max(0.4, Math.min(2.0, settingsRef.current.flipSpeed ?? 1));
+    // Natural angular frequency omega: at flipSpeed=1.0 -> ~820ms calm paper settle!
+    const omega = 5.8 * speedMul;
+    const stiffness = omega * omega;
+    const damping = 2 * omega * 1.06; // slightly overdamped so zero bounce, pure silky paper glide
 
-    // Natural critically-damped paper spring (snappy with momentum, zero rubbery oscillation)
-    const stiffness = 185;
-    const damping = 25;
+    let pos = frameRef.current.progress;
+    // Cap initial velocity so even a fast finger flick glides smoothly instead of snapping violently
+    const maxInitVel = 1.45 * speedMul;
+    let vel = Math.max(-maxInitVel, Math.min(maxInitVel, initialVelocityProgressPerSec * 0.42));
+    let lastT = performance.now();
 
     const tick = (now: number) => {
       const dt = Math.min(0.032, Math.max(0.001, (now - lastT) / 1000));
@@ -411,13 +473,13 @@ export function MushafReader({
 
       const clampedPos = Math.max(0, Math.min(1, pos));
       frameRef.current.progress = clampedPos;
-      frameRef.current.speed = Math.min(1.5, Math.abs(vel) * 0.45);
+      frameRef.current.speed = Math.min(1.2, Math.abs(vel) * 0.35);
 
       if (!useWebGLRef.current) {
         setCssSlide({ active: true, dir, progress: clampedPos });
       }
 
-      const done = Math.abs(pos - target) < 0.004 && Math.abs(vel) < 0.025;
+      const done = Math.abs(pos - target) < 0.0035 && Math.abs(vel) < 0.02;
       if (!done) {
         springRafRef.current = requestAnimationFrame(tick);
       } else {
@@ -425,7 +487,6 @@ export function MushafReader({
         frameRef.current = { ...IDLE_FRAME };
         if (target === 1) {
           onCommit?.();
-          // Wait 1 rAF so React commits the new DOM page before hiding WebGL overlay (zero flash!)
           requestAnimationFrame(() => {
             setWebglVisible(false);
             setCssSlide({ active: false, dir: 1, progress: 0 });
@@ -446,8 +507,11 @@ export function MushafReader({
     const next = curr + dir;
     if (next < 1 || next > TOTAL_PAGES || springRafRef.current !== null) return;
 
+    const speedMul = Math.max(0.4, Math.min(2.0, settingsRef.current.flipSpeed ?? 1));
     ensurePages([next, next + 1]);
-    if (settingsRef.current.flipSound) playPageFlipSound(0.54);
+    if (settingsRef.current.flipSound) {
+      playPageFlipSound(Math.max(0.35, Math.min(1.05, 0.72 / speedMul)));
+    }
 
     if (settingsRef.current.flipMode === 'scroll' || reducedMotion) {
       setPage(next);
@@ -460,8 +524,8 @@ export function MushafReader({
         active: true,
         dir,
         progress: 0.01,
-        cornerTilt: 0.45, // peels gracefully from the upper corner first
-        speed: 0.65,
+        cornerTilt: 0.45,
+        speed: 0.35 * speedMul,
       };
       setWebglVisible(true);
     } else {
@@ -469,10 +533,10 @@ export function MushafReader({
       setCssSlide({ active: true, dir, progress: 0.01 });
     }
 
-    runSpringTo(dir, 1, 1.85, () => setPage(next));
+    runSpringTo(dir, 1, 0.75 * speedMul, () => setPage(next));
   }, [ensurePages, prepareTurnTextures, reducedMotion, runSpringTo]);
 
-  // Keyboard shortcuts (RTL: ArrowLeft = Next page, ArrowRight = Prev page, Escape = Close)
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') { e.preventDefault(); flipTo(1); }
@@ -483,7 +547,7 @@ export function MushafReader({
     return () => window.removeEventListener('keydown', onKey);
   }, [flipTo, onClose]);
 
-  // Real-time Pointer Tracking (RTL left->right = Next Page, top-left / bottom-left corner tilt, velocity spring)
+  // Real-time Pointer Tracking (no vertical scroll conflict in page mode!)
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -521,9 +585,7 @@ export function MushafReader({
       drag.locked = 'none';
       drag.preparedDir = 0;
 
-      // Determine whether user grabbed near top corner (+1) or bottom corner (-1)
       const relY = Math.max(0, Math.min(1, (clientY - drag.top) / drag.height));
-      // Top of page (relY=0) -> +0.9, middle (0.5) -> +0.25, bottom (relY=1) -> -0.85
       drag.cornerTilt = Math.max(-0.9, Math.min(0.95, (0.58 - relY) * 1.7));
     };
 
@@ -533,10 +595,10 @@ export function MushafReader({
       const dy = clientY - drag.startY;
 
       if (drag.locked === 'none') {
-        if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.1) {
+        if (Math.abs(dx) > 6) {
           drag.locked = 'horizontal';
           drag.dir = dx >= 0 ? 1 : -1;
-        } else if (Math.abs(dy) > 12) {
+        } else if (Math.abs(dy) > 18) {
           drag.locked = 'vertical';
           return;
         } else {
@@ -563,18 +625,17 @@ export function MushafReader({
 
       const now = performance.now();
       const dt = Math.max(4, now - drag.lastTime);
-      const instVx = (clientX - drag.lastX) / dt; // px/ms
-      drag.vxPxPerMs = drag.vxPxPerMs * 0.62 + instVx * 0.38;
+      const instVx = (clientX - drag.lastX) / dt;
+      drag.vxPxPerMs = drag.vxPxPerMs * 0.65 + instVx * 0.35;
       drag.lastX = clientX;
       drag.lastTime = now;
 
-      // Smoothly update live vertical finger tracking so corner follows vertical finger motion too
       const liveRelY = Math.max(0, Math.min(1, (clientY - drag.top) / drag.height));
       const liveTilt = Math.max(-0.9, Math.min(0.95, (0.55 - liveRelY) * 1.65));
-      drag.cornerTilt = drag.cornerTilt * 0.75 + liveTilt * 0.25;
+      drag.cornerTilt = drag.cornerTilt * 0.78 + liveTilt * 0.22;
 
-      const progress = Math.max(0.005, Math.min(0.97, Math.abs(dx) / (drag.width * 0.92)));
-      const normSpeed = Math.min(1.5, Math.abs(drag.vxPxPerMs) * 0.85);
+      const progress = Math.max(0.005, Math.min(0.97, Math.abs(dx) / (drag.width * 0.94)));
+      const normSpeed = Math.min(1.2, Math.abs(drag.vxPxPerMs) * 0.7);
 
       frameRef.current = {
         active: true,
@@ -598,19 +659,22 @@ export function MushafReader({
       const dir = drag.dir;
       const next = curr + dir;
       const p = frameRef.current.progress;
-      // Signed velocity toward completing the turn (in px/ms)
       const signedVx = dir === 1 ? drag.vxPxPerMs : -drag.vxPxPerMs;
       const progressVelPerSec = (signedVx * 1000) / Math.max(240, drag.width);
+      const speedMul = Math.max(0.4, Math.min(2.0, settingsRef.current.flipSpeed ?? 1));
 
       const shouldCommit = next >= 1 && next <= TOTAL_PAGES
-        && (p > 0.26 || (signedVx > 0.38 && p > 0.06))
+        && (p > 0.24 || (signedVx > 0.32 && p > 0.05))
         && signedVx > -0.45;
 
       if (shouldCommit) {
-        if (settingsRef.current.flipSound) playPageFlipSound(0.46);
-        runSpringTo(dir, 1, Math.max(0.6, progressVelPerSec), () => setPage(next));
+        if (settingsRef.current.flipSound) {
+          const remRatio = Math.max(0.25, 1 - p);
+          playPageFlipSound(Math.max(0.32, Math.min(0.95, (0.68 * remRatio) / speedMul)));
+        }
+        runSpringTo(dir, 1, Math.max(0.35 * speedMul, progressVelPerSec), () => setPage(next));
       } else {
-        runSpringTo(dir, 0, Math.min(-0.4, progressVelPerSec));
+        runSpringTo(dir, 0, Math.min(-0.3 * speedMul, progressVelPerSec));
       }
     };
 
@@ -701,6 +765,8 @@ export function MushafReader({
   };
 
   const flipLabel = settings.flipMode === 'curl' ? 'تقليب ورقي' : settings.flipMode === 'slide' ? 'انزلاق' : 'تمرير';
+  const currentSpeed = settings.flipSpeed ?? 1;
+  const fitTrigger = `${bookSize.w}x${bookSize.h}:${barsVisible ? 1 : 0}`;
 
   const cssSlideTransform = cssSlide.active
     ? `translateX(${(cssSlide.dir * cssSlide.progress * 102).toFixed(2)}%)`
@@ -735,7 +801,7 @@ export function MushafReader({
         </div>
       </header>
 
-      {/* Main Stage — Reserves space when bars are visible; returns to normal interactive DOM after flip */}
+      {/* Main Stage — Entire page fits strictly inside the paper borders (ZERO scroll in page mode!) */}
       <main
         ref={stageRef}
         className={`qr-stage${barsVisible ? ' bars-on' : ''}`}
@@ -765,7 +831,6 @@ export function MushafReader({
         )}
 
         <div ref={bookRef} className="qr-book">
-          {/* CSS Fallback Under-Page (used only when WebGL is disabled / reduced-motion / slide mode) */}
           {cssSlide.active && (
             <div className="qr-css-under" aria-hidden="true">
               <MushafPageSheet
@@ -774,6 +839,8 @@ export function MushafReader({
                 error=""
                 onRetry={() => undefined}
                 fontSize={settings.fontSize}
+                scrollMode={isScrollMode}
+                fitTrigger={fitTrigger}
                 tajweed={settings.tajweed}
                 hifzMode={hifzMode}
                 revealedAyahs={revealedAyahs}
@@ -784,7 +851,6 @@ export function MushafReader({
             </div>
           )}
 
-          {/* Live Interactive & Selectable DOM Mushaf Page */}
           <div
             className={`qr-dom-layer${webglVisible ? ' webgl-hidden' : ''}`}
             style={{
@@ -798,12 +864,13 @@ export function MushafReader({
               error={error}
               onRetry={() => fetchCurrent(page)}
               fontSize={settings.fontSize}
+              scrollMode={isScrollMode}
+              fitTrigger={fitTrigger}
               tajweed={settings.tajweed}
               hifzMode={hifzMode}
               revealedAyahs={revealedAyahs}
               highlightedAyah={selectedAyah ? `${selectedAyah.ayah.surah}:${selectedAyah.ayah.n}` : null}
               num={num}
-              scrollRef={scrollRef}
               onAyahSelect={handleAyahSelect}
             />
             {!webglVisible && useWebGL && page < TOTAL_PAGES && (
@@ -811,7 +878,6 @@ export function MushafReader({
             )}
           </div>
 
-          {/* Lazy-loaded Three.js WebGL 40×60 Mesh Cylindrical Page Curl */}
           {useWebGL && (
             <Suspense fallback={null}>
               <LazyWebGLPageCurl
@@ -828,7 +894,7 @@ export function MushafReader({
         </div>
       </main>
 
-      {/* Immersive Bottom Bar */}
+      {/* Immersive Bottom Bar: Page Slider + Flip Speed Slider + Tools */}
       <footer className={`qr-bottombar${barsVisible ? '' : ' hidden'}`}>
         <div className="qr-slider-row">
           <span className="qr-slider-badge">ص {num(page)}</span>
@@ -843,6 +909,27 @@ export function MushafReader({
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--q-ink-3)' }}>{num(TOTAL_PAGES)}</span>
         </div>
 
+        {/* Flip Speed Slider (شريط تحديد سرعة تقليب الورقة) */}
+        {!isScrollMode && (
+          <div className="qr-speed-row">
+            <span className="qr-speed-label">
+              <Gauge size={14} /> سرعة الورقة
+            </span>
+            <input
+              type="range"
+              min={0.4}
+              max={1.8}
+              step={0.1}
+              value={currentSpeed}
+              onChange={(e) => updateSettings({ flipSpeed: Number(e.target.value) })}
+              aria-label="سرعة تقليب الورقة"
+            />
+            <span className="qr-speed-val">
+              {speedDescription(currentSpeed)} ({num(currentSpeed.toFixed(1))}×)
+            </span>
+          </div>
+        )}
+
         <div className="qr-tools-row">
           <QChip active={settings.flipMode === 'curl'} onClick={cycleFlipMode}>
             <BookOpen size={14} /> {flipLabel}
@@ -853,8 +940,12 @@ export function MushafReader({
           <QChip active={hifzMode} onClick={() => setHifzMode((v) => !v)}>
             {hifzMode ? <EyeOff size={14} /> : <Eye size={14} />} حفظ
           </QChip>
-          <QChip onClick={() => updateSettings({ fontSize: Math.max(18, settings.fontSize - 2) })}>أ−</QChip>
-          <QChip onClick={() => updateSettings({ fontSize: Math.min(34, settings.fontSize + 2) })}>أ+</QChip>
+          {isScrollMode && (
+            <>
+              <QChip onClick={() => updateSettings({ fontSize: Math.max(18, settings.fontSize - 2) })}>أ−</QChip>
+              <QChip onClick={() => updateSettings({ fontSize: Math.min(34, settings.fontSize + 2) })}>أ+</QChip>
+            </>
+          )}
           <QChip onClick={cycleTheme}>
             {resolvedTheme === 'light' ? 'نهاري' : resolvedTheme === 'sepia' ? 'ورقي' : 'ليلي'}
           </QChip>
