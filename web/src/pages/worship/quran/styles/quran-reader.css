@@ -1,6 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════════════
-   Mushaf Reader (604 Pages) — Realistic Interactive Page Curl (Apple Books Style)
-   Curled Paper Flap · Dynamic Cast Shadow · Finger Drag-Follow & Hold · Sound
+   Mushaf Reader (604 Pages) — Realistic 3D Book Leaf Flip
+   (perspective: 1700px · perspective-origin: 85% 50% · transform-origin: 100% 50%
+    · live brightness lighting · spine gutter · dynamic shade · finger-hold)
    ══════════════════════════════════════════════════════════════════════════════ */
 
 .qr-fullscreen {
@@ -108,7 +109,7 @@
 }
 .qr-tools-row::-webkit-scrollbar { display: none; }
 
-/* ── Book Stage ── */
+/* ── 3D Book Stage (Exact perspective + spine origin from reference) ── */
 .qr-stage {
   position: relative;
   flex: 1;
@@ -123,99 +124,104 @@
 
 .qr-book {
   position: relative;
-  width: min(100%, 640px);
+  width: min(100%, 600px);
   height: 100%;
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 18px 46px -18px rgb(0 0 0 / 32%);
+  perspective: 1700px;
+  perspective-origin: 85% 50%;
+  direction: ltr; /* keeps right spine at 100% 50% consistently */
 }
 
-/* Layer 1: Revealed Underneath Page */
-.qr-layer-under {
+/* Under page (revealed page below the turning leaf) */
+.qr-leaf-under {
   position: absolute;
   inset: 0;
   z-index: 1;
+  border-radius: 6px 14px 14px 6px;
+  overflow: hidden;
+  will-change: filter;
 }
 
-/* Layer 2: Soft Cast Shadow falling onto the revealed page behind the curled flap */
-.qr-layer-cast-shadow {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  will-change: opacity, background;
-}
-
-/* Layer 3: Current Page (clipped live along the diagonal curl fold line) */
-.qr-layer-front {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  will-change: clip-path, transform;
-}
-
-/* Subtle inner crease shadow on the front page right next to the fold line */
-.qr-layer-front-crease {
-  position: absolute;
-  inset: 0;
-  z-index: 4;
-  pointer-events: none;
-  will-change: opacity, background;
-}
-
-/* Layer 4: Curled Back-Side Paper Flap (Realistic curved cylindrical paper + drop shadow) */
-.qr-curl-flap-wrap {
+/* Turning top leaf (rotates cleanly around the right spine 100% 50%) */
+.qr-leaf-top {
   position: absolute;
   inset: 0;
   z-index: 5;
-  pointer-events: none;
-  will-change: filter;
+  transform-origin: 100% 50%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 6px 14px 14px 6px;
+  overflow: hidden;
+  box-shadow: 0 14px 36px rgb(0 0 0 / 34%);
+  will-change: transform, filter, opacity;
 }
-.qr-curl-flap {
+
+/* Spine gutter shadow (permanent right-edge book crease) */
+.qr-gut {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 52px;
+  pointer-events: none;
+  z-index: 6;
+  background: linear-gradient(to left, rgb(18 34 32 / 28%), rgb(18 34 32 / 9%) 40%, rgb(18 34 32 / 0%));
+}
+
+/* Dynamic moving shade gradient across the lifting leaf */
+.qr-shade {
   position: absolute;
   inset: 0;
-  will-change: clip-path, background;
-}
-
-/* Subtle corner hint in bottom-left when idle so user knows they can peel & hold the page */
-.qr-corner-hint {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 34px;
-  height: 34px;
-  z-index: 8;
   pointer-events: none;
-  background: linear-gradient(
-    225deg,
-    rgb(0 0 0 / 0%) 48%,
-    rgb(0 0 0 / 10%) 50%,
-    var(--q-page-paper) 53%,
-    color-mix(in srgb, var(--q-page-frame) 45%, var(--q-page-paper)) 100%
-  );
-  border-top-right-radius: 10px;
-  box-shadow: 3px -3px 10px -4px rgb(0 0 0 / 28%);
-  opacity: 0.72;
+  z-index: 7;
+  background: linear-gradient(to right, rgb(8 16 16 / 72%), rgb(8 16 16 / 16%) 74%, rgb(8 16 16 / 0%));
+  will-change: opacity;
 }
 
-/* ── Printed Mushaf Page Surface & Ornamental Double Frame ── */
+/* Cast shadow on the right edge of the revealed under-page */
+.qr-cast {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  background: linear-gradient(to left, rgb(10 20 20 / 54%), rgb(10 20 20 / 0%) 82%);
+  will-change: opacity;
+}
+
+/* ── Printed Mushaf Page Surface & Paper Fiber Grain ── */
 .qr-page-card {
   position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  border-radius: 18px;
+  direction: rtl;
+  border-radius: 6px 14px 14px 6px;
   background: var(--q-page-paper);
   border: 1.5px solid var(--q-page-frame);
   box-shadow:
     inset 0 0 0 5px var(--q-page-paper),
-    inset 0 0 0 6.5px color-mix(in srgb, var(--q-page-frame) 55%, transparent),
-    inset -18px 0 28px -22px rgb(0 0 0 / 16%);
+    inset 0 0 0 6.5px color-mix(in srgb, var(--q-page-frame) 55%, transparent);
   overflow: hidden;
 }
 
+/* Subtle physical paper grain texture (from reference) */
+.qr-page-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  mix-blend-mode: multiply;
+  z-index: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .4 0 0 0 0 .38 0 0 0 .11 0'/></filter><rect width='100%25' height='100%25' filter='url(%23p)'/></svg>");
+}
+.q-root[data-q-theme="dark"] .qr-page-card::before {
+  opacity: 0;
+}
+
 .qr-page-head {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -228,6 +234,8 @@
 }
 
 .qr-page-scroll {
+  position: relative;
+  z-index: 2;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -236,6 +244,8 @@
 }
 
 .qr-page-foot {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -323,7 +333,7 @@
   top: 50%;
   transform: translateY(-50%);
   z-index: 25;
-  width: 40px;
+  width: 42px;
   height: 70px;
   display: grid;
   place-items: center;
@@ -333,7 +343,7 @@
   color: var(--q-ink-2);
   backdrop-filter: blur(8px);
   cursor: pointer;
-  opacity: 0.78;
+  opacity: 0.82;
   transition: opacity 180ms ease, transform 150ms var(--q-ease);
 }
 .qr-edge-btn:hover { opacity: 1; }

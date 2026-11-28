@@ -10,10 +10,14 @@ import {
 } from '../data/pageLoader';
 import { TOTAL_PAGES, juzForPage, surahForPage } from '../data/mushafMeta';
 import { useQuran, type FlipMode, type QuranTheme } from '../store/quranStore';
-import { playPageFlipSound } from '../utils/pageSound';
+import { playPageFlipSound, warmPageAudio } from '../utils/pageSound';
 import { QChip, QIconButton } from '../components/ui/Primitives';
 import { AyahContextMenu } from '../components/AyahContextMenu';
 import { idbSet, type StoredBookmark } from '../db/quranDb';
+
+const MAX_ANGLE = 112;
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
 function renderTajweedText(text: string, enabled: boolean) {
   if (!enabled) return text;
@@ -154,21 +158,21 @@ function MushafPageSheet({
       <div className="qr-page-foot">
         <span>— {num(data.page)} —</span>
       </div>
+      <div className="qr-gut" aria-hidden="true" />
     </div>
   );
 }
 
-interface CurlState {
+interface FlipState {
   active: boolean;
-  /** +1 = turning to NEXT page (peeling from left edge -> right), -1 = turning to PREV page (right -> left) */
-  dir: 1 | -1;
-  /** 0..1: exact position of the curled fold across the page (freezes wherever the user holds their finger!) */
-  progress: number;
-  /** -1 (top) .. +1 (bottom): tilts the diagonal curl edge toward the user's finger position */
-  tilt: number;
+  /** 'next' = current page lifts off (0 -> 112deg) revealing page+1 underneath
+   *  'prev' = previous page drops down from right spine (112 -> 0deg) covering current page */
+  kind: 'next' | 'prev';
+  /** Exact 3D rotation angle in degrees (0..112), held live under the user's finger! */
+  angle: number;
 }
 
-const IDLE_CURL: CurlState = { active: false, dir: 1, progress: 0, tilt: 0.25 };
+const IDLE_FLIP: FlipState = { active: false, kind: 'next', angle: 0 };
 
 export function MushafReader({
   initialPage,
@@ -182,7 +186,7 @@ export function MushafReader({
   const { settings, resolvedTheme, updateSettings, setLastRead, num } = useQuran();
   const [page, setPage] = useState(() => Math.max(1, Math.min(TOTAL_PAGES, initialPage)));
   const [pageData, setPageData] = useState<MushafPageData | undefined>(() => getCachedPageSync(initialPage));
-  const [underPageData, setUnderPageData] = useState<MushafPageData | undefined>(undefined);
+  const [otherPageData, setOtherPageData] = useState<MushafPageData | undefined>(undefined);
   const [loading, setLoading] = useState(!getCachedPageSync(initialPage));
   const [error, setError] = useState('');
   const [barsVisible, setBarsVisible] = useState(true);
@@ -191,10 +195,9 @@ export function MushafReader({
   const [selectedAyah, setSelectedAyah] = useState<{ ayah: MushafAyah; y: number } | null>(null);
   const [quickBookmarked, setQuickBookmarked] = useState(false);
 
-  // Interactive 60fps Page Curl state (stays held wherever user keeps their finger!)
-  const [curl, setCurl] = useState<CurlState>(IDLE_CURL);
-  const curlRef = useRef<CurlState>(IDLE_CURL);
-  const rafAnimRef = useRef<number | null>(null);
+  const [flip, setFlip] = useState<FlipState>(IDLE_FLIP);
+  const flipRef = useRef<FlipState>(IDLE_FLIP);
+  const rafRef = useRef<number | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const bookRef = useRef<HTMLDivElement | null>(null);
   const pageRef = useRef(page);
@@ -210,19 +213,18 @@ export function MushafReader({
     [],
   );
 
-  const setCurlBoth = useCallback((next: CurlState) => {
-    curlRef.current = next;
-    setCurl(next);
+  const setFlipBoth = useCallback((next: FlipState) => {
+    flipRef.current = next;
+    setFlip(next);
   }, []);
 
   const cancelAnim = useCallback(() => {
-    if (rafAnimRef.current !== null) {
-      cancelAnimationFrame(rafAnimRef.current);
-      rafAnimRef.current = null;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
   }, []);
 
-  // Load current page + preload next 2 & prev page immediately
   const fetchCurrent = useCallback((p: number) => {
     const cached = getCachedPageSync(p);
     if (cached) {
@@ -263,51 +265,51 @@ export function MushafReader({
     return () => { void sentinel?.release().catch(() => undefined); };
   }, [settings.wakeLock]);
 
-  // Smooth rAF animation from current curl progress -> target (0 = snap back, 1 = complete turn)
-  const animateCurlTo = useCallback((
-    dir: 1 | -1,
-    fromProgress: number,
-    toProgress: 0 | 1,
-    tilt: number,
-    durationMs: number,
+  // Smooth rAF animation of the 3D leaf rotation angle (exact cubic easing from reference)
+  const animateAngle = useCallback((
+    kind: 'next' | 'prev',
+    fromAngle: number,
+    toAngle: number,
+    dur: number,
+    useEaseInOut: boolean,
     onDone?: () => void,
   ) => {
     cancelAnim();
-    const start = performance.now();
-    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-    const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-
+    const t0 = performance.now();
     const step = (now: number) => {
-      const elapsed = now - start;
-      const t = Math.min(1, elapsed / durationMs);
-      const eased = fromProgress === 0 ? easeInOutCubic(t) : easeOutCubic(t);
-      const progress = fromProgress + (toProgress - fromProgress) * eased;
-      setCurlBoth({ active: true, dir, progress, tilt });
+      const t = Math.min(1, (now - t0) / dur);
+      const e = useEaseInOut ? easeInOutCubic(t) : easeOutCubic(t);
+      const angle = fromAngle + (toAngle - fromAngle) * e;
+      setFlipBoth({ active: true, kind, angle });
       if (t < 1) {
-        rafAnimRef.current = requestAnimationFrame(step);
+        rafRef.current = requestAnimationFrame(step);
       } else {
-        rafAnimRef.current = null;
-        setCurlBoth(IDLE_CURL);
+        rafRef.current = null;
+        setFlipBoth(IDLE_FLIP);
         onDone?.();
       }
     };
-    rafAnimRef.current = requestAnimationFrame(step);
-  }, [cancelAnim, setCurlBoth]);
+    rafRef.current = requestAnimationFrame(step);
+  }, [cancelAnim, setFlipBoth]);
 
-  // Programmatic visible page curl (for side buttons / keyboard arrows — 620ms so user clearly sees the curled paper!)
+  // Programmatic flip (620ms visible 3D leaf turn with realistic 3-layer sound!)
   const flipTo = useCallback((dir: 1 | -1) => {
     const curr = pageRef.current;
     const next = curr + dir;
-    if (next < 1 || next > TOTAL_PAGES || rafAnimRef.current !== null) return;
-    setUnderPageData(getCachedPageSync(next));
-    void loadMushafPage(next).then((d) => setUnderPageData(d)).catch(() => undefined);
-    if (settingsRef.current.flipSound) playPageFlipSound();
+    if (next < 1 || next > TOTAL_PAGES || rafRef.current !== null) return;
+    setOtherPageData(getCachedPageSync(next));
+    void loadMushafPage(next).then((d) => setOtherPageData(d)).catch(() => undefined);
+    if (settingsRef.current.flipSound) playPageFlipSound(0.55);
     if (reducedMotion || settingsRef.current.flipMode === 'scroll') {
       setPage(next);
       return;
     }
-    animateCurlTo(dir, 0, 1, 0.35, 620, () => setPage(next));
-  }, [animateCurlTo, reducedMotion]);
+    if (dir === 1) {
+      animateAngle('next', 0, MAX_ANGLE, 620, true, () => setPage(next));
+    } else {
+      animateAngle('prev', MAX_ANGLE, 0, 620, true, () => setPage(next));
+    }
+  }, [animateAngle, reducedMotion]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -320,8 +322,7 @@ export function MushafReader({
     return () => window.removeEventListener('keydown', onKey);
   }, [flipTo, onClose]);
 
-  // Native non-passive touch + mouse listeners so dragging NEVER gets hijacked by mobile scroll/back-swipe
-  // AND stays paused curled in place as long as the user holds their finger down!
+  // Live 1:1 Finger Drag-Follow & Hold (freezes at exact 3D angle until finger lifts!)
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -331,30 +332,24 @@ export function MushafReader({
       startX: 0,
       startY: 0,
       lastX: 0,
-      startTime: 0,
-      lastTime: 0,
+      vx: 0,
       width: 375,
-      height: 700,
-      top: 0,
       locked: 'none' as 'none' | 'horizontal' | 'vertical',
-      moved: false,
+      kind: 'next' as 'next' | 'prev',
     };
 
     const startGesture = (clientX: number, clientY: number) => {
       if (settingsRef.current.flipMode === 'scroll' || selectedRef.current) return;
+      warmPageAudio();
       cancelAnim();
       const rect = bookRef.current?.getBoundingClientRect();
       drag.down = true;
       drag.startX = clientX;
       drag.startY = clientY;
       drag.lastX = clientX;
-      drag.startTime = performance.now();
-      drag.lastTime = drag.startTime;
+      drag.vx = 0;
       drag.width = rect?.width || window.innerWidth;
-      drag.height = rect?.height || window.innerHeight;
-      drag.top = rect?.top || 0;
       drag.locked = 'none';
-      drag.moved = false;
     };
 
     const moveGesture = (clientX: number, clientY: number, prevent?: () => void) => {
@@ -365,7 +360,7 @@ export function MushafReader({
       if (drag.locked === 'none') {
         if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy) * 1.1) {
           drag.locked = 'horizontal';
-          drag.moved = true;
+          drag.kind = dx >= 0 ? 'next' : 'prev';
         } else if (Math.abs(dy) > 12) {
           drag.locked = 'vertical';
           return;
@@ -376,51 +371,57 @@ export function MushafReader({
       if (drag.locked !== 'horizontal') return;
       prevent?.();
 
-      const currPage = pageRef.current;
-      // RTL Mushaf: drag left -> right (dx > 0) peels to NEXT page (+1); right -> left (dx < 0) peels to PREV (-1)
-      const dir: 1 | -1 = dx >= 0 ? 1 : -1;
-      const targetPage = currPage + dir;
+      const curr = pageRef.current;
+      const targetPage = drag.kind === 'next' ? curr + 1 : curr - 1;
       if (targetPage < 1 || targetPage > TOTAL_PAGES) {
-        setCurlBoth(IDLE_CURL);
+        setFlipBoth(IDLE_FLIP);
         return;
       }
 
-      const rawProgress = Math.min(0.98, Math.max(0.01, Math.abs(dx) / (drag.width * 0.88)));
-      const normY = ((clientY - drag.top) / drag.height) * 2 - 1; // -1 (top) .. +1 (bottom)
-      const tilt = Math.max(-0.85, Math.min(0.85, normY));
+      const cached = getCachedPageSync(targetPage);
+      if (cached) setOtherPageData(cached);
+      else void loadMushafPage(targetPage).then((d) => setOtherPageData(d)).catch(() => undefined);
 
-      const cachedUnder = getCachedPageSync(targetPage);
-      if (cachedUnder) setUnderPageData(cachedUnder);
-      else void loadMushafPage(targetPage).then((d) => setUnderPageData(d)).catch(() => undefined);
-
+      drag.vx = clientX - drag.lastX;
       drag.lastX = clientX;
-      drag.lastTime = performance.now();
-      setCurlBoth({ active: true, dir, progress: rawProgress, tilt });
+
+      // Exact physical acos mapping from reference (natural 3D circular arc as finger moves!)
+      const ratio = Math.max(0, Math.min(1, Math.abs(dx) / (drag.width * 0.85)));
+      const arc = Math.acos(Math.max(-1, Math.min(1, 1 - ratio * 1.65))) / Math.PI; // 0..0.73+
+      const mappedAngle = Math.max(0, Math.min(MAX_ANGLE, arc * 140));
+
+      const angle = drag.kind === 'next' ? mappedAngle : MAX_ANGLE - mappedAngle;
+      setFlipBoth({ active: true, kind: drag.kind, angle });
     };
 
-    const endGesture = (clientX: number) => {
+    const endGesture = () => {
       if (!drag.down) return;
       drag.down = false;
-
       if (drag.locked !== 'horizontal') return;
-      const c = curlRef.current;
-      if (!c.active) return;
 
-      const totalDx = clientX - drag.startX;
-      const dt = Math.max(16, performance.now() - drag.startTime);
-      const velocity = Math.abs(totalDx) / dt; // px/ms
-      const next = pageRef.current + c.dir;
+      const f = flipRef.current;
+      if (!f.active) return;
 
-      const shouldCommit = (c.progress > 0.28 || (velocity > 0.35 && c.progress > 0.08))
-        && next >= 1 && next <= TOTAL_PAGES;
-
-      if (shouldCommit) {
-        if (settingsRef.current.flipSound) playPageFlipSound();
-        const remainingMs = Math.max(240, Math.round((1 - c.progress) * 520));
-        animateCurlTo(c.dir, c.progress, 1, c.tilt, remainingMs, () => setPage(next));
+      if (f.kind === 'next') {
+        const next = pageRef.current + 1;
+        if ((f.angle > 38 || drag.vx > 6) && next <= TOTAL_PAGES) {
+          if (settingsRef.current.flipSound) playPageFlipSound(0.45);
+          const rem = Math.max(240, Math.round(((MAX_ANGLE - f.angle) / MAX_ANGLE) * 480));
+          animateAngle('next', f.angle, MAX_ANGLE, rem, false, () => setPage(next));
+        } else {
+          const rem = Math.max(200, Math.round((f.angle / MAX_ANGLE) * 340));
+          animateAngle('next', f.angle, 0, rem, false);
+        }
       } else {
-        const backMs = Math.max(200, Math.round(c.progress * 380));
-        animateCurlTo(c.dir, c.progress, 0, c.tilt, backMs);
+        const prev = pageRef.current - 1;
+        if ((f.angle < MAX_ANGLE - 38 || drag.vx < -6) && prev >= 1) {
+          if (settingsRef.current.flipSound) playPageFlipSound(0.45);
+          const rem = Math.max(240, Math.round((f.angle / MAX_ANGLE) * 480));
+          animateAngle('prev', f.angle, 0, rem, false, () => setPage(prev));
+        } else {
+          const rem = Math.max(200, Math.round(((MAX_ANGLE - f.angle) / MAX_ANGLE) * 340));
+          animateAngle('prev', f.angle, MAX_ANGLE, rem, false);
+        }
       }
     };
 
@@ -432,10 +433,7 @@ export function MushafReader({
       if (e.touches.length !== 1) return;
       moveGesture(e.touches[0].clientX, e.touches[0].clientY, () => e.preventDefault());
     };
-    const onTouchEnd = (e: TouchEvent) => {
-      const t = e.changedTouches[0];
-      endGesture(t ? t.clientX : drag.lastX);
-    };
+    const onTouchEnd = () => endGesture();
 
     const onMouseDown = (e: MouseEvent) => {
       if (e.button !== 0) return;
@@ -445,7 +443,7 @@ export function MushafReader({
       if (!drag.down) return;
       moveGesture(e.clientX, e.clientY, () => e.preventDefault());
     };
-    const onMouseUp = (e: MouseEvent) => endGesture(e.clientX);
+    const onMouseUp = () => endGesture();
 
     stage.addEventListener('touchstart', onTouchStart, { passive: true });
     stage.addEventListener('touchmove', onTouchMove, { passive: false });
@@ -465,7 +463,7 @@ export function MushafReader({
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [animateCurlTo, cancelAnim, setCurlBoth]);
+  }, [animateAngle, cancelAnim, setFlipBoth]);
 
   const quickBookmarkPage = async () => {
     const first = pageData?.ayahs[0];
@@ -489,63 +487,31 @@ export function MushafReader({
   const surahMeta = surahForPage(page);
   const juzMeta = juzForPage(page);
 
-  // ── Compute Real Geometric Page Curl Clip-Paths, Curled Flap & Dynamic Shadows ──
+  // Exact lighting, cast shadow, and 3D rotation formulas from the reference book engine
   const effectiveMode: FlipMode = reducedMotion ? 'slide' : settings.flipMode;
-  const isCurling = curl.active && curl.progress > 0.002;
-  const p = curl.progress; // 0..1
-  const isNext = curl.dir === 1;
+  const isFlipping = flip.active;
+  const a = flip.angle; // 0..112 deg
+  const r = a / MAX_ANGLE; // 0..1
+  const sinA = Math.sin((a * Math.PI) / 180);
 
-  // Diagonal fold line X coordinates at top (y=0%) and bottom (y=100%)
-  // Tilt gives the iconic diagonal curved-corner peel (matching the reference image!)
-  const tiltOffset = curl.tilt * Math.sin(p * Math.PI) * 18; // up to ±18% diagonal slant
-  const foldCenter = isNext ? p * 100 : (1 - p) * 100;
-  const foldTop = Math.max(-5, Math.min(105, foldCenter - tiltOffset));
-  const foldBot = Math.max(-5, Math.min(105, foldCenter + tiltOffset));
+  // Which page is the top rotating leaf vs the stationary under page?
+  // - When flipping NEXT: top = current page (rotates 0 -> 112), under = next page (page+1)
+  // - When flipping PREV: top = prev page (rotates 112 -> 0), under = current page
+  const topData = isFlipping && flip.kind === 'prev' ? otherPageData : pageData;
+  const underData = isFlipping ? (flip.kind === 'next' ? otherPageData : pageData) : undefined;
 
-  // Curled back-side paper flap width (widest in mid-turn, tapers cleanly at edges)
-  const flapWidth = Math.min(38, Math.sin(Math.pow(p, 0.85) * Math.PI) * 44);
-  const flapTop = isNext ? Math.min(108, foldTop + flapWidth) : Math.max(-8, foldTop - flapWidth);
-  const flapBot = isNext ? Math.min(108, foldBot + flapWidth) : Math.max(-8, foldBot - flapWidth);
-
-  // Clip-path of the front (current) page: everything NOT yet peeled away
-  const frontClip = isCurling && effectiveMode === 'curl'
-    ? (isNext
-      ? `polygon(${foldTop.toFixed(2)}% 0%, 100% 0%, 100% 100%, ${foldBot.toFixed(2)}% 100%)`
-      : `polygon(0% 0%, ${foldTop.toFixed(2)}% 0%, ${foldBot.toFixed(2)}% 100%, 0% 100%)`)
-    : undefined;
-
-  // Clip-path of the curled-over back side of the paper flap
-  const flapClip = isCurling && effectiveMode === 'curl'
-    ? (isNext
-      ? `polygon(${foldTop.toFixed(2)}% 0%, ${flapTop.toFixed(2)}% 0%, ${flapBot.toFixed(2)}% 100%, ${foldBot.toFixed(2)}% 100%)`
-      : `polygon(${flapTop.toFixed(2)}% 0%, ${foldTop.toFixed(2)}% 0%, ${foldBot.toFixed(2)}% 100%, ${flapBot.toFixed(2)}% 100%)`)
-    : undefined;
-
-  // Cylindrical 3D paper shading across the curled flap (matches warm/white glossy bent sheet)
-  const isDark = resolvedTheme === 'dark';
-  const isSepia = resolvedTheme === 'sepia';
-  const flapGrad = isDark
-    ? (isNext
-      ? `linear-gradient(90deg, #0A0D0C 0%, #1F2824 28%, #2E3A34 55%, #161C19 88%, #070908 100%)`
-      : `linear-gradient(270deg, #0A0D0C 0%, #1F2824 28%, #2E3A34 55%, #161C19 88%, #070908 100%)`)
-    : isSepia
-      ? (isNext
-        ? `linear-gradient(90deg, #D5C4A0 0%, #FBF4E3 30%, #FFFDF7 54%, #E8D9B9 86%, #C4B089 100%)`
-        : `linear-gradient(270deg, #D5C4A0 0%, #FBF4E3 30%, #FFFDF7 54%, #E8D9B9 86%, #C4B089 100%)`)
-      : (isNext
-        ? `linear-gradient(90deg, #DED8C8 0%, #FFFFFF 32%, #FDFBF5 58%, #EAE4D6 88%, #C8C1B2 100%)`
-        : `linear-gradient(270deg, #DED8C8 0%, #FFFFFF 32%, #FDFBF5 58%, #EAE4D6 88%, #C8C1B2 100%)`);
-
-  // Dynamic cast shadow falling onto the revealed page right behind the curled fold
-  const shadowStrength = Math.sin(p * Math.PI);
-  const castShadowBg = isNext
-    ? `linear-gradient(90deg, transparent ${Math.max(0, foldCenter - 26).toFixed(1)}%, rgb(0 0 0 / ${(0.42 * shadowStrength).toFixed(2)}) ${Math.max(0, foldCenter - 2).toFixed(1)}%, rgb(0 0 0 / ${(0.22 * shadowStrength).toFixed(2)}) ${Math.min(100, foldCenter + 12).toFixed(1)}%, transparent ${Math.min(100, foldCenter + 30).toFixed(1)}%)`
-    : `linear-gradient(90deg, transparent ${Math.max(0, foldCenter - 30).toFixed(1)}%, rgb(0 0 0 / ${(0.22 * shadowStrength).toFixed(2)}) ${Math.max(0, foldCenter - 12).toFixed(1)}%, rgb(0 0 0 / ${(0.42 * shadowStrength).toFixed(2)}) ${Math.min(100, foldCenter + 2).toFixed(1)}%, transparent ${Math.min(100, foldCenter + 26).toFixed(1)}%)`;
-
-  // Slide mode transform fallback
-  const slideTransform = isCurling && effectiveMode === 'slide'
-    ? `translateX(${(isNext ? p : -p) * 100}%)`
-    : undefined;
+  const topTransform = isFlipping
+    ? (effectiveMode === 'curl'
+      ? `rotateY(${a.toFixed(2)}deg)`
+      : `translateX(${(r * 100).toFixed(2)}%)`)
+    : 'none';
+  const topBrightness = isFlipping && effectiveMode === 'curl' ? (1 - 0.48 * r).toFixed(3) : '1';
+  const topOpacity = isFlipping && effectiveMode === 'curl' && a > 96
+    ? Math.max(0, 1 - (a - 96) / (MAX_ANGLE - 96))
+    : 1;
+  const underBrightness = isFlipping && effectiveMode === 'curl' ? (0.55 + 0.45 * (1 - r)).toFixed(3) : '1';
+  const shadeOpacity = isFlipping && effectiveMode === 'curl' ? (sinA * 0.65).toFixed(3) : '0';
+  const castOpacity = isFlipping && effectiveMode === 'curl' ? (sinA * 0.5).toFixed(3) : '0';
 
   const cycleTheme = () => {
     const order: QuranTheme[] = ['light', 'sepia', 'dark'];
@@ -589,12 +555,12 @@ export function MushafReader({
         </div>
       </header>
 
-      {/* Main Interactive Page Curl Stage */}
+      {/* Main 3D Book Stage */}
       <main
         ref={stageRef}
         className="qr-stage"
         onClick={() => {
-          if (!curlRef.current.active) setBarsVisible((v) => !v);
+          if (!flipRef.current.active) setBarsVisible((v) => !v);
         }}
       >
         {page > 1 && (
@@ -619,12 +585,16 @@ export function MushafReader({
         )}
 
         <div ref={bookRef} className="qr-book">
-          {/* Layer 1: Revealed Underneath Page */}
-          {isCurling && (
-            <div className="qr-layer-under" aria-hidden="true">
+          {/* Underneath stationary page with live shadow brightness */}
+          {isFlipping && (
+            <div
+              className="qr-leaf-under"
+              style={{ filter: `brightness(${underBrightness})` }}
+              aria-hidden="true"
+            >
               <MushafPageSheet
-                data={underPageData}
-                loading={!underPageData}
+                data={underData}
+                loading={!underData}
                 error=""
                 onRetry={() => undefined}
                 fontSize={settings.fontSize}
@@ -635,27 +605,23 @@ export function MushafReader({
                 num={num}
                 onAyahSelect={() => undefined}
               />
+              <div className="qr-cast" style={{ opacity: castOpacity }} />
             </div>
           )}
 
-          {/* Layer 2: Dynamic Cast Shadow on Revealed Page */}
-          {isCurling && effectiveMode === 'curl' && (
-            <div className="qr-layer-cast-shadow" style={{ background: castShadowBg }} />
-          )}
-
-          {/* Layer 3: Active Front Page (clipped live to the fold line) */}
+          {/* Top 3D Rotating Book Leaf */}
           <div
-            className="qr-layer-front"
+            className="qr-leaf-top"
             style={{
-              clipPath: frontClip,
-              WebkitClipPath: frontClip,
-              transform: slideTransform,
+              transform: topTransform,
+              filter: `brightness(${topBrightness})`,
+              opacity: topOpacity,
             }}
           >
             <MushafPageSheet
-              data={pageData}
-              loading={loading}
-              error={error}
+              data={topData}
+              loading={!isFlipping && loading}
+              error={!isFlipping ? error : ''}
               onRetry={() => fetchCurrent(page)}
               fontSize={settings.fontSize}
               tajweed={settings.tajweed}
@@ -677,31 +643,8 @@ export function MushafReader({
                 }
               }}
             />
-
-            {/* Subtle Corner Peel Hint when idle */}
-            {!isCurling && effectiveMode === 'curl' && page < TOTAL_PAGES && (
-              <span className="qr-corner-hint" aria-hidden="true" />
-            )}
+            <div className="qr-shade" style={{ opacity: shadeOpacity }} />
           </div>
-
-          {/* Layer 4: Curled Back-Side Paper Flap with Cylindrical Shading & Cast Drop Shadow */}
-          {isCurling && effectiveMode === 'curl' && flapClip && (
-            <div
-              className="qr-curl-flap-wrap"
-              style={{
-                filter: `drop-shadow(${isNext ? -14 : 14}px 6px 20px rgb(0 0 0 / ${(0.45 * shadowStrength).toFixed(2)}))`,
-              }}
-            >
-              <div
-                className="qr-curl-flap"
-                style={{
-                  clipPath: flapClip,
-                  WebkitClipPath: flapClip,
-                  background: flapGrad,
-                }}
-              />
-            </div>
-          )}
         </div>
       </main>
 

@@ -1,68 +1,112 @@
 /**
- * Ultra-lightweight synthesized realistic paper page-turn rustle via Web Audio API.
+ * Realistic 3-layer Web Audio paper page-flip synthesizer:
+ * 1. Sweeping bandpass paper rustle (700Hz -> 3600Hz -> 1100Hz)
+ * 2. Five micro paper-fiber crackle bursts (2500–6000Hz)
+ * 3. Soft low-pass page settle thump when the sheet lands
  * Zero external audio files, 0ms latency, works 100% offline.
  */
 
-let audioCtx: AudioContext | null = null;
+let actx: AudioContext | null = null;
+let noiseBuf: AudioBuffer | null = null;
 
-function getCtx(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-  if (!Ctor) return null;
-  if (!audioCtx) audioCtx = new Ctor();
-  if (audioCtx.state === 'suspended') {
-    void audioCtx.resume().catch(() => undefined);
+function ensureAudio(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (!actx) {
+    const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return false;
+    actx = new Ctor();
+    const len = actx.sampleRate * 2;
+    const buf = actx.createBuffer(1, len, actx.sampleRate);
+    const d = buf.getChannelData(0);
+    let lp = 0;
+    for (let i = 0; i < len; i++) {
+      const w = Math.random() * 2 - 1;
+      lp = lp * 0.6 + w * 0.4;
+      d[i] = w * 0.5 + lp * 0.9;
+    }
+    noiseBuf = buf;
   }
-  return audioCtx;
+  if (actx.state === 'suspended') {
+    void actx.resume().catch(() => undefined);
+  }
+  return Boolean(actx && noiseBuf);
 }
 
-export function playPageFlipSound() {
-  const ctx = getCtx();
-  if (!ctx) return;
+export function warmPageAudio() {
+  ensureAudio();
+}
+
+export function playPageFlipSound(dur = 0.52) {
+  if (!ensureAudio() || !actx || !noiseBuf) return;
 
   try {
-    const duration = 0.21;
-    const sampleRate = ctx.sampleRate;
-    const length = Math.floor(sampleRate * duration);
-    const buffer = ctx.createBuffer(1, length, sampleRate);
-    const data = buffer.getChannelData(0);
+    const t0 = actx.currentTime;
+    const master = actx.createGain();
+    master.gain.value = 0.82;
+    master.connect(actx.destination);
 
-    // Soft shaped pink-ish noise that mimics crisp Mushaf paper brushing against paper
-    let b0 = 0;
-    let b1 = 0;
-    let b2 = 0;
-    for (let i = 0; i < length; i++) {
-      const white = Math.random() * 2 - 1;
-      b0 = 0.997 * b0 + white * 0.029;
-      b1 = 0.985 * b1 + white * 0.032;
-      b2 = 0.95 * b2 + white * 0.048;
-      const t = i / length;
-      // Fast rise, gentle mid-paper sweep, soft settle
-      const env = Math.sin(Math.pow(t, 0.72) * Math.PI);
-      data[i] = (b0 + b1 + b2 + white * 0.08) * env * 0.55;
+    // Layer 1: Paper sweep
+    const s = actx.createBufferSource();
+    s.buffer = noiseBuf;
+    s.playbackRate.value = 0.85 + Math.random() * 0.3;
+    const bp = actx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 0.8;
+    bp.frequency.setValueAtTime(700, t0);
+    bp.frequency.exponentialRampToValueAtTime(3600, t0 + dur * 0.38);
+    bp.frequency.exponentialRampToValueAtTime(1100, t0 + dur * 0.9);
+    const hp = actx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 260;
+    const g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.55, t0 + dur * 0.16);
+    g.gain.exponentialRampToValueAtTime(0.22, t0 + dur * 0.55);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur * 0.95);
+    s.connect(bp);
+    bp.connect(hp);
+    hp.connect(g);
+    g.connect(master);
+    s.start(t0, Math.random());
+    s.stop(t0 + dur);
+
+    // Layer 2: 5 micro paper-fiber crackles
+    for (let i = 0; i < 5; i++) {
+      const tt = t0 + dur * (0.08 + Math.random() * 0.5);
+      const c = actx.createBufferSource();
+      c.buffer = noiseBuf;
+      const cf = actx.createBiquadFilter();
+      cf.type = 'bandpass';
+      cf.frequency.value = 2500 + Math.random() * 3500;
+      cf.Q.value = 2;
+      const cg = actx.createGain();
+      cg.gain.setValueAtTime(0.0001, tt);
+      cg.gain.exponentialRampToValueAtTime(0.18, tt + 0.004);
+      cg.gain.exponentialRampToValueAtTime(0.0001, tt + 0.03);
+      c.connect(cf);
+      cf.connect(cg);
+      cg.connect(master);
+      c.start(tt, Math.random());
+      c.stop(tt + 0.04);
     }
 
-    const src = ctx.createBufferSource();
-    src.buffer = buffer;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1450, ctx.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(2600, ctx.currentTime + duration * 0.45);
-    filter.frequency.exponentialRampToValueAtTime(980, ctx.currentTime + duration);
-    filter.Q.value = 1.1;
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.001, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.24, ctx.currentTime + 0.035);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-
-    src.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    src.start();
-    src.stop(ctx.currentTime + duration + 0.02);
+    // Layer 3: Gentle page settle thump
+    const tl = t0 + dur * 0.88;
+    const th = actx.createBufferSource();
+    th.buffer = noiseBuf;
+    const lpf = actx.createBiquadFilter();
+    lpf.type = 'lowpass';
+    lpf.frequency.value = 700;
+    const tg = actx.createGain();
+    tg.gain.setValueAtTime(0.0001, tl);
+    tg.gain.exponentialRampToValueAtTime(0.45, tl + 0.012);
+    tg.gain.exponentialRampToValueAtTime(0.0001, tl + 0.12);
+    th.connect(lpf);
+    lpf.connect(tg);
+    tg.connect(master);
+    th.start(tl, Math.random());
+    th.stop(tl + 0.2);
   } catch {
-    // Ignore autoplay or WebAudio errors gracefully.
+    // Ignore autoplay restrictions gracefully
   }
 }
